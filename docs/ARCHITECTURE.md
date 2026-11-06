@@ -12,7 +12,7 @@ Data flow:
 - Zustand owns transient player and UI state.
 - MusicSource adapter talks to Audius.
 - AudioEngine adapter talks to the selected native audio library.
-- SQLite / AsyncStorage persist local library and preferences.
+- Zustand persist middleware with AsyncStorage stores favourites, recent tracks, and playback preferences locally.
 
 ## Proposed stack
 
@@ -26,10 +26,10 @@ Data flow:
 | Client/player state | Zustand | Queue, playback UI, preferences |
 | Persistence | AsyncStorage | Initial favourites, recent history, and playback preferences; SQLite can be added for larger libraries |
 | Audio | expo-audio ~57.0.5 | Native playback, background audio config, and lock-screen metadata |
-| Testing | Jest/Vitest-compatible setup + React Native Testing Library | Pin compatible versions at scaffold time |
+| Testing | GitHub Actions checks | Dependency validation, TypeScript, and Android/iOS bundle exports; unit tests are a follow-up task |
 | Builds | EAS Build / Expo development builds | Native modules require development builds |
 
-Package versions must be checked for compatibility and pinned when the scaffold is created. Expo Go is not the target runtime for native audio testing.
+Initial package versions are pinned in package.json. CI and physical-device checks must validate the dependency set. Expo Go is not the target runtime for native audio testing.
 
 ## Music-source adapter
 Screens and domain logic must not call Audius endpoints directly.
@@ -84,8 +84,8 @@ The Audius adapter will:
 ## State ownership
 - TanStack Query owns remote server state and request caching.
 - Zustand owns transient playback state: current item, queue, current index, shuffle, repeat, player visibility, and playback status.
-- SQLite owns durable local data: playlists, favourites, play history, and structured preferences.
-- AsyncStorage is reserved for small non-sensitive settings and SDK-required persistence.
+- Zustand persist middleware and AsyncStorage own the current durable local data: favourites, recent tracks, shuffle, and repeat preferences.
+- Larger local libraries and user-created playlists may move to SQLite when implemented.
 - Do not duplicate authoritative state across stores.
 
 ## Audio engine decision
