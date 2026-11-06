@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { Alert } from "react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
@@ -11,6 +11,7 @@ import { usePlayerStore } from "../../store/player";
 
 export default function LibraryScreen() {
   const setTrack = usePlayerStore((s) => s.setTrack);
+  const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -19,7 +20,7 @@ export default function LibraryScreen() {
             <Text style={styles.eyebrow}>YOUR COLLECTION</Text>
             <Text style={styles.title}>Your library.</Text>
           </View>
-          <Pressable style={styles.add}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
+          <Pressable style={styles.add} onPress={() => Alert.alert("Create a playlist", "Playlist creation and local storage will be connected after the UI phase.")}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
         </View>
         <View style={styles.shortcuts}>
           <Pressable style={styles.liked} onPress={() => setTrack(mockTracks[0], mockTracks)}>
@@ -30,7 +31,7 @@ export default function LibraryScreen() {
             </View>
             <Ionicons name="chevron-forward" size={17} color="rgba(255,255,255,0.65)" />
           </Pressable>
-          <Pressable style={styles.downloads}>
+          <Pressable style={styles.downloads} onPress={() => Alert.alert("Local music", "Device music scanning will be added after the online music source is integrated.")}>
             <View style={styles.downloadIcon}><Ionicons name="download-outline" size={19} color={colors.mint} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.shortcutTitle}>Local music</Text>
@@ -40,7 +41,7 @@ export default function LibraryScreen() {
           </Pressable>
         </View>
         <View style={styles.section}>
-          <SectionHeading title="Your playlists" action="Create" onPress={() => {}} />
+          <SectionHeading title="Your playlists" action="Create" onPress={() => Alert.alert("Create a playlist", "Playlist creation and local storage will be connected after the UI phase.")} />
           <View style={styles.playlistGrid}>
             {mockPlaylists.map((playlist, index) => (
               <Pressable key={playlist.id} style={styles.playlist} onPress={() => setTrack(mockTracks[index], mockTracks)}>
@@ -52,8 +53,8 @@ export default function LibraryScreen() {
           </View>
         </View>
         <View style={styles.section}>
-          <SectionHeading title="Recently played" />
-          {mockTracks.slice(0, 3).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex />)}
+          <SectionHeading title="Liked songs" />
+          {mockTracks.filter((track) => likedTrackIds.includes(track.id)).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex />)}
         </View>
         <Text style={styles.note}>Your library is using sample content until local persistence and Audius integration are connected.</Text>
       </ScrollView>
