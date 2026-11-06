@@ -84,7 +84,8 @@ The Audius adapter will:
 ## State ownership
 - TanStack Query owns remote server state and request caching.
 - Zustand owns transient playback state: current item, queue, current index, shuffle, repeat, player visibility, and playback status.
-- Zustand persist middleware and AsyncStorage own the current durable local data: favourites, recent tracks, shuffle, and repeat preferences.
+- Zustand persist middleware and AsyncStorage own the current durable local data: favourites and recently played tracks.
+- Transient playback status stays in the non-persisted player store to avoid frequent storage writes.
 - Larger local libraries and user-created playlists may move to SQLite when implemented.
 - Do not duplicate authoritative state across stores.
 
