@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import type { MusicTrack } from "../types/music";
 import { colors } from "../theme/colors";
