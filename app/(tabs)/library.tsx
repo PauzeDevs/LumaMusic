@@ -12,6 +12,7 @@ import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function LibraryScreen() {
   const likedTracks = usePlayerStore((s) => s.likedTracks);
+  const recentTracks = usePlayerStore((s) => s.recentTracks);
   const { playTrack } = useAudioEngine();
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -57,7 +58,12 @@ export default function LibraryScreen() {
           <SectionHeading title="Liked songs" />
           {likedTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={likedTracks} />)}
         </View>
-        <Text style={styles.note}>Liked tracks are held in memory for now. Local persistence is part of the next integration pass.</Text>
+        <View style={styles.section}>
+          <SectionHeading title="Recently played" />
+          {recentTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={recentTracks} />)}
+          {recentTracks.length === 0 ? <Text style={styles.note}>Tracks you play will appear here.</Text> : null}
+        </View>
+        <Text style={styles.note}>Favourites and listening history are saved on this device. Playlists and local music scanning are still being built.</Text>
       </ScrollView>
     </SafeAreaView>
   );
