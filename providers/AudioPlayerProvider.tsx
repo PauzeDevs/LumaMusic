@@ -109,6 +109,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const playPrevious = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
+    if (state.repeatMode === "one") {
+      await player.seekTo(0);
+      player.play();
+      return;
+    }
     const currentIndex = state.queue.findIndex((item) => item.id === state.currentTrack?.id);
     if (status.currentTime > 3 || (currentIndex <= 0 && state.repeatMode === "off")) {
       await player.seekTo(0);
