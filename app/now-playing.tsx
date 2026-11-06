@@ -5,6 +5,7 @@ import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from "react-na
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { usePlayerStore } from "../store/player";
+import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
 function formatTime(seconds: number) {
@@ -22,8 +23,8 @@ export default function NowPlayingScreen() {
   const isShuffled = usePlayerStore((s) => s.isShuffled);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const queue = usePlayerStore((s) => s.queue);
-  const likedTracks = usePlayerStore((s) => s.likedTracks);
-  const toggleLike = usePlayerStore((s) => s.toggleLike);
+  const likedTracks = useLibraryStore((s) => s.likedTracks);
+  const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo } = useAudioEngine();
   const [progressWidth, setProgressWidth] = useState(0);
 
