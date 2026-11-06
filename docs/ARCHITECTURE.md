@@ -24,7 +24,7 @@ Data flow:
 | Audius integration | Audius REST API | Read-only endpoints; official SDK can be added if OAuth or write actions are needed |
 | Server-state cache | TanStack Query | Search, trending, artist and playlist data |
 | Client/player state | Zustand | Queue, playback UI, preferences |
-| Persistence | expo-sqlite + AsyncStorage | Structured library/history and small preferences |
+| Persistence | AsyncStorage | Initial favourites, recent history, and playback preferences; SQLite can be added for larger libraries |
 | Audio | expo-audio ~57.0.5 | Native playback, background audio config, and lock-screen metadata |
 | Testing | Jest/Vitest-compatible setup + React Native Testing Library | Pin compatible versions at scaffold time |
 | Builds | EAS Build / Expo development builds | Native modules require development builds |
