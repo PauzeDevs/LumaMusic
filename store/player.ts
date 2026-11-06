@@ -35,13 +35,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }),
   togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
   playNext: () => {
-    const { queue, currentTrack, repeatMode } = get();
+    const { queue, currentTrack, repeatMode, isShuffled } = get();
     if (queue.length === 0) return;
     if (repeatMode === "one" && currentTrack) {
       set({ isPlaying: true });
       return;
     }
     const currentIndex = queue.findIndex((track) => track.id === currentTrack?.id);
+    if (isShuffled && queue.length > 1) {
+      const candidates = queue.filter((track) => track.id !== currentTrack?.id);
+      const nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
+      set({ currentTrack: nextTrack, isPlaying: true });
+      return;
+    }
     const nextIndex = currentIndex + 1;
     if (nextIndex >= queue.length && repeatMode === "off") {
       set({ isPlaying: false });
