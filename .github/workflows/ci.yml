@@ -25,3 +25,5 @@ jobs:
         run: npm run typecheck
       - name: Export Android bundle
         run: npx expo export --platform android
+      - name: Export iOS bundle
+        run: npx expo export --platform ios
