@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { colors } from "../theme/colors";
 import { Artwork } from "./Artwork";
 import { usePlayerStore } from "../store/player";
+import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
 const tabs = [
   { name: "index", label: "Listen", icon: "home-outline", activeIcon: "home" },
@@ -17,7 +18,7 @@ type TabBarProps = { state: { index: number; routes: Array<{ name: string }> }; 
 export function LumaTabBar({ state, navigation }: TabBarProps) {
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const togglePlayback = usePlayerStore((s) => s.togglePlayback);
+  const { togglePlayback } = useAudioEngine();
 
   return (
     <View style={styles.shell}>
