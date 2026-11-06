@@ -33,7 +33,7 @@
 - The catalogue and stream availability remain dependent on Audius and individual track permissions.
 
 ## Known gaps
-- Favourites and playlists are not persisted across app restarts.
+- User-created playlists are not implemented yet.
 - Artist and playlist search endpoints are not wired yet.
 - Queue remote controls on the OS lock screen need a dedicated native-device validation pass.
 - Background playback has not yet been tested on physical Android and iOS devices.
