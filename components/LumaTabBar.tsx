@@ -22,17 +22,19 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   return (
     <View style={styles.shell}>
       {track ? (
-        <Pressable style={styles.mini} onPress={() => router.push("/now-playing")}>
-          <Artwork uri={track.artwork} size={42} radius={10} />
-          <View style={styles.miniCopy}>
-            <Text numberOfLines={1} style={styles.miniTitle}>{track.title}</Text>
-            <Text numberOfLines={1} style={styles.miniArtist}>{track.artist}</Text>
-          </View>
+        <View style={styles.mini}>
+          <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}>
+            <Artwork uri={track.artwork} size={42} radius={10} />
+            <View style={styles.miniCopy}>
+              <Text numberOfLines={1} style={styles.miniTitle}>{track.title}</Text>
+              <Text numberOfLines={1} style={styles.miniArtist}>{track.artist}</Text>
+            </View>
+          </Pressable>
           <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}>
             <Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} />
           </Pressable>
           <View style={styles.progressTrack}><View style={styles.progressFill} /></View>
-        </Pressable>
+        </View>
       ) : null}
       <View style={styles.tabs}>
         {tabs.map((tab) => {
@@ -53,6 +55,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 const styles = StyleSheet.create({
   shell: { backgroundColor: "#0B0C12", borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, paddingBottom: 8 },
   mini: { height: 58, marginHorizontal: 12, marginBottom: 7, paddingHorizontal: 9, borderRadius: 15, backgroundColor: "#1B1E29", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
   miniTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   miniArtist: { color: colors.muted, fontSize: 10 },
