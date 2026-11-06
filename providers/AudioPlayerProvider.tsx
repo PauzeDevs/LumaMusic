@@ -64,6 +64,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         artist: track.artist,
         albumTitle: "LumaMusic",
         artworkUrl: track.artwork
+      }, {
+        showSeekBackward: true,
+        showSeekForward: true
       });
       player.play();
     } catch (error) {
