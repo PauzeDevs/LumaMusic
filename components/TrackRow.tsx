@@ -16,22 +16,25 @@ export function TrackRow({ track, index, showIndex = false }: Props) {
   const isLiked = likedTrackIds.includes(track.id);
 
   return (
-    <Pressable onPress={() => setTrack(track)} style={styles.row}>
+    <View style={styles.row}>
       {showIndex ? <Text style={[styles.index, isCurrent && styles.active]}>{String((index ?? 0) + 1).padStart(2, "0")}</Text> : null}
-      <Artwork uri={track.artwork} size={52} radius={12} />
-      <View style={styles.copy}>
-        <Text numberOfLines={1} style={[styles.title, isCurrent && styles.active]}>{track.title}</Text>
-        <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
-      </View>
+      <Pressable onPress={() => setTrack(track)} style={styles.main}>
+        <Artwork uri={track.artwork} size={52} radius={12} />
+        <View style={styles.copy}>
+          <Text numberOfLines={1} style={[styles.title, isCurrent && styles.active]}>{track.title}</Text>
+          <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
+        </View>
+      </Pressable>
       <Pressable hitSlop={10} style={styles.more} onPress={() => toggleLike(track.id)}>
         <Ionicons name={isLiked ? "heart" : "heart-outline"} size={19} color={isLiked ? colors.accent : colors.muted} />
       </Pressable>
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 },
+  main: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
   index: { width: 22, color: colors.subtle, fontSize: 12, fontWeight: "700" },
   copy: { flex: 1, gap: 4 },
   title: { color: colors.text, fontSize: 14, fontWeight: "600" },
