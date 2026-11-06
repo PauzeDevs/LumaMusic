@@ -4,38 +4,41 @@ import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from "react-na
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { usePlayerStore } from "../store/player";
+import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
-function formatTime(milliseconds: number) {
-  const seconds = Math.floor(milliseconds / 1000);
-  return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+function formatTime(seconds: number) {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  return Math.floor(safeSeconds / 60) + ":" + String(safeSeconds % 60).padStart(2, "0");
 }
 
 export default function NowPlayingScreen() {
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const isBuffering = usePlayerStore((s) => s.isBuffering);
+  const playbackPosition = usePlayerStore((s) => s.playbackPosition);
+  const playbackDuration = usePlayerStore((s) => s.playbackDuration);
+  const playbackError = usePlayerStore((s) => s.playbackError);
   const isShuffled = usePlayerStore((s) => s.isShuffled);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const queue = usePlayerStore((s) => s.queue);
-  const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
-  const togglePlayback = usePlayerStore((s) => s.togglePlayback);
-  const playNext = usePlayerStore((s) => s.playNext);
-  const playPrevious = usePlayerStore((s) => s.playPrevious);
-  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
-  const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
+  const likedTracks = usePlayerStore((s) => s.likedTracks);
   const toggleLike = usePlayerStore((s) => s.toggleLike);
+  const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo } = useAudioEngine();
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
   }
 
-  const liked = likedTrackIds.includes(track.id);
+  const liked = likedTracks.some((item) => item.id === track.id);
+  const duration = playbackDuration || track.durationMs / 1000;
+  const progress = duration > 0 ? Math.min(100, (playbackPosition / duration) * 100) : 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
         <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text style={styles.headerTitle}>From your discovery</Text></View>
-        <Pressable onPress={() => Alert.alert("Track options", "More track actions will be added with the Audius integration.")} style={styles.headerButton}><Ionicons name="ellipsis-horizontal" size={22} color={colors.text} /></Pressable>
+        <Pressable onPress={() => Alert.alert("Track options", "More track actions will be added in a later release.")} style={styles.headerButton}><Ionicons name="ellipsis-horizontal" size={22} color={colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
         <View style={styles.artFrame}>
@@ -46,20 +49,29 @@ export default function NowPlayingScreen() {
             <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
             <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
           </View>
-          <Pressable style={styles.like} onPress={() => toggleLike(track.id)}>
+          <Pressable style={styles.like} onPress={() => toggleLike(track)}>
             <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={colors.accent} />
           </Pressable>
         </View>
         <View style={styles.progressArea}>
-          <View style={styles.progressTrack}><View style={styles.progressFill} /></View>
-          <View style={styles.timeRow}><Text style={styles.time}>0:00</Text><Text style={styles.time}>{formatTime(track.durationMs)}</Text></View>
+          <Pressable
+            style={styles.progressTrack}
+            onPress={() => seekTo(duration * 0.5)}
+            accessibilityRole="adjustable"
+            accessibilityLabel="Seek to middle of track"
+          >
+            <View style={[styles.progressFill, { width: progress + "%" }]} />
+          </Pressable>
+          <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
         </View>
+        {isBuffering ? <Text style={styles.status}>Buffering audio…</Text> : null}
+        {playbackError ? <Text style={styles.error}>{playbackError}</Text> : null}
         <View style={styles.controls}>
           <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
-          <Pressable onPress={playPrevious}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
+          <Pressable onPress={() => { void playPrevious(); }}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
           <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
-          <Pressable onPress={playNext}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
-          <Pressable onPress={cycleRepeat}><Ionicons name={repeatMode === "one" ? "repeat" : "repeat"} size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
+          <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
+          <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
       </View>
       <View style={styles.bottom}>
@@ -69,11 +81,11 @@ export default function NowPlayingScreen() {
         <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · LumaMusic" })}>
           <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
         </Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing controls will be connected with the native audio engine.")}>
+        <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing are managed by your device audio settings.")}>
           <Ionicons name="airplay" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
         </Pressable>
       </View>
-      <Text style={styles.disclaimer}>UI prototype · Sample track · No audio stream connected yet</Text>
+      <Text style={styles.disclaimer}>Streaming provided by Audius · Track availability depends on source permissions</Text>
     </SafeAreaView>
   );
 }
@@ -94,9 +106,11 @@ const styles = StyleSheet.create({
   like: { padding: 8 },
   progressArea: { marginTop: 28 },
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "hidden" },
-  progressFill: { width: "22%", height: 4, backgroundColor: colors.accent, borderRadius: 4 },
+  progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
   timeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   time: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
+  status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
+  error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
   play: { width: 66, height: 66, borderRadius: 33, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
   bottom: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 15 },
