@@ -1,11 +1,13 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { Alert } from "react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
-import { mockPlaylists } from "../../data/mockTracks";
+import { getTrendingPlaylists } from "../../services/audius";
 import { colors } from "../../theme/colors";
 import { useLibraryStore } from "../../store/library";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
@@ -14,6 +16,10 @@ export default function LibraryScreen() {
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const recentTracks = useLibraryStore((s) => s.recentTracks);
   const { playTrack } = useAudioEngine();
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+    queryKey: ["audius", "library-discovery-playlists", 6],
+    queryFn: () => getTrendingPlaylists(6, 0)
+  });
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -43,10 +49,11 @@ export default function LibraryScreen() {
           </Pressable>
         </View>
         <View style={styles.section}>
-          <SectionHeading title="Your playlists" action="Create" onPress={() => Alert.alert("Create a playlist", "Playlist creation and local storage will be connected after the UI phase.")} />
+          <SectionHeading title="Discover playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
+          {playlistsLoading ? <Text style={styles.note}>Finding playlists…</Text> : null}
           <View style={styles.playlistGrid}>
-            {mockPlaylists.map((playlist, index) => (
-              <Pressable key={playlist.id} style={styles.playlist} onPress={() => Alert.alert(playlist.title, "Playlist playback will be connected after the Audius playlist endpoints are added.")}>
+            {playlists.map((playlist) => (
+              <Pressable key={playlist.id} style={styles.playlist} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId } }) : null}>
                 <View style={styles.playlistArtwork}><Artwork uri={playlist.artwork} size={156} radius={17} /></View>
                 <Text style={styles.playlistTitle}>{playlist.title}</Text>
                 <Text style={styles.playlistSub}>{playlist.subtitle}</Text>
