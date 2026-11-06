@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
   index: { width: 22, color: colors.subtle, fontSize: 12, fontWeight: "700" },
   copy: { flex: 1, gap: 4 },
-  title: { color: colors.text, fontSize: 14, fontWeight: "650" },
+  title: { color: colors.text, fontSize: 14, fontWeight: "600" },
   artist: { color: colors.muted, fontSize: 12 },
   active: { color: colors.accent },
   more: { padding: 8 }
