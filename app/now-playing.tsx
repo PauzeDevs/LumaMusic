@@ -1,26 +1,41 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { usePlayerStore } from "../store/player";
 
+function formatTime(milliseconds: number) {
+  const seconds = Math.floor(milliseconds / 1000);
+  return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+}
+
 export default function NowPlayingScreen() {
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const isShuffled = usePlayerStore((s) => s.isShuffled);
+  const repeatMode = usePlayerStore((s) => s.repeatMode);
+  const queue = usePlayerStore((s) => s.queue);
+  const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
   const togglePlayback = usePlayerStore((s) => s.togglePlayback);
   const playNext = usePlayerStore((s) => s.playNext);
+  const playPrevious = usePlayerStore((s) => s.playPrevious);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
+  const toggleLike = usePlayerStore((s) => s.toggleLike);
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
   }
+
+  const liked = likedTrackIds.includes(track.id);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
         <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text style={styles.headerTitle}>From your discovery</Text></View>
-        <Pressable style={styles.headerButton}><Ionicons name="ellipsis-horizontal" size={22} color={colors.text} /></Pressable>
+        <Pressable onPress={() => Alert.alert("Track options", "More track actions will be added with the Audius integration.")} style={styles.headerButton}><Ionicons name="ellipsis-horizontal" size={22} color={colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
         <View style={styles.artFrame}>
@@ -31,24 +46,32 @@ export default function NowPlayingScreen() {
             <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
             <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
           </View>
-          <Pressable style={styles.like}><Ionicons name="heart-outline" size={24} color={colors.accent} /></Pressable>
+          <Pressable style={styles.like} onPress={() => toggleLike(track.id)}>
+            <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={colors.accent} />
+          </Pressable>
         </View>
         <View style={styles.progressArea}>
           <View style={styles.progressTrack}><View style={styles.progressFill} /></View>
-          <View style={styles.timeRow}><Text style={styles.time}>0:42</Text><Text style={styles.time}>3:34</Text></View>
+          <View style={styles.timeRow}><Text style={styles.time}>0:00</Text><Text style={styles.time}>{formatTime(track.durationMs)}</Text></View>
         </View>
         <View style={styles.controls}>
-          <Pressable><Ionicons name="shuffle" size={22} color={colors.muted} /></Pressable>
-          <Pressable><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
+          <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
+          <Pressable onPress={playPrevious}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
           <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
           <Pressable onPress={playNext}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
-          <Pressable><Ionicons name="repeat" size={22} color={colors.muted} /></Pressable>
+          <Pressable onPress={cycleRepeat}><Ionicons name={repeatMode === "one" ? "repeat" : "repeat"} size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
       </View>
       <View style={styles.bottom}>
-        <View style={styles.bottomAction}><Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text></View>
-        <View style={styles.bottomAction}><Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text></View>
-        <View style={styles.bottomAction}><Ionicons name="airplay" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text></View>
+        <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Up next", queue.map((item, index) => (index + 1) + ". " + item.title + " · " + item.artist).join("\n") || "Your queue is empty.")}>
+          <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
+        </Pressable>
+        <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · LumaMusic" })}>
+          <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
+        </Pressable>
+        <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing controls will be connected with the native audio engine.")}>
+          <Ionicons name="airplay" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
+        </Pressable>
       </View>
       <Text style={styles.disclaimer}>UI prototype · Sample track · No audio stream connected yet</Text>
     </SafeAreaView>
