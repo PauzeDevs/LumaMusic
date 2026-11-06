@@ -1,8 +1,8 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert } from "react-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
+import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 
 const settings = [
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
@@ -14,9 +14,10 @@ const settings = [
 ] as const;
 
 export default function ProfileScreen() {
+  const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
         <Text style={styles.eyebrow}>A LITTLE ABOUT YOU</Text>
         <Text style={styles.title}>Your space.</Text>
         <View style={styles.profileCard}>
@@ -42,6 +43,7 @@ export default function ProfileScreen() {
         </View>
         <Text style={styles.footer}>Made for the love of listening.{ "\n" }LumaMusic by PauzeDevs</Text>
       </ScrollView>
+      <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
     </SafeAreaView>
   );
 }

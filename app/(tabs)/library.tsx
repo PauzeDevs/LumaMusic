@@ -1,18 +1,19 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Alert } from "react-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { getTrendingPlaylists } from "../../services/audius";
 import { colors } from "../../theme/colors";
+import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { useLibraryStore } from "../../store/library";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function LibraryScreen() {
+  const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const recentTracks = useLibraryStore((s) => s.recentTracks);
   const { playTrack } = useAudioEngine();
@@ -22,7 +23,7 @@ export default function LibraryScreen() {
   });
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
         <View style={styles.top}>
           <View>
             <Text style={styles.eyebrow}>YOUR COLLECTION</Text>
@@ -74,6 +75,7 @@ export default function LibraryScreen() {
         </View>
         <Text style={styles.note}>Favourites and listening history are saved on this device. Playlists and local music scanning are still being built.</Text>
       </ScrollView>
+      <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
     </SafeAreaView>
   );
 }

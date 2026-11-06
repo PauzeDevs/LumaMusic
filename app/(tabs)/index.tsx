@@ -1,17 +1,19 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getTrendingPlaylists, getTrendingTracks } from "../../services/audius";
 import { colors } from "../../theme/colors";
+import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function ListenScreen() {
+  const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
     queryKey: ["audius", "trending", 20],
@@ -34,7 +36,7 @@ export default function ListenScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
         <View style={styles.topline}>
           <View>
             <Text style={styles.eyebrow}>YOUR SOUND, YOUR SPACE</Text>
@@ -99,6 +101,7 @@ export default function ListenScreen() {
           <Text style={styles.sourceText}>Independent music discovery, powered by Audius.</Text>
         </View>
       </ScrollView>
+      <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
     </SafeAreaView>
   );
 }
