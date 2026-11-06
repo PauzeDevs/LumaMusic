@@ -1,22 +1,53 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { mockTracks } from "../../data/mockTracks";
 import { TrackRow } from "../../components/TrackRow";
 import { colors } from "../../theme/colors";
+import { getTrendingTracks, searchAudiusTracks } from "../../services/audius";
+import type { MusicTrack } from "../../types/music";
 
 const filters = ["All", "Tracks", "Artists", "Playlists"];
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (activeFilter === "Artists" || activeFilter === "Playlists") return [];
-    if (!q) return mockTracks.slice(0, 4);
-    return mockTracks.filter((track) => (track.title + " " + track.artist).toLowerCase().includes(q));
+  const [results, setResults] = useState<MusicTrack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    if (activeFilter === "Artists" || activeFilter === "Playlists") {
+      setResults([]);
+      setLoading(false);
+      setError(null);
+      return () => { active = false; };
+    }
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = query.trim()
+          ? await searchAudiusTracks(query, 25, 0)
+          : await getTrendingTracks(8, 0);
+        if (active) setResults(data);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Search is unavailable right now.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }, query.trim() ? 350 : 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [query, activeFilter]);
+
+  const heading = activeFilter === "Artists" ? "Artist search" : activeFilter === "Playlists" ? "Playlist search" : query.trim() ? "Search results" : "Trending on Audius";
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -36,17 +67,20 @@ export default function SearchScreen() {
           ))}
         </ScrollView>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{query ? "Search results" : "A little inspiration"}</Text>
+          <Text style={styles.sectionTitle}>{heading}</Text>
           <Text style={styles.count}>{results.length} tracks</Text>
         </View>
-        {results.length ? results.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex />) : (
+        {loading ? <Text style={styles.message}>Searching the catalogue…</Text> : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {!loading && !error && results.length > 0 ? results.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={results} />) : null}
+        {!loading && !error && results.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="musical-notes-outline" size={30} color={colors.subtle} />
-            <Text style={styles.emptyTitle}>Nothing found yet</Text>
-            <Text style={styles.emptyCopy}>{activeFilter === "Artists" || activeFilter === "Playlists" ? "This result type will be connected with the live catalogue." : "Try another title or artist name."}</Text>
+            <Text style={styles.emptyTitle}>{activeFilter === "Artists" || activeFilter === "Playlists" ? "Coming in the next pass" : "Nothing found yet"}</Text>
+            <Text style={styles.emptyCopy}>{activeFilter === "Artists" || activeFilter === "Playlists" ? "This result type will be connected to the Audius catalogue." : "Try another title or artist name."}</Text>
           </View>
-        )}
-        <Text style={styles.note}>Preview catalogue only. Live Audius search is added in the integration phase.</Text>
+        ) : null}
+        <Text style={styles.note}>Search and streaming results are provided by Audius. Track availability varies by artist and permissions.</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -67,8 +101,10 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "700" },
   count: { color: colors.subtle, fontSize: 11 },
+  message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
+  error: { color: colors.danger, fontSize: 12, paddingVertical: 18 },
   empty: { alignItems: "center", paddingVertical: 54, gap: 8 },
   emptyTitle: { color: colors.text, fontSize: 15, fontWeight: "700" },
-  emptyCopy: { color: colors.muted, fontSize: 12 },
+  emptyCopy: { color: colors.muted, fontSize: 12, textAlign: "center" },
   note: { color: colors.subtle, fontSize: 10, marginTop: 22, lineHeight: 16 }
 });
