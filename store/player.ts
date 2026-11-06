@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { mockTracks } from "../data/mockTracks";
 import type { MusicTrack } from "../types/music";
 
 export type RepeatMode = "off" | "all" | "one";
@@ -7,61 +6,46 @@ export type RepeatMode = "off" | "all" | "one";
 type PlayerState = {
   currentTrack: MusicTrack | null;
   isPlaying: boolean;
+  isBuffering: boolean;
+  playbackPosition: number;
+  playbackDuration: number;
+  playbackError: string | null;
   queue: MusicTrack[];
   isShuffled: boolean;
   repeatMode: RepeatMode;
   likedTrackIds: string[];
   setTrack: (track: MusicTrack, queue?: MusicTrack[]) => void;
-  togglePlayback: () => void;
-  playNext: () => void;
-  playPrevious: () => void;
+  setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
+  setPlaybackError: (error: string | null) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   toggleLike: (trackId: string) => void;
 };
 
-export const usePlayerStore = create<PlayerState>((set, get) => ({
-  currentTrack: mockTracks[0],
+export const usePlayerStore = create<PlayerState>((set) => ({
+  currentTrack: null,
   isPlaying: false,
-  queue: mockTracks,
+  isBuffering: false,
+  playbackPosition: 0,
+  playbackDuration: 0,
+  playbackError: null,
+  queue: [],
   isShuffled: false,
   repeatMode: "off",
-  likedTrackIds: [mockTracks[0].id],
+  likedTrackIds: [],
   setTrack: (track, queue) =>
-    set({
+    set((state) => ({
       currentTrack: track,
-      isPlaying: true,
-      queue: queue && queue.length > 0 ? queue : [track]
-    }),
-  togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
-  playNext: () => {
-    const { queue, currentTrack, repeatMode, isShuffled } = get();
-    if (queue.length === 0) return;
-    if (repeatMode === "one" && currentTrack) {
-      set({ isPlaying: true });
-      return;
-    }
-    const currentIndex = queue.findIndex((track) => track.id === currentTrack?.id);
-    if (isShuffled && queue.length > 1) {
-      const candidates = queue.filter((track) => track.id !== currentTrack?.id);
-      const nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
-      set({ currentTrack: nextTrack, isPlaying: true });
-      return;
-    }
-    const nextIndex = currentIndex + 1;
-    if (nextIndex >= queue.length && repeatMode === "off") {
-      set({ isPlaying: false });
-      return;
-    }
-    set({ currentTrack: queue[nextIndex % queue.length], isPlaying: true });
-  },
-  playPrevious: () => {
-    const { queue, currentTrack } = get();
-    if (queue.length === 0) return;
-    const currentIndex = queue.findIndex((track) => track.id === currentTrack?.id);
-    const previousIndex = currentIndex <= 0 ? queue.length - 1 : currentIndex - 1;
-    set({ currentTrack: queue[previousIndex], isPlaying: true });
-  },
+      queue: queue && queue.length > 0 ? queue : [track],
+      isPlaying: false,
+      isBuffering: true,
+      playbackPosition: 0,
+      playbackDuration: track.durationMs / 1000,
+      playbackError: null,
+      likedTrackIds: state.likedTrackIds
+    })),
+  setPlaybackStatus: (status) => set(status),
+  setPlaybackError: (error) => set({ playbackError: error, isBuffering: false }),
   toggleShuffle: () => set((state) => ({ isShuffled: !state.isShuffled })),
   cycleRepeat: () => set((state) => ({
     repeatMode: state.repeatMode === "off" ? "all" : state.repeatMode === "all" ? "one" : "off"
