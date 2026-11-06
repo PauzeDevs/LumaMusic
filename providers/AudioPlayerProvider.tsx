@@ -46,7 +46,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus]);
 
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[]) => {
-    if (track.source !== "audius" || !track.sourceTrackId) {
+    const sourceTrackId = track.sourceTrackId;
+    if (track.source !== "audius" || typeof sourceTrackId !== "string" || sourceTrackId.length === 0) {
       throw new Error("This is sample content. Choose a playable Audius track.");
     }
     if (!track.isStreamable) {
@@ -56,7 +57,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     try {
       setPlaybackError(null);
       setTrack(track, nextQueue);
-      player.replace(getAudiusStreamUrl(track.sourceTrackId));
+      player.replace(getAudiusStreamUrl(sourceTrackId));
       player.setActiveForLockScreen(true, {
         title: track.title,
         artist: track.artist,
