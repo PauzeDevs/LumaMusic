@@ -7,12 +7,12 @@ import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { mockPlaylists } from "../../data/mockTracks";
 import { colors } from "../../theme/colors";
-import { usePlayerStore } from "../../store/player";
+import { useLibraryStore } from "../../store/library";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function LibraryScreen() {
-  const likedTracks = usePlayerStore((s) => s.likedTracks);
-  const recentTracks = usePlayerStore((s) => s.recentTracks);
+  const likedTracks = useLibraryStore((s) => s.likedTracks);
+  const recentTracks = useLibraryStore((s) => s.recentTracks);
   const { playTrack } = useAudioEngine();
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
