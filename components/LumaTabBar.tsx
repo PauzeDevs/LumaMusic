@@ -18,7 +18,10 @@ type TabBarProps = { state: { index: number; routes: Array<{ name: string }> }; 
 export function LumaTabBar({ state, navigation }: TabBarProps) {
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const playbackPosition = usePlayerStore((s) => s.playbackPosition);
+  const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const { togglePlayback } = useAudioEngine();
+  const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
 
   return (
     <View style={styles.shell}>
@@ -34,7 +37,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
           <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}>
             <Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} />
           </Pressable>
-          <View style={styles.progressTrack}><View style={styles.progressFill} /></View>
+          <View style={styles.progressTrack}><View style={[styles.progressFill, { width: progress + "%" }]} /></View>
         </View>
       ) : null}
       <View style={styles.tabs}>
