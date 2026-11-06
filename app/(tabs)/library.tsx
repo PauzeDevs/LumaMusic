@@ -44,7 +44,6 @@ export default function LibraryScreen() {
           <View style={styles.playlistGrid}>
             {mockPlaylists.map((playlist, index) => (
               <Pressable key={playlist.id} style={styles.playlist} onPress={() => setTrack(mockTracks[index], mockTracks)}>
-                <Artwork uri={playlist.artwork} size={undefined as never} />
                 <View style={styles.playlistArtwork}><Artwork uri={playlist.artwork} size={156} radius={17} /></View>
                 <Text style={styles.playlistTitle}>{playlist.title}</Text>
                 <Text style={styles.playlistSub}>{playlist.subtitle}</Text>
@@ -74,7 +73,7 @@ const styles = StyleSheet.create({
   heart: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
   downloads: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.border },
   downloadIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#182D2A", alignItems: "center", justifyContent: "center" },
-  shortcutTitle: { color: colors.text, fontSize: 13, fontWeight: "750" },
+  shortcutTitle: { color: colors.text, fontSize: 13, fontWeight: "700" },
   shortcutSub: { color: colors.muted, fontSize: 11, marginTop: 4 },
   section: { marginBottom: 28 },
   playlistGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 18 },
