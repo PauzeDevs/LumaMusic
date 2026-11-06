@@ -203,3 +203,12 @@ export async function getAudiusPlaylistTracks(playlistId: string, limit = 50, of
   });
   return rawTracks.map(mapTrack).filter((track): track is MusicTrack => track !== null);
 }
+
+export async function getTrendingPlaylists(limit = 10, offset = 0) {
+  const rawPlaylists = await request<RawAudiusPlaylist[]>("/playlists/trending", {
+    time: "week",
+    limit,
+    offset
+  });
+  return rawPlaylists.map(mapPlaylist).filter((playlist): playlist is NonNullable<typeof playlist> => playlist !== null);
+}
