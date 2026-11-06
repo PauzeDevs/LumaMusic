@@ -1,10 +1,14 @@
 # LumaMusic Integration Phase
 
-**Status:** Initial Audius discovery and single-track playback wiring committed. Physical-device and build validation remain outstanding.
+**Status:** Audius discovery, artist/playlist browsing, local library persistence, and initial audio playback wiring are committed. Physical-device and build validation remain outstanding.
 
 ## Audius endpoints used
 - GET /v1/tracks/trending — Home discovery.
 - GET /v1/tracks/search — debounced track search.
+- GET /v1/users/search and /v1/users/{id} — artist search and profile.
+- GET /v1/users/{id}/tracks — artist track list.
+- GET /v1/playlists/search, /v1/playlists/trending, and /v1/playlists/{id} — playlist discovery and details.
+- GET /v1/playlists/{id}/tracks — playlist track list.
 - GET /v1/tracks/{track_id}/stream — source stream endpoint for eligible tracks.
 
 Requests include app_name=LumaMusic. No bearer token is embedded in the app. A developer API key may be added later if required for higher request limits.
@@ -49,4 +53,4 @@ Audius is a discovery and streaming source, not a guarantee of the full Spotify/
 - Confirm background playback and lock-screen play/pause.
 - Test calls, audio interruptions, headphones, Bluetooth disconnection, and network loss.
 - Run Expo dependency checks, TypeScript, and Android/iOS exports.
-- Persist the library only after choosing and validating the storage migration approach.
+- Validate AsyncStorage persistence and migrations on physical Android and iOS devices.
