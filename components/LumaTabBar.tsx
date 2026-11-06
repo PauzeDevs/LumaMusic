@@ -37,7 +37,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
           <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}>
             <Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} />
           </Pressable>
-          <View style={styles.progressTrack}><View style={[styles.progressFill, { width: progress + "%" }]} /></View>
+          <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
         </View>
       ) : null}
       <View style={styles.tabs}>
