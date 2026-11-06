@@ -4,14 +4,15 @@ import type { MusicTrack } from "../types/music";
 import { colors } from "../theme/colors";
 import { Artwork } from "./Artwork";
 import { usePlayerStore } from "../store/player";
+import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
 type Props = { track: MusicTrack; index?: number; showIndex?: boolean; queue?: MusicTrack[] };
 
 export function TrackRow({ track, index, showIndex = false, queue }: Props) {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
-  const likedTracks = usePlayerStore((state) => state.likedTracks);
-  const toggleLike = usePlayerStore((state) => state.toggleLike);
+  const likedTracks = useLibraryStore((state) => state.likedTracks);
+  const toggleLike = useLibraryStore((state) => state.toggleLike);
   const { playTrack } = useAudioEngine();
   const isCurrent = currentTrack?.id === track.id;
   const isLiked = likedTracks.some((item) => item.id === track.id);
