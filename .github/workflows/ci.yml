@@ -1,4 +1,4 @@
-name: LumaMusic checks
+name: LumaMusic Android build and checks
 
 on:
   workflow_dispatch:
@@ -8,7 +8,8 @@ on:
     branches: [main]
 
 jobs:
-  typecheck-and-bundle:
+  android-debug-apk:
+    name: Android debug APK
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -16,13 +17,47 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.13.1
+          node-version: 22
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Check Expo dependency compatibility
         run: npx expo install --check
       - name: TypeScript check
         run: npm run typecheck
+      - name: Validate Expo config
+        run: npx expo config --type public
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+      - name: Build installable debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumamusic-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  js-bundles:
+    name: Android and iOS JavaScript bundles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check Expo dependency compatibility
+        run: npx expo install --check
       - name: Export Android bundle
         run: npx expo export --platform android
       - name: Export iOS bundle
