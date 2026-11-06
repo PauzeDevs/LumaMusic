@@ -13,13 +13,13 @@ type PlayerState = {
   queue: MusicTrack[];
   isShuffled: boolean;
   repeatMode: RepeatMode;
-  likedTrackIds: string[];
+  likedTracks: MusicTrack[];
   setTrack: (track: MusicTrack, queue?: MusicTrack[]) => void;
   setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
   setPlaybackError: (error: string | null) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
-  toggleLike: (trackId: string) => void;
+  toggleLike: (track: MusicTrack) => void;
 };
 
 export const usePlayerStore = create<PlayerState>((set) => ({
@@ -32,7 +32,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   queue: [],
   isShuffled: false,
   repeatMode: "off",
-  likedTrackIds: [],
+  likedTracks: [],
   setTrack: (track, queue) =>
     set((state) => ({
       currentTrack: track,
@@ -42,7 +42,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       playbackPosition: 0,
       playbackDuration: track.durationMs / 1000,
       playbackError: null,
-      likedTrackIds: state.likedTrackIds
+      likedTracks: state.likedTracks
     })),
   setPlaybackStatus: (status) => set(status),
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false }),
@@ -50,9 +50,9 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   cycleRepeat: () => set((state) => ({
     repeatMode: state.repeatMode === "off" ? "all" : state.repeatMode === "all" ? "one" : "off"
   })),
-  toggleLike: (trackId) => set((state) => ({
-    likedTrackIds: state.likedTrackIds.includes(trackId)
-      ? state.likedTrackIds.filter((id) => id !== trackId)
-      : [...state.likedTrackIds, trackId]
+  toggleLike: (track) => set((state) => ({
+    likedTracks: state.likedTracks.some((item) => item.id === track.id)
+      ? state.likedTracks.filter((item) => item.id !== track.id)
+      : [...state.likedTracks, track]
   }))
 }));
