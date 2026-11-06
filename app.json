@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "LumaMusic",
+    "slug": "luma-music",
+    "scheme": "lumamusic",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.pauze.lumamusic"
+    },
+    "android": {
+      "package": "dev.pauze.lumamusic",
+      "adaptiveIcon": {
+        "backgroundColor": "#090A0F"
+      }
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
