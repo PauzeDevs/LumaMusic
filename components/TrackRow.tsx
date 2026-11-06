@@ -10,7 +10,10 @@ type Props = { track: MusicTrack; index?: number; showIndex?: boolean };
 export function TrackRow({ track, index, showIndex = false }: Props) {
   const setTrack = usePlayerStore((state) => state.setTrack);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const likedTrackIds = usePlayerStore((state) => state.likedTrackIds);
+  const toggleLike = usePlayerStore((state) => state.toggleLike);
   const isCurrent = currentTrack?.id === track.id;
+  const isLiked = likedTrackIds.includes(track.id);
 
   return (
     <Pressable onPress={() => setTrack(track)} style={styles.row}>
@@ -20,8 +23,8 @@ export function TrackRow({ track, index, showIndex = false }: Props) {
         <Text numberOfLines={1} style={[styles.title, isCurrent && styles.active]}>{track.title}</Text>
         <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
       </View>
-      <Pressable hitSlop={10} style={styles.more} onPress={() => setTrack(track)}>
-        <Ionicons name="ellipsis-horizontal" size={20} color={colors.muted} />
+      <Pressable hitSlop={10} style={styles.more} onPress={() => toggleLike(track.id)}>
+        <Ionicons name={isLiked ? "heart" : "heart-outline"} size={19} color={isLiked ? colors.accent : colors.muted} />
       </Pressable>
     </Pressable>
   );
