@@ -3,8 +3,8 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { mockPlaylists } from "../../data/mockTracks";
-import { getTrendingTracks } from "../../services/audius";
+
+import { getTrendingPlaylists, getTrendingTracks } from "../../services/audius";
 import { colors } from "../../theme/colors";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
@@ -16,6 +16,10 @@ export default function ListenScreen() {
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
     queryKey: ["audius", "trending", 20],
     queryFn: () => getTrendingTracks(20, 0)
+  });
+  const { data: playlists = [] } = useQuery({
+    queryKey: ["audius", "trending-playlists", 8],
+    queryFn: () => getTrendingPlaylists(8, 0)
   });
 
   const startListening = () => {
@@ -48,7 +52,7 @@ export default function ListenScreen() {
         </Pressable>
 
         <View style={styles.hero}>
-          <Image source={{ uri: tracks[0]?.artwork ?? mockPlaylists[0].artwork }} style={styles.heroImage} />
+          <Image source={{ uri: tracks[0]?.artwork ?? "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=900&q=85" }} style={styles.heroImage} />
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
             <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
@@ -62,10 +66,10 @@ export default function ListenScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeading title="Made for your mood" action="Explore" onPress={() => router.push("/(tabs)/search")} />
+          <SectionHeading title="Trending playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
-            {mockPlaylists.map((playlist) => (
-              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => Alert.alert(playlist.title, "Mood collections will be populated with live Audius playlists in the next pass.")}>
+            {playlists.map((playlist) => (
+              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId } }) : null}>
                 <Artwork uri={playlist.artwork} size={148} radius={18} />
                 <Text numberOfLines={1} style={styles.cardTitle}>{playlist.title}</Text>
                 <Text numberOfLines={1} style={styles.cardSubtitle}>{playlist.subtitle}</Text>
