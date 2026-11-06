@@ -19,3 +19,15 @@ export type MusicPlaylist = {
   artwork: string;
   trackIds: string[];
 };
+
+export type MusicArtist = {
+  id: string;
+  sourceArtistId: string;
+  name: string;
+  handle: string;
+  bio: string;
+  artwork: string;
+  followerCount: number;
+  trackCount: number;
+};
+
