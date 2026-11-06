@@ -108,6 +108,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (nextTrack) await playTrack(nextTrack, state.queue);
   }, [playTrack, player]);
 
+  useEffect(() => {
+    if (status.didJustFinish) void playNext();
+  }, [status.didJustFinish, playNext]);
+
   const playPrevious = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
