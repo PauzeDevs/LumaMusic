@@ -18,6 +18,10 @@ export type MusicPlaylist = {
   subtitle: string;
   artwork: string;
   trackIds: string[];
+  source?: "audius" | "mock";
+  sourcePlaylistId?: string;
+  trackCount?: number;
+  permalink?: string;
 };
 
 export type MusicArtist = {
