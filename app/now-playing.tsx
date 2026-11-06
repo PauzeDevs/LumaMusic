@@ -83,7 +83,7 @@ export default function NowPlayingScreen() {
         <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Up next", queue.map((item, index) => (index + 1) + ". " + item.title + " · " + item.artist).join("\n") || "Your queue is empty.")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · LumaMusic" })}>
+        <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? "LumaMusic") })}>
           <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
         </Pressable>
         <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing are managed by your device audio settings.")}>
