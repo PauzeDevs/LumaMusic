@@ -1,16 +1,50 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { mockPlaylists, mockTracks } from "../../data/mockTracks";
+import { mockPlaylists } from "../../data/mockTracks";
+import { getTrendingTracks } from "../../services/audius";
+import type { MusicTrack } from "../../types/music";
 import { colors } from "../../theme/colors";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
-import { usePlayerStore } from "../../store/player";
+import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function ListenScreen() {
-  const setTrack = usePlayerStore((s) => s.setTrack);
+  const [tracks, setTracks] = useState<MusicTrack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { playTrack } = useAudioEngine();
+
+  const loadTrending = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getTrendingTracks(20, 0);
+      setTracks(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load Audius discovery.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadTrending();
+  }, [loadTrending]);
+
+  const startListening = () => {
+    if (!tracks.length) {
+      Alert.alert("Music is loading", error ?? "Try again when discovery has loaded.");
+      return;
+    }
+    void playTrack(tracks[0], tracks).catch((err: unknown) => {
+      Alert.alert("Couldn't start playback", err instanceof Error ? err.message : "Please try another track.");
+    });
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -31,13 +65,13 @@ export default function ListenScreen() {
         </Pressable>
 
         <View style={styles.hero}>
-          <Image source={{ uri: mockPlaylists[0].artwork }} style={styles.heroImage} />
+          <Image source={{ uri: tracks[0]?.artwork ?? mockPlaylists[0].artwork }} style={styles.heroImage} />
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
-            <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>YOUR DAILY ESCAPE</Text></View>
+            <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
             <Text style={styles.heroTitle}>Find your{ "\n" }next frequency.</Text>
             <Text style={styles.heroSub}>A softer place to land.</Text>
-            <Pressable style={styles.heroButton} onPress={() => setTrack(mockTracks[0], mockTracks)}>
+            <Pressable style={styles.heroButton} onPress={startListening}>
               <Ionicons name="play" size={15} color="#101018" />
               <Text style={styles.heroButtonText}>Start listening</Text>
             </Pressable>
@@ -47,8 +81,8 @@ export default function ListenScreen() {
         <View style={styles.section}>
           <SectionHeading title="Made for your mood" action="Explore" onPress={() => router.push("/(tabs)/search")} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
-            {mockPlaylists.map((playlist, index) => (
-              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => setTrack(mockTracks[index], mockTracks)}>
+            {mockPlaylists.map((playlist) => (
+              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => Alert.alert(playlist.title, "Mood collections will be populated with live Audius playlists in the next pass.")}>
                 <Artwork uri={playlist.artwork} size={148} radius={18} />
                 <Text numberOfLines={1} style={styles.cardTitle}>{playlist.title}</Text>
                 <Text numberOfLines={1} style={styles.cardSubtitle}>{playlist.subtitle}</Text>
@@ -58,13 +92,21 @@ export default function ListenScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeading title="On repeat" action="See all" onPress={() => router.push("/(tabs)/library")} />
-          {mockTracks.slice(0, 4).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex />)}
+          <SectionHeading title="Trending on Audius" action="Refresh" onPress={() => { void loadTrending(); }} />
+          {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
+          {error ? (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorText}>{error}</Text>
+              <Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable>
+            </View>
+          ) : null}
+          {!loading && !error && tracks.length === 0 ? <Text style={styles.message}>No tracks are available right now.</Text> : null}
+          {!loading && !error ? tracks.slice(0, 6).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
         </View>
 
         <View style={styles.sourceNote}>
           <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
-          <Text style={styles.sourceText}>A little discovery, powered by independent artists.</Text>
+          <Text style={styles.sourceText}>Independent music discovery, powered by Audius.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -97,6 +139,10 @@ const styles = StyleSheet.create({
   playlistCard: { width: 148 },
   cardTitle: { color: colors.text, fontSize: 13, fontWeight: "700", marginTop: 9 },
   cardSubtitle: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
+  errorCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, gap: 10 },
+  errorText: { color: colors.muted, fontSize: 12 },
+  retry: { color: colors.accent, fontSize: 12, fontWeight: "700" },
   sourceNote: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.border },
   sourceText: { color: colors.subtle, fontSize: 11 }
 });
