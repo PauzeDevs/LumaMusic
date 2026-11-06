@@ -5,7 +5,6 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 import { mockPlaylists } from "../../data/mockTracks";
 import { getTrendingTracks } from "../../services/audius";
-import type { MusicTrack } from "../../types/music";
 import { colors } from "../../theme/colors";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
