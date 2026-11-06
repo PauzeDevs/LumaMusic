@@ -16,7 +16,7 @@ export default function LibraryScreen() {
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const recentTracks = useLibraryStore((s) => s.recentTracks);
   const { playTrack } = useAudioEngine();
-  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+  const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
     queryKey: ["audius", "library-discovery-playlists", 6],
     queryFn: () => getTrendingPlaylists(6, 0)
   });
@@ -39,7 +39,7 @@ export default function LibraryScreen() {
             </View>
             <Ionicons name="chevron-forward" size={17} color="rgba(255,255,255,0.65)" />
           </Pressable>
-          <Pressable style={styles.downloads} onPress={() => Alert.alert("Local music", "Device music scanning will be added after the online music source is integrated.")}>
+          <Pressable style={styles.downloads} onPress={() => Alert.alert("Local music", "Device music scanning is planned for a later release.")}>
             <View style={styles.downloadIcon}><Ionicons name="download-outline" size={19} color={colors.mint} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.shortcutTitle}>Local music</Text>
@@ -51,6 +51,8 @@ export default function LibraryScreen() {
         <View style={styles.section}>
           <SectionHeading title="Discover playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           {playlistsLoading ? <Text style={styles.note}>Finding playlists…</Text> : null}
+          {playlistsError ? <Text style={styles.note}>Could not load playlists right now.</Text> : null}
+          {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.note}>No public playlists are available right now.</Text> : null}
           <View style={styles.playlistGrid}>
             {playlists.map((playlist) => (
               <Pressable key={playlist.id} style={styles.playlist} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId } }) : null}>
