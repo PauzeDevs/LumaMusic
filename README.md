@@ -34,4 +34,4 @@ Initial package versions are pinned in package.json. Dependency compatibility an
 Audius offers a free developer API tier for discovery and eligible streaming. Its catalogue is not equivalent to Spotify or Apple Music and does not guarantee mainstream English, Hindi, or Punjabi hits. Track availability and permitted use can vary. LumaMusic will respect source permissions, attribution requirements, and Audius terms. It will not scrape or extract audio from other streaming services.
 
 ## Repository status
-The repository contains the Phase 1 specification, Phase 2 UI prototype, and initial Phase 3 Audius discovery / audio wiring. Device testing and CI validation are still outstanding. See [UI and integration status](docs/UI_PHASE.md).
+The repository contains the feature specification, cross-platform UI, Audius track/artist/playlist discovery, artist and playlist detail screens, initial stream playback, and locally persisted favourites/history. Device testing and a completed CI result are still outstanding. See [UI and integration status](docs/UI_PHASE.md) and [integration notes](docs/INTEGRATION_PHASE.md).
