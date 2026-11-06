@@ -1,6 +1,6 @@
 # LumaMusic UI Phase
 
-**Status:** Initial cross-platform UI prototype committed. Audius and audio streaming are intentionally not connected.
+**Status:** Initial cross-platform UI prototype committed. Audius discovery and a first audio-engine adapter have since been started; visual components remain provider-agnostic.
 
 ## Screens
 - Listen / Home
@@ -26,9 +26,6 @@
 - Playlist creation, local music scanning, device routing, and settings display explicit coming-soon feedback.
 
 ## Deliberately not implemented
-- Real Audius API requests or credentials.
-- Actual audio streaming.
-- Background audio or lock-screen integration.
 - Durable favourites, playlists, or listening history.
 - User authentication.
 
