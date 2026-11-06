@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   stats: { color: colors.muted, fontSize: 11, marginTop: 2 },
   bio: { color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 8 },
   sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12, marginBottom: 8 },
-  sectionTitle: { color: colors.text, fontSize: 19, fontWeight: "750" },
+  sectionTitle: { color: colors.text, fontSize: 19, fontWeight: "700" },
   count: { color: colors.subtle, fontSize: 11 },
   message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
   error: { color: colors.danger, fontSize: 12, paddingVertical: 14 }
