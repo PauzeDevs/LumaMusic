@@ -59,7 +59,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       setPlaybackError(null);
       setTrack(track, nextQueue);
       useLibraryStore.getState().addRecentTrack(track);
-      player.replace(getAudiusStreamUrl(track.sourceTrackId));
+      const sourceTrackId = track.sourceTrackId;
+      if (!sourceTrackId) throw new Error("This track is missing its Audius stream ID.");
+      player.replace(getAudiusStreamUrl(sourceTrackId));
       player.setActiveForLockScreen(true, {
         title: track.title,
         artist: track.artist,

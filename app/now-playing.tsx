@@ -58,7 +58,7 @@ export default function NowPlayingScreen() {
         </View>
         <View style={styles.progressArea}>
           <View style={styles.progressTrack} onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)}>
-            <View style={[styles.progressFill, { width: progress + "%" }]} />
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
             <Pressable
               style={styles.progressHitArea}
               onPress={(event) => {
@@ -88,7 +88,7 @@ export default function NowPlayingScreen() {
           <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
         </Pressable>
         <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing are managed by your device audio settings.")}>
-          <Ionicons name="airplay" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
+          <Ionicons name="bluetooth" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
         </Pressable>
       </View>
       <Text style={styles.disclaimer}>Streaming provided by Audius · Track availability depends on source permissions</Text>
