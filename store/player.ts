@@ -45,7 +45,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       likedTracks: state.likedTracks
     })),
   setPlaybackStatus: (status) => set(status),
-  setPlaybackError: (error) => set({ playbackError: error, isBuffering: false }),
+  setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
   toggleShuffle: () => set((state) => ({ isShuffled: !state.isShuffled })),
   cycleRepeat: () => set((state) => ({
     repeatMode: state.repeatMode === "off" ? "all" : state.repeatMode === "all" ? "one" : "off"
