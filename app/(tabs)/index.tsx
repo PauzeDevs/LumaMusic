@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { mockPlaylists } from "../../data/mockTracks";
@@ -13,31 +13,15 @@ import { TrackRow } from "../../components/TrackRow";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function ListenScreen() {
-  const [tracks, setTracks] = useState<MusicTrack[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { playTrack } = useAudioEngine();
-
-  const loadTrending = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getTrendingTracks(20, 0);
-      setTracks(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load Audius discovery.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadTrending();
-  }, [loadTrending]);
+  const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
+    queryKey: ["audius", "trending", 20],
+    queryFn: () => getTrendingTracks(20, 0)
+  });
 
   const startListening = () => {
     if (!tracks.length) {
-      Alert.alert("Music is loading", error ?? "Try again when discovery has loaded.");
+      Alert.alert("Music is loading", error instanceof Error ? error.message : "Try again when discovery has loaded.");
       return;
     }
     void playTrack(tracks[0], tracks).catch((err: unknown) => {
@@ -96,7 +80,7 @@ export default function ListenScreen() {
           {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
           {error ? (
             <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load Audius discovery."}</Text>
               <Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable>
             </View>
           ) : null}
