@@ -11,8 +11,8 @@ Data flow:
 - TanStack Query owns remote data and caching.
 - Zustand owns transient player and UI state.
 - MusicSource adapter talks to Audius.
-- AudioEngine adapter talks to the selected native audio library.
-- Zustand persist middleware with AsyncStorage stores favourites, recent tracks, and playback preferences locally.
+- AudioEngine adapter wraps expo-audio and owns the shared native player.
+- Zustand persist middleware with AsyncStorage stores favourites and recent tracks locally.
 
 ## Proposed stack
 
@@ -24,7 +24,7 @@ Data flow:
 | Audius integration | Audius REST API | Read-only endpoints; official SDK can be added if OAuth or write actions are needed |
 | Server-state cache | TanStack Query | Search, trending, artist and playlist data |
 | Client/player state | Zustand | Queue, playback UI, preferences |
-| Persistence | AsyncStorage | Initial favourites, recent history, and playback preferences; SQLite can be added for larger libraries |
+| Persistence | AsyncStorage | Favourites and recent history; SQLite can be added for larger libraries |
 | Audio | expo-audio ~57.0.5 | Native playback, background audio config, and lock-screen metadata |
 | Testing | GitHub Actions checks | Dependency validation, TypeScript, and Android/iOS bundle exports; unit tests are a follow-up task |
 | Builds | EAS Build / Expo development builds | Native modules require development builds |
