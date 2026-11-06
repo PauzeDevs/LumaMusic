@@ -13,9 +13,10 @@ export default function SearchScreen() {
   const [activeFilter, setActiveFilter] = useState("All");
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
+    if (activeFilter === "Artists" || activeFilter === "Playlists") return [];
     if (!q) return mockTracks.slice(0, 4);
     return mockTracks.filter((track) => (track.title + " " + track.artist).toLowerCase().includes(q));
-  }, [query]);
+  }, [query, activeFilter]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -42,7 +43,7 @@ export default function SearchScreen() {
           <View style={styles.empty}>
             <Ionicons name="musical-notes-outline" size={30} color={colors.subtle} />
             <Text style={styles.emptyTitle}>Nothing found yet</Text>
-            <Text style={styles.emptyCopy}>Try another title or artist name.</Text>
+            <Text style={styles.emptyCopy}>{activeFilter === "Artists" || activeFilter === "Playlists" ? "This result type will be connected with the live catalogue." : "Try another title or artist name."}</Text>
           </View>
         )}
         <Text style={styles.note}>Preview catalogue only. Live Audius search is added in the integration phase.</Text>
