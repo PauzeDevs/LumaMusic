@@ -1,6 +1,6 @@
-# LumaMusic UI Phase
+# LumaMusic UI and Integration Status
 
-**Status:** Initial cross-platform UI prototype committed. Audius discovery and a first audio-engine adapter have since been started; visual components remain provider-agnostic.
+**Status:** UI prototype is committed. Initial Audius discovery and audio-engine wiring are in place; device validation is still outstanding.
 
 ## Screens
 - Listen / Home
@@ -15,24 +15,35 @@
 - Reusable artwork, section heading, and track-row components.
 - Dark matte palette with lavender, mint, and soft pink accents.
 
-## Prototype interactions
-- Selecting a sample track updates shared Zustand player state.
-- Mini-player opens Now Playing.
-- Play/pause and next/previous update mock playback state.
-- Shuffle and repeat modes update mock queue behaviour.
-- Track rows can add/remove local mock favourites.
-- Library displays liked sample tracks.
-- Search filters the local sample catalogue.
-- Playlist creation, local music scanning, device routing, and settings display explicit coming-soon feedback.
+## UI interactions
+- Audius trending tracks populate the Listen screen.
+- Search uses a debounced Audius track query.
+- Selecting an eligible Audius track requests its stream URL and starts the shared player.
+- Mini-player opens Now Playing and controls playback.
+- Queue, next/previous, shuffle, repeat, seek, and share controls are wired to app/player state.
+- Track rows can add/remove favourites in memory.
+- Artwork has a fallback when remote images fail.
+- Playlist creation, local music scanning, device routing, and account settings still display explicit coming-soon feedback.
 
-## Deliberately not implemented
-- Durable favourites, playlists, or listening history.
-- User authentication.
+## Integration boundaries
+- Audius read-only REST API is used for trending and track search.
+- The app sends app_name=LumaMusic and does not embed a bearer token.
+- expo-audio is configured for background playback and lock-screen metadata.
+- Track access flags are checked before playback.
+- The catalogue and stream availability remain dependent on Audius and individual track permissions.
 
-## QA gate before integration
-- Install dependencies and run the TypeScript check.
-- Run Expo dependency compatibility checks.
-- Export an Android bundle.
-- Inspect on narrow Android and iPhone layouts.
-- Verify safe areas, tab navigation, scroll behaviour, artwork fallback, and Now Playing layout.
-- Fix compile/runtime issues before starting Audius integration.
+## Known gaps
+- Favourites and playlists are not persisted across app restarts.
+- Artist and playlist search endpoints are not wired yet.
+- Queue remote controls on the OS lock screen need a dedicated native-device validation pass.
+- Background playback has not yet been tested on physical Android and iOS devices.
+- No package-lock file has been generated yet.
+- GitHub Actions workflow is present, but no completed CI result has been verified.
+
+## QA gate
+- Install dependencies and run the Expo compatibility check.
+- Run TypeScript checks.
+- Export Android and iOS bundles.
+- Inspect narrow Android and iPhone layouts.
+- Verify audio stream redirect behaviour, background playback, interruptions, and lock-screen controls.
+- Fix compile/runtime issues before release preparation.
