@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
@@ -32,6 +33,7 @@ export default function NowPlayingScreen() {
   const liked = likedTracks.some((item) => item.id === track.id);
   const duration = playbackDuration || track.durationMs / 1000;
   const progress = duration > 0 ? Math.min(100, (playbackPosition / duration) * 100) : 0;
+  const [progressWidth, setProgressWidth] = useState(0);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -54,14 +56,17 @@ export default function NowPlayingScreen() {
           </Pressable>
         </View>
         <View style={styles.progressArea}>
-          <Pressable
-            style={styles.progressTrack}
-            onPress={() => seekTo(duration * 0.5)}
-            accessibilityRole="adjustable"
-            accessibilityLabel="Seek to middle of track"
-          >
+          <View style={styles.progressTrack} onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)}>
             <View style={[styles.progressFill, { width: progress + "%" }]} />
-          </Pressable>
+            <Pressable
+              style={styles.progressHitArea}
+              onPress={(event) => {
+                if (progressWidth > 0) void seekTo(duration * Math.max(0, Math.min(1, event.nativeEvent.locationX / progressWidth)));
+              }}
+              accessibilityRole="adjustable"
+              accessibilityLabel="Seek through track"
+            />
+          </View>
           <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
         </View>
         {isBuffering ? <Text style={styles.status}>Buffering audio…</Text> : null}
@@ -105,7 +110,8 @@ const styles = StyleSheet.create({
   artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
   like: { padding: 8 },
   progressArea: { marginTop: 28 },
-  progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "hidden" },
+  progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
+  progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
   timeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   time: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
