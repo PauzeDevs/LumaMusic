@@ -11,6 +11,9 @@
         "expo-router"
       ],
       [
+        "@react-native-vector-icons/ionicons"
+      ],
+      [
         "expo-audio",
         {
           "enableBackgroundPlayback": true,
