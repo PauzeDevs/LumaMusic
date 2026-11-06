@@ -1,8 +1,8 @@
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, type PropsWithChildren } from "react";
 import { getAudiusStreamUrl } from "../services/audius";
-import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
+import { usePlayerStore } from "../store/player";
 import type { MusicTrack } from "../types/music";
 
 type AudioEngineValue = {
@@ -16,6 +16,10 @@ type AudioEngineValue = {
 };
 
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
+
+function isPlayable(track: MusicTrack | undefined): track is MusicTrack {
+  return Boolean(track && track.source === "audius" && track.sourceTrackId && track.isStreamable);
+}
 
 export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
@@ -47,10 +51,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus]);
 
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[]) => {
-    if (track.source !== "audius" || !track.sourceTrackId) {
-      throw new Error("This is sample content. Choose a playable Audius track.");
-    }
-    if (!track.isStreamable) {
+    if (!isPlayable(track)) {
       throw new Error("This track is not available for streaming through Audius.");
     }
 
@@ -76,6 +77,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
   }, [player, setPlaybackError, setTrack]);
 
+  const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[]) => {
+    try {
+      await playTrack(track, queue);
+    } catch (error) {
+      setPlaybackError(error instanceof Error ? error.message : "Unable to play the next track.");
+    }
+  }, [playTrack, setPlaybackError]);
+
   const togglePlayback = useCallback(() => {
     if (status.playing) {
       player.pause();
@@ -96,41 +105,64 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const currentIndex = state.queue.findIndex((item) => item.id === state.currentTrack?.id);
     let nextTrack: MusicTrack | undefined;
 
-    if (state.isShuffled && state.queue.length > 1) {
-      const candidates = state.queue.filter((item) => item.id !== state.currentTrack?.id);
-      nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
-    } else {
-      const nextIndex = currentIndex + 1;
-      if (nextIndex >= state.queue.length && state.repeatMode === "off") {
-        player.pause();
+    if (state.isShuffled) {
+      const candidates = state.queue.filter((item) => item.id !== state.currentTrack?.id && isPlayable(item));
+      if (candidates.length > 0) {
+        nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
+      } else if (state.repeatMode === "all") {
+        await player.seekTo(0);
+        player.play();
         return;
       }
-      nextTrack = state.queue[nextIndex % state.queue.length];
+    } else {
+      for (let offset = 1; offset <= state.queue.length; offset += 1) {
+        let index = currentIndex + offset;
+        if (index >= state.queue.length) {
+          if (state.repeatMode === "off") break;
+          index %= state.queue.length;
+        }
+        const candidate = state.queue[index];
+        if (isPlayable(candidate)) {
+          nextTrack = candidate;
+          break;
+        }
+      }
     }
 
-    if (nextTrack) await playTrack(nextTrack, state.queue);
-  }, [playTrack, player]);
-
-  useEffect(() => {
-    if (status.didJustFinish) void playNext();
-  }, [status.didJustFinish, playNext]);
+    if (nextTrack) {
+      await playTrackSafely(nextTrack, state.queue);
+    } else {
+      player.pause();
+    }
+  }, [playTrackSafely, player]);
 
   const playPrevious = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
-    if (state.repeatMode === "one") {
+    if (state.repeatMode === "one" || status.currentTime > 3) {
       await player.seekTo(0);
-      player.play();
       return;
     }
+
     const currentIndex = state.queue.findIndex((item) => item.id === state.currentTrack?.id);
-    if (status.currentTime > 3 || (currentIndex <= 0 && state.repeatMode === "off")) {
-      await player.seekTo(0);
-      return;
+    for (let offset = 1; offset <= state.queue.length; offset += 1) {
+      let index = currentIndex - offset;
+      if (index < 0) {
+        if (state.repeatMode === "off") break;
+        index = (index % state.queue.length + state.queue.length) % state.queue.length;
+      }
+      const candidate = state.queue[index];
+      if (isPlayable(candidate)) {
+        await playTrackSafely(candidate, state.queue);
+        return;
+      }
     }
-    const previousIndex = currentIndex <= 0 ? state.queue.length - 1 : currentIndex - 1;
-    await playTrack(state.queue[previousIndex], state.queue);
-  }, [playTrack, player, status.currentTime]);
+    await player.seekTo(0);
+  }, [playTrackSafely, player, status.currentTime]);
+
+  useEffect(() => {
+    if (status.didJustFinish) void playNext();
+  }, [status.didJustFinish, playNext]);
 
   const seekTo = useCallback(async (seconds: number) => {
     await player.seekTo(Math.max(0, seconds));
