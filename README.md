@@ -34,4 +34,4 @@ Package versions will be checked and pinned when the app scaffold is created. Na
 Audius offers a free developer API tier for discovery and eligible streaming. Its catalogue is not equivalent to Spotify or Apple Music and does not guarantee mainstream English, Hindi, or Punjabi hits. Track availability and permitted use can vary. LumaMusic will respect source permissions, attribution requirements, and Audius terms. It will not scrape or extract audio from other streaming services.
 
 ## Repository status
-The repository is in the planning/specification phase. No working mobile app or playback integration is claimed yet.
+The repository now contains the Phase 1 specification and a Phase 2 UI prototype scaffold. The prototype uses sample data; no live Audius integration or real audio playback is claimed yet. See [UI phase notes](docs/UI_PHASE.md).
