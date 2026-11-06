@@ -22,11 +22,11 @@ A premium Android and iOS music discovery and listening app by **PauzeDevs**.
 ## Initial technology direction
 - React Native + Expo + TypeScript
 - Expo Router
-- Official Audius JavaScript SDK (@audius/sdk)
+- Audius read-only REST API adapter
 - TanStack Query for remote data
 - Zustand for client and player state
 - SQLite / AsyncStorage for local persistence
-- Native audio engine selected after a background-playback proof of concept
+- expo-audio for native playback and background-audio configuration
 
 Package versions will be checked and pinned when the app scaffold is created. Native audio testing will use Expo development builds, not Expo Go.
 
