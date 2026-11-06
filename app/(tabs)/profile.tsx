@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Alert } from "react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
@@ -29,7 +30,7 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Preferences</Text>
         <View style={styles.settings}>
           {settings.map((item, index) => (
-            <Pressable key={item.title} style={[styles.setting, index === settings.length - 1 && styles.last]}>
+            <Pressable key={item.title} onPress={() => Alert.alert(item.title, "This setting will be connected in a later development phase.")} style={[styles.setting, index === settings.length - 1 && styles.last]}>
               <View style={styles.settingIcon}><Ionicons name={item.icon} size={19} color={colors.accent} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.settingTitle}>{item.title}</Text>
