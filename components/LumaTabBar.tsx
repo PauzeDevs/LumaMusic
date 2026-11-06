@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { colors } from "../theme/colors";
@@ -13,7 +12,9 @@ const tabs = [
   { name: "profile", label: "You", icon: "person-circle-outline", activeIcon: "person-circle" }
 ] as const;
 
-export function LumaTabBar({ state, navigation }: BottomTabBarProps) {
+type TabBarProps = { state: { index: number; routes: Array<{ name: string }> }; navigation: { navigate: (...args: any[]) => void } };
+
+export function LumaTabBar({ state, navigation }: TabBarProps) {
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const togglePlayback = usePlayerStore((s) => s.togglePlayback);
