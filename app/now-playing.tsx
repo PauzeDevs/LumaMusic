@@ -25,6 +25,7 @@ export default function NowPlayingScreen() {
   const likedTracks = usePlayerStore((s) => s.likedTracks);
   const toggleLike = usePlayerStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo } = useAudioEngine();
+  const [progressWidth, setProgressWidth] = useState(0);
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
@@ -33,7 +34,6 @@ export default function NowPlayingScreen() {
   const liked = likedTracks.some((item) => item.id === track.id);
   const duration = playbackDuration || track.durationMs / 1000;
   const progress = duration > 0 ? Math.min(100, (playbackPosition / duration) * 100) : 0;
-  const [progressWidth, setProgressWidth] = useState(0);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
