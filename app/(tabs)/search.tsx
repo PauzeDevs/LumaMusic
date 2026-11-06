@@ -1,53 +1,33 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TrackRow } from "../../components/TrackRow";
 import { colors } from "../../theme/colors";
 import { getTrendingTracks, searchAudiusTracks } from "../../services/audius";
-import type { MusicTrack } from "../../types/music";
 
 const filters = ["All", "Tracks", "Artists", "Playlists"];
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [results, setResults] = useState<MusicTrack[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-    if (activeFilter === "Artists" || activeFilter === "Playlists") {
-      setResults([]);
-      setLoading(false);
-      setError(null);
-      return () => { active = false; };
-    }
+  const canSearchTracks = activeFilter === "All" || activeFilter === "Tracks";
+  const { data: results = [], isLoading: loading, error } = useQuery({
+    queryKey: ["audius", "search", activeFilter, debouncedQuery],
+    queryFn: () => debouncedQuery ? searchAudiusTracks(debouncedQuery, 25, 0) : getTrendingTracks(8, 0),
+    enabled: canSearchTracks,
+    staleTime: 30_000
+  });
 
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = query.trim()
-          ? await searchAudiusTracks(query, 25, 0)
-          : await getTrendingTracks(8, 0);
-        if (active) setResults(data);
-      } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : "Search is unavailable right now.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    }, query.trim() ? 350 : 0);
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [query, activeFilter]);
-
-  const heading = activeFilter === "Artists" ? "Artist search" : activeFilter === "Playlists" ? "Playlist search" : query.trim() ? "Search results" : "Trending on Audius";
+  const heading = activeFilter === "Artists" ? "Artist search" : activeFilter === "Playlists" ? "Playlist search" : debouncedQuery ? "Search results" : "Trending on Audius";
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -71,13 +51,13 @@ export default function SearchScreen() {
           <Text style={styles.count}>{results.length} tracks</Text>
         </View>
         {loading ? <Text style={styles.message}>Searching the catalogue…</Text> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error}>{error instanceof Error ? error.message : "Search is unavailable right now."}</Text> : null}
         {!loading && !error && results.length > 0 ? results.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={results} />) : null}
         {!loading && !error && results.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="musical-notes-outline" size={30} color={colors.subtle} />
-            <Text style={styles.emptyTitle}>{activeFilter === "Artists" || activeFilter === "Playlists" ? "Coming in the next pass" : "Nothing found yet"}</Text>
-            <Text style={styles.emptyCopy}>{activeFilter === "Artists" || activeFilter === "Playlists" ? "This result type will be connected to the Audius catalogue." : "Try another title or artist name."}</Text>
+            <Text style={styles.emptyTitle}>{canSearchTracks ? "Nothing found yet" : "Coming in the next pass"}</Text>
+            <Text style={styles.emptyCopy}>{canSearchTracks ? "Try another title or artist name." : "Artist and playlist search will be connected to Audius next."}</Text>
           </View>
         ) : null}
         <Text style={styles.note}>Search and streaming results are provided by Audius. Track availability varies by artist and permissions.</Text>
