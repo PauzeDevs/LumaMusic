@@ -3,9 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ArtistRow } from "../../components/ArtistRow";
+import { PlaylistRow } from "../../components/PlaylistRow";
 import { TrackRow } from "../../components/TrackRow";
 import { colors } from "../../theme/colors";
-import { getTrendingTracks, searchAudiusTracks } from "../../services/audius";
+import { getTrendingTracks, searchAudiusArtists, searchAudiusPlaylists, searchAudiusTracks } from "../../services/audius";
 
 const filters = ["All", "Tracks", "Artists", "Playlists"];
 
@@ -19,15 +21,32 @@ export default function SearchScreen() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const canSearchTracks = activeFilter === "All" || activeFilter === "Tracks";
-  const { data: results = [], isLoading: loading, error } = useQuery({
-    queryKey: ["audius", "search", activeFilter, debouncedQuery],
+  const trackQuery = useQuery({
+    queryKey: ["audius", "search", "tracks", debouncedQuery],
     queryFn: () => debouncedQuery ? searchAudiusTracks(debouncedQuery, 25, 0) : getTrendingTracks(8, 0),
-    enabled: canSearchTracks,
+    enabled: activeFilter === "All" || activeFilter === "Tracks",
+    staleTime: 30_000
+  });
+  const artistQuery = useQuery({
+    queryKey: ["audius", "search", "artists", debouncedQuery],
+    queryFn: () => searchAudiusArtists(debouncedQuery, 20, 0),
+    enabled: activeFilter === "Artists" && debouncedQuery.length > 0,
+    staleTime: 30_000
+  });
+  const playlistQuery = useQuery({
+    queryKey: ["audius", "search", "playlists", debouncedQuery],
+    queryFn: () => searchAudiusPlaylists(debouncedQuery, 20, 0),
+    enabled: activeFilter === "Playlists" && debouncedQuery.length > 0,
     staleTime: 30_000
   });
 
-  const heading = activeFilter === "Artists" ? "Artist search" : activeFilter === "Playlists" ? "Playlist search" : debouncedQuery ? "Search results" : "Trending on Audius";
+  const tracks = trackQuery.data ?? [];
+  const artists = artistQuery.data ?? [];
+  const playlists = playlistQuery.data ?? [];
+  const loading = activeFilter === "Artists" ? artistQuery.isLoading : activeFilter === "Playlists" ? playlistQuery.isLoading : trackQuery.isLoading;
+  const error = activeFilter === "Artists" ? artistQuery.error : activeFilter === "Playlists" ? playlistQuery.error : trackQuery.error;
+  const count = activeFilter === "Artists" ? artists.length : activeFilter === "Playlists" ? playlists.length : tracks.length;
+  const heading = activeFilter === "Artists" ? "Artists" : activeFilter === "Playlists" ? "Playlists" : debouncedQuery ? "Search results" : "Trending on Audius";
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -48,16 +67,24 @@ export default function SearchScreen() {
         </ScrollView>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{heading}</Text>
-          <Text style={styles.count}>{results.length} tracks</Text>
+          <Text style={styles.count}>{count} {activeFilter.toLowerCase()}</Text>
         </View>
         {loading ? <Text style={styles.message}>Searching the catalogue…</Text> : null}
         {error ? <Text style={styles.error}>{error instanceof Error ? error.message : "Search is unavailable right now."}</Text> : null}
-        {!loading && !error && results.length > 0 ? results.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={results} />) : null}
-        {!loading && !error && results.length === 0 ? (
+        {!loading && !error && activeFilter !== "Artists" && activeFilter !== "Playlists" && tracks.length > 0
+          ? tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />)
+          : null}
+        {!loading && !error && activeFilter === "Artists" && artists.length > 0
+          ? artists.map((artist) => <ArtistRow key={artist.id} artist={artist} />)
+          : null}
+        {!loading && !error && activeFilter === "Playlists" && playlists.length > 0
+          ? playlists.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} />)
+          : null}
+        {!loading && !error && count === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="musical-notes-outline" size={30} color={colors.subtle} />
-            <Text style={styles.emptyTitle}>{canSearchTracks ? "Nothing found yet" : "Coming in the next pass"}</Text>
-            <Text style={styles.emptyCopy}>{canSearchTracks ? "Try another title or artist name." : "Artist and playlist search will be connected to Audius next."}</Text>
+            <Text style={styles.emptyTitle}>{debouncedQuery ? "Nothing found yet" : "Start with a search"}</Text>
+            <Text style={styles.emptyCopy}>{debouncedQuery ? "Try another title, artist, or playlist name." : "Search the Audius catalogue for tracks, artists, and playlists."}</Text>
           </View>
         ) : null}
         <Text style={styles.note}>Search and streaming results are provided by Audius. Track availability varies by artist and permissions.</Text>
