@@ -11,7 +11,7 @@
     "check": "npx expo install --check && npm run typecheck"
   },
   "dependencies": {
-    "@expo/vector-icons": "^15.0.3",
+    "@react-native-vector-icons/ionicons": "^14.0.0",
     "expo": "~57.0.32",
     "expo-router": "~57.0.30",
     "expo-constants": "~57.0.23",
