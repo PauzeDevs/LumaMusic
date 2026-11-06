@@ -8,11 +8,11 @@ import { TrackRow } from "../../components/TrackRow";
 import { mockPlaylists, mockTracks } from "../../data/mockTracks";
 import { colors } from "../../theme/colors";
 import { usePlayerStore } from "../../store/player";
+import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function LibraryScreen() {
-  const setTrack = usePlayerStore((s) => s.setTrack);
-  const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
-  const likedTracks = mockTracks.filter((track) => likedTrackIds.includes(track.id));
+  const likedTracks = usePlayerStore((s) => s.likedTracks);
+  const { playTrack } = useAudioEngine();
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -24,7 +24,7 @@ export default function LibraryScreen() {
           <Pressable style={styles.add} onPress={() => Alert.alert("Create a playlist", "Playlist creation and local storage will be connected after the UI phase.")}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
         </View>
         <View style={styles.shortcuts}>
-          <Pressable style={styles.liked} onPress={() => likedTracks.length ? setTrack(likedTracks[0], likedTracks) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
+          <Pressable style={styles.liked} onPress={() => likedTracks.length ? void playTrack(likedTracks[0], likedTracks).catch((err: unknown) => Alert.alert("Couldn’t play liked songs", err instanceof Error ? err.message : "Try again.")) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
             <View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.shortcutTitle}>Liked songs</Text>
@@ -45,7 +45,7 @@ export default function LibraryScreen() {
           <SectionHeading title="Your playlists" action="Create" onPress={() => Alert.alert("Create a playlist", "Playlist creation and local storage will be connected after the UI phase.")} />
           <View style={styles.playlistGrid}>
             {mockPlaylists.map((playlist, index) => (
-              <Pressable key={playlist.id} style={styles.playlist} onPress={() => setTrack(mockTracks[index], mockTracks)}>
+              <Pressable key={playlist.id} style={styles.playlist} onPress={() => Alert.alert(playlist.title, "Playlist playback will be connected after the Audius playlist endpoints are added.")}>
                 <View style={styles.playlistArtwork}><Artwork uri={playlist.artwork} size={156} radius={17} /></View>
                 <Text style={styles.playlistTitle}>{playlist.title}</Text>
                 <Text style={styles.playlistSub}>{playlist.subtitle}</Text>
@@ -55,9 +55,9 @@ export default function LibraryScreen() {
         </View>
         <View style={styles.section}>
           <SectionHeading title="Liked songs" />
-          {mockTracks.filter((track) => likedTrackIds.includes(track.id)).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex />)}
+          {likedTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={likedTracks} />)}
         </View>
-        <Text style={styles.note}>Your library is using sample content until local persistence and Audius integration are connected.</Text>
+        <Text style={styles.note}>Liked tracks are held in memory for now. Local persistence is part of the next integration pass.</Text>
       </ScrollView>
     </SafeAreaView>
   );
