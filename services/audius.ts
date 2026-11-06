@@ -9,8 +9,8 @@ type RawAudiusTrack = {
   duration?: number;
   is_streamable?: boolean | string;
   isStreamable?: boolean | string;
-  is_stream_gated?: boolean;
-  isStreamGated?: boolean;
+  is_stream_gated?: boolean | string;
+  isStreamGated?: boolean | string;
   permalink?: string;
   genre?: string;
   play_count?: number;
@@ -92,7 +92,8 @@ function mapTrack(raw: RawAudiusTrack): MusicTrack | null {
 
   const streamFlag = raw.is_streamable ?? raw.isStreamable;
   const isStreamable = streamFlag === true || streamFlag === "true";
-  const isStreamGated = raw.is_stream_gated === true || raw.isStreamGated === true;
+  const gatedFlag = raw.is_stream_gated ?? raw.isStreamGated;
+  const isStreamGated = gatedFlag === true || gatedFlag === "true";
 
   return {
     id: "audius:" + raw.id,
