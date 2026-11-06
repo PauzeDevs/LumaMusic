@@ -17,16 +17,17 @@
 
 ## UI interactions
 - Audius trending tracks populate the Listen screen.
-- Search uses a debounced Audius track query.
+- Search uses debounced Audius track, artist, and playlist queries.
+- Artist and playlist results open dedicated detail screens.
 - Selecting an eligible Audius track requests its stream URL and starts the shared player.
 - Mini-player opens Now Playing and controls playback.
 - Queue, next/previous, shuffle, repeat, seek, and share controls are wired to app/player state.
-- Track rows can add/remove favourites in memory.
+- Track rows can add/remove favourites; favourites and recent listening history persist locally.
 - Artwork has a fallback when remote images fail.
 - Playlist creation, local music scanning, device routing, and account settings still display explicit coming-soon feedback.
 
 ## Integration boundaries
-- Audius read-only REST API is used for trending and track search.
+- Audius read-only REST API is used for trending tracks/playlists, track search, artist search, and playlist search.
 - The app sends app_name=LumaMusic and does not embed a bearer token.
 - expo-audio is configured for background playback and lock-screen metadata.
 - Track access flags are checked before playback.
@@ -34,7 +35,6 @@
 
 ## Known gaps
 - User-created playlists are not implemented yet.
-- Artist and playlist search endpoints are not wired yet.
 - Queue remote controls on the OS lock screen need a dedicated native-device validation pass.
 - Background playback has not yet been tested on physical Android and iOS devices.
 - No package-lock file has been generated yet.
