@@ -89,9 +89,7 @@ The Audius adapter will:
 - Do not duplicate authoritative state across stores.
 
 ## Audio engine decision
-The audio engine remains an architecture decision pending a proof of concept.
-
-Selected candidate: expo-audio ~57.0.5. Its config plugin enables background playback permissions and platform background modes. A native device proof of concept is still required before calling background playback production-ready.
+The initial audio engine is expo-audio ~57.0.5. Its config plugin is enabled for background playback and configures the required Android foreground service and iOS audio background mode. Real-device testing is still required before calling background playback production-ready.
 
 The proof of concept must demonstrate on real Android and iOS devices:
 1. Background playback after app is backgrounded.
@@ -102,7 +100,7 @@ The proof of concept must demonstrate on real Android and iOS devices:
 6. Queue continuity and recovery from stream errors.
 7. Compatibility with the chosen Expo SDK and development-build workflow.
 
-Do not build the full player UI around a library until this test passes.
+Do not mark the audio experience production-ready until this test passes.
 
 ## Audius API and credential handling
 Current official Audius documentation describes:
@@ -112,7 +110,7 @@ Current official Audius documentation describes:
 - OAuth 2.0 Authorization Code with PKCE for user-authorized actions.
 
 Implementation rules:
-- Use public/read-only SDK features for discovery initially.
+- Use public/read-only REST endpoints for discovery initially.
 - Public read-only requests can use the app_name parameter; register a free API key later if higher rate limits are needed.
 - Never place an app bearer token, client secret, or private key in the mobile bundle.
 - Use Audius OAuth PKCE only if account-linked actions are added.
