@@ -21,19 +21,19 @@ The app maps provider responses into the MusicTrack domain type. Provider IDs ar
 6. Mini-player and Now Playing read from the same state.
 
 ## Current integration scope
-- Home trending feed.
-- Debounced track search.
+- Home trending tracks and playlists.
+- Debounced track, artist, and playlist search.
+- Artist profile and playlist detail screens.
 - Stream URL resolution.
 - Shared audio player.
 - Background playback configuration.
 - Lock-screen metadata.
 - Play/pause, next/previous, shuffle, repeat, seek, and share controls in the app UI.
-- In-memory liked tracks.
+- Persisted liked tracks and recently played history using local device storage.
 
 ## Not yet integrated
-- Artist search and artist detail API.
-- Playlist search and playlist playback.
-- Durable favourites, playlists, and history.
+- Artist and playlist pagination beyond the first page.
+- User-created playlist management and full listening-history controls.
 - Audius OAuth and account-linked write actions.
 - Local-device music scanning.
 - Remote next/previous lock-screen queue actions.
