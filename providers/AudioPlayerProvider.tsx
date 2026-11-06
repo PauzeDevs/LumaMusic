@@ -2,6 +2,7 @@ import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-au
 import { createContext, useCallback, useContext, useEffect, type PropsWithChildren } from "react";
 import { getAudiusStreamUrl } from "../services/audius";
 import { usePlayerStore } from "../store/player";
+import { useLibraryStore } from "../store/library";
 import type { MusicTrack } from "../types/music";
 
 type AudioEngineValue = {
@@ -56,6 +57,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     try {
       setPlaybackError(null);
       setTrack(track, nextQueue);
+      useLibraryStore.getState().addRecentTrack(track);
       player.replace(getAudiusStreamUrl(track.sourceTrackId));
       player.setActiveForLockScreen(true, {
         title: track.title,
