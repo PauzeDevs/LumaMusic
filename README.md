@@ -25,10 +25,10 @@ A premium Android and iOS music discovery and listening app by **PauzeDevs**.
 - Audius read-only REST API adapter
 - TanStack Query for remote data
 - Zustand for client and player state
-- SQLite / AsyncStorage for local persistence
+- AsyncStorage for favourites and listening history; SQLite can be added for larger local libraries
 - expo-audio for native playback and background-audio configuration
 
-Package versions will be checked and pinned when the app scaffold is created. Native audio testing will use Expo development builds, not Expo Go.
+Initial package versions are pinned in package.json. Dependency compatibility and native audio behaviour must still be validated in Expo development builds, not Expo Go.
 
 ## Catalogue and rights
 Audius offers a free developer API tier for discovery and eligible streaming. Its catalogue is not equivalent to Spotify or Apple Music and does not guarantee mainstream English, Hindi, or Punjabi hits. Track availability and permitted use can vary. LumaMusic will respect source permissions, attribution requirements, and Audius terms. It will not scrape or extract audio from other streaming services.
