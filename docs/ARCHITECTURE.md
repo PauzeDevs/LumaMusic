@@ -21,11 +21,11 @@ Data flow:
 | Mobile app | React Native + Expo | Android and iOS |
 | Language | TypeScript | Strict mode |
 | Navigation | Expo Router | File-based routes |
-| Audius integration | @audius/sdk | Official TypeScript SDK |
+| Audius integration | Audius REST API | Read-only endpoints; official SDK can be added if OAuth or write actions are needed |
 | Server-state cache | TanStack Query | Search, trending, artist and playlist data |
 | Client/player state | Zustand | Queue, playback UI, preferences |
 | Persistence | expo-sqlite + AsyncStorage | Structured library/history and small preferences |
-| Audio | Native audio-engine adapter | Choose after background playback proof of concept |
+| Audio | expo-audio ~57.0.5 | Native playback, background audio config, and lock-screen metadata |
 | Testing | Jest/Vitest-compatible setup + React Native Testing Library | Pin compatible versions at scaffold time |
 | Builds | EAS Build / Expo development builds | Native modules require development builds |
 
@@ -47,7 +47,7 @@ Conceptual interface:
     }
 
 The Audius adapter will:
-- Use the official @audius/sdk package.
+- Use the official read-only REST API initially; keep provider calls isolated in the Audius adapter.
 - Normalize raw Audius responses into app-owned domain types.
 - Preserve source IDs, canonical URLs, artwork, artist attribution, duration, and availability flags.
 - Treat stream URLs as source-controlled values; do not persist them as permanent track identifiers.
@@ -91,9 +91,7 @@ The Audius adapter will:
 ## Audio engine decision
 The audio engine remains an architecture decision pending a proof of concept.
 
-Candidates:
-- react-native-track-player
-- Expo supported audio module(s)
+Selected candidate: expo-audio ~57.0.5. Its config plugin enables background playback permissions and platform background modes. A native device proof of concept is still required before calling background playback production-ready.
 
 The proof of concept must demonstrate on real Android and iOS devices:
 1. Background playback after app is backgrounded.
@@ -115,7 +113,7 @@ Current official Audius documentation describes:
 
 Implementation rules:
 - Use public/read-only SDK features for discovery initially.
-- Register the app name and API key through Audius developer settings.
+- Public read-only requests can use the app_name parameter; register a free API key later if higher rate limits are needed.
 - Never place an app bearer token, client secret, or private key in the mobile bundle.
 - Use Audius OAuth PKCE only if account-linked actions are added.
 - Do not request write scope for the read-only MVP.
