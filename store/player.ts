@@ -16,6 +16,7 @@ type PlayerState = {
   isShuffled: boolean;
   repeatMode: RepeatMode;
   likedTracks: MusicTrack[];
+  recentTracks: MusicTrack[];
   setTrack: (track: MusicTrack, queue?: MusicTrack[]) => void;
   setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
   setPlaybackError: (error: string | null) => void;
@@ -24,7 +25,7 @@ type PlayerState = {
   toggleLike: (track: MusicTrack) => void;
 };
 
-type PersistedPlayerState = Pick<PlayerState, "likedTracks" | "isShuffled" | "repeatMode">;
+type PersistedPlayerState = Pick<PlayerState, "likedTracks" | "recentTracks" | "isShuffled" | "repeatMode">;
 
 export const usePlayerStore = create<PlayerState>()(
   persist<PlayerState, [], [], PersistedPlayerState>(
@@ -39,16 +40,18 @@ export const usePlayerStore = create<PlayerState>()(
       isShuffled: false,
       repeatMode: "off",
       likedTracks: [],
+      recentTracks: [],
       setTrack: (track, queue) =>
-        set({
+        set((state) => ({
           currentTrack: track,
           queue: queue && queue.length > 0 ? queue : [track],
           isPlaying: false,
           isBuffering: true,
           playbackPosition: 0,
           playbackDuration: track.durationMs / 1000,
-          playbackError: null
-        }),
+          playbackError: null,
+          recentTracks: [track, ...state.recentTracks.filter((item) => item.id !== track.id)].slice(0, 30)
+        })),
       setPlaybackStatus: (status) => set(status),
       setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
       toggleShuffle: () => set((state) => ({ isShuffled: !state.isShuffled })),
@@ -66,6 +69,7 @@ export const usePlayerStore = create<PlayerState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         likedTracks: state.likedTracks,
+        recentTracks: state.recentTracks,
         isShuffled: state.isShuffled,
         repeatMode: state.repeatMode
       })
