@@ -12,6 +12,7 @@ import { usePlayerStore } from "../../store/player";
 export default function LibraryScreen() {
   const setTrack = usePlayerStore((s) => s.setTrack);
   const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
+  const likedTracks = mockTracks.filter((track) => likedTrackIds.includes(track.id));
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -23,7 +24,7 @@ export default function LibraryScreen() {
           <Pressable style={styles.add} onPress={() => Alert.alert("Create a playlist", "Playlist creation and local storage will be connected after the UI phase.")}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
         </View>
         <View style={styles.shortcuts}>
-          <Pressable style={styles.liked} onPress={() => setTrack(mockTracks[0], mockTracks)}>
+          <Pressable style={styles.liked} onPress={() => likedTracks.length ? setTrack(likedTracks[0], likedTracks) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
             <View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.shortcutTitle}>Liked songs</Text>
