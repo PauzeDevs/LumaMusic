@@ -18,6 +18,7 @@ type RawAudiusTrack = {
   artwork?: { _150x150?: string; _480x480?: string; _1000x1000?: string } | string | null;
   cover_art?: string | null;
   user?: { name?: string; handle?: string } | null;
+  artists?: Array<{ name?: string; artist_name?: string; handle?: string }>;
 };
 
 type RawAudiusUser = {
@@ -98,7 +99,7 @@ function mapTrack(raw: RawAudiusTrack): MusicTrack | null {
     source: "audius",
     sourceTrackId: raw.id,
     title: raw.title,
-    artist: raw.user?.name ?? raw.user?.handle ?? "Unknown artist",
+    artist: raw.user?.name ?? raw.user?.handle ?? raw.artists?.[0]?.name ?? raw.artists?.[0]?.artist_name ?? raw.artists?.[0]?.handle ?? "Unknown artist",
     artwork,
     durationMs: Math.max(0, Math.round((raw.duration ?? 0) * 1000)),
     isStreamable: isStreamable && !isStreamGated,
