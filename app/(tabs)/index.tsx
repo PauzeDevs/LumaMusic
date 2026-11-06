@@ -17,7 +17,7 @@ export default function ListenScreen() {
     queryKey: ["audius", "trending", 20],
     queryFn: () => getTrendingTracks(20, 0)
   });
-  const { data: playlists = [] } = useQuery({
+  const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
     queryKey: ["audius", "trending-playlists", 8],
     queryFn: () => getTrendingPlaylists(8, 0)
   });
@@ -67,6 +67,9 @@ export default function ListenScreen() {
 
         <View style={styles.section}>
           <SectionHeading title="Trending playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
+          {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
+          {playlistsError ? <Text style={styles.errorText}>Could not load playlists right now.</Text> : null}
+          {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.message}>No public playlists are available right now.</Text> : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
             {playlists.map((playlist) => (
               <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId } }) : null}>
@@ -128,7 +131,7 @@ const styles = StyleSheet.create({
   cardSubtitle: { color: colors.muted, fontSize: 11, marginTop: 3 },
   message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
   errorCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, gap: 10 },
-  errorText: { color: colors.muted, fontSize: 12 },
+  errorText: { color: colors.muted, fontSize: 12, paddingVertical: 12 },
   retry: { color: colors.accent, fontSize: 12, fontWeight: "700" },
   sourceNote: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.border },
   sourceText: { color: colors.subtle, fontSize: 11 }
