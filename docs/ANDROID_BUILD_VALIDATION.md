@@ -11,3 +11,5 @@ This revision fixes the player progress-bar width types and uses a supported Ion
 This revision narrows the optional Audius source track ID before passing it to the stream URL helper.
 
 Build validation rerun for the stream-ID type guard.
+
+This revision restores persistent liked-track and listening-history state required by the player and library screens.
