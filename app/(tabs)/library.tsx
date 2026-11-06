@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
-import { mockPlaylists, mockTracks } from "../../data/mockTracks";
+import { mockPlaylists } from "../../data/mockTracks";
 import { colors } from "../../theme/colors";
 import { usePlayerStore } from "../../store/player";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
