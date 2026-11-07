@@ -30,7 +30,7 @@ export function TrackRow({ track, index, showIndex = false, queue }: Props) {
         <Artwork uri={track.artwork} size={52} radius={12} />
         <View style={styles.copy}>
           <Text numberOfLines={1} style={[styles.title, isCurrent && styles.active]}>{track.title}</Text>
-          <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
+          <Text numberOfLines={1} style={styles.artist}>{track.artistCredited === false ? (track.uploader ? `Uploaded by ${track.uploader}` : "Artist credit unavailable") : track.artist}</Text>
         </View>
       </Pressable>
       <Pressable hitSlop={10} style={styles.more} onPress={() => toggleLike(track)}>
