@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+  <title id="title">LumaMusic soundstage</title>
+  <desc id="desc">A dark audio control-room scene with an animated spectrum wall, moving signal trace and a rotating vinyl groove.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#090B18"/><stop offset=".55" stop-color="#15112B"/><stop offset="1" stop-color="#071923"/></linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#6C5CE7" stop-opacity="0"/><stop offset=".48" stop-color="#9C8CFF"/><stop offset="1" stop-color="#31D8C5" stop-opacity="0"/></linearGradient>
+    <linearGradient id="bars" x1="0" y1="1" x2="0" y2="0"><stop stop-color="#3DD6C6"/><stop offset=".55" stop-color="#7867F5"/><stop offset="1" stop-color="#C2A7FF"/></linearGradient>
+    <radialGradient id="disc"><stop stop-color="#34304F"/><stop offset=".58" stop-color="#17152C"/><stop offset="1" stop-color="#090A14"/></radialGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0V42" fill="none" stroke="#A7A4D8" stroke-opacity=".075" stroke-width="1"/></pattern>
+  </defs>
+  <style>
+    .bar{transform-box:fill-box;transform-origin:center bottom;animation:equalize 1.15s ease-in-out infinite alternate}
+    .b1{animation-delay:-.2s}.b2{animation-delay:-.8s}.b3{animation-delay:-.45s}.b4{animation-delay:-1s}.b5{animation-delay:-.6s}.b6{animation-delay:-.1s}.b7{animation-delay:-.72s}.b8{animation-delay:-.35s}
+    .signal{stroke-dasharray:18 14;animation:signal 7s linear infinite}
+    .sweep{animation:sweep 5.5s ease-in-out infinite}
+    .record{transform-origin:930px 220px;animation:spin 18s linear infinite}
+    .pulse{animation:pulse 2.2s ease-in-out infinite}
+    @keyframes equalize{from{transform:scaleY(.28);opacity:.55}to{transform:scaleY(1);opacity:1}}
+    @keyframes signal{to{stroke-dashoffset:-320}}
+    @keyframes sweep{0%,100%{transform:translateX(-180px);opacity:0}20%,80%{opacity:.8}50%{transform:translateX(180px)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+    @media(prefers-reduced-motion:reduce){.bar,.signal,.sweep,.record,.pulse{animation:none}}
+  </style>
+  <rect width="1200" height="440" rx="28" fill="url(#bg)"/>
+  <rect width="1200" height="440" rx="28" fill="url(#grid)"/>
+  <path d="M0 340 C190 285 260 410 455 350 S770 275 930 345 1080 385 1200 320" fill="none" stroke="#7565F0" stroke-opacity=".14" stroke-width="2"/>
+  <g opacity=".8"><path d="M64 64H1136" stroke="#B6B2FF" stroke-opacity=".17"/><circle cx="78" cy="64" r="4" fill="#4EE0D0"/><text x="96" y="70" fill="#B9B6D9" font-family="Arial,sans-serif" font-size="13" letter-spacing="3">PAUZE AUDIO LAB  /  001</text><text x="1136" y="70" text-anchor="end" fill="#8E89B6" font-family="Arial,sans-serif" font-size="12" letter-spacing="2">LIVE SIGNAL</text></g>
+  <text x="76" y="150" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="58" font-weight="700" letter-spacing="-2">LumaMusic</text>
+  <text x="80" y="187" fill="#B8B5D3" font-family="Arial,sans-serif" font-size="18" letter-spacing="1">A quieter interface. A louder connection.</text>
+  <g transform="translate(80 225)">
+    <rect width="164" height="34" rx="17" fill="#FFFFFF" fill-opacity=".07" stroke="#8D80F8" stroke-opacity=".55"/>
+    <circle cx="18" cy="17" r="4" fill="#43DCCB" class="pulse"/>
+    <text x="32" y="22" fill="#E6E2FF" font-family="Arial,sans-serif" font-size="12" letter-spacing="1.5">NOW IN MOTION</text>
+  </g>
+  <g transform="translate(80 310)" fill="#A7A3C9" font-family="Arial,sans-serif" font-size="11" letter-spacing="2">
+    <text y="0">DISCOVER</text><text x="116" y="0">COLLECT</text><text x="232" y="0">LISTEN</text>
+    <path d="M0 16H300" stroke="#7E75C8" stroke-opacity=".35"/>
+  </g>
+  <g transform="translate(445 122)">
+    <rect x="0" y="0" width="365" height="202" rx="18" fill="#0A0C1B" fill-opacity=".62" stroke="#AAA2FF" stroke-opacity=".2"/>
+    <path d="M22 101H343" stroke="#A49BFF" stroke-opacity=".13"/>
+    <g fill="url(#bars)" filter="url(#glow)">
+      <rect class="bar b1" x="30" y="69" width="9" height="64" rx="4"/><rect class="bar b2" x="49" y="42" width="9" height="118" rx="4"/>
+      <rect class="bar b3" x="68" y="83" width="9" height="37" rx="4"/><rect class="bar b4" x="87" y="28" width="9" height="145" rx="4"/>
+      <rect class="bar b5" x="106" y="56" width="9" height="91" rx="4"/><rect class="bar b6" x="125" y="18" width="9" height="164" rx="4"/>
+      <rect class="bar b7" x="144" y="76" width="9" height="50" rx="4"/><rect class="bar b8" x="163" y="38" width="9" height="126" rx="4"/>
+      <rect class="bar b3" x="182" y="61" width="9" height="80" rx="4"/><rect class="bar b1" x="201" y="24" width="9" height="152" rx="4"/>
+      <rect class="bar b5" x="220" y="80" width="9" height="42" rx="4"/><rect class="bar b2" x="239" y="48" width="9" height="105" rx="4"/>
+      <rect class="bar b4" x="258" y="30" width="9" height="140" rx="4"/><rect class="bar b6" x="277" y="70" width="9" height="61" rx="4"/>
+      <rect class="bar b7" x="296" y="43" width="9" height="112" rx="4"/><rect class="bar b8" x="315" y="78" width="9" height="46" rx="4"/>
+    </g>
+    <path class="signal" d="M22 101 C45 101 48 73 68 73 S92 129 111 129 137 56 156 56 176 146 196 146 218 84 237 84 258 116 278 116 300 65 343 65" fill="none" stroke="#D7D0FF" stroke-width="2.5" filter="url(#glow)"/>
+    <rect class="sweep" x="170" y="8" width="28" height="186" fill="url(#beam)" opacity=".7"/>
+    <text x="22" y="190" fill="#8D89B3" font-family="Arial,sans-serif" font-size="9" letter-spacing="2">FREQUENCY / TIME</text>
+  </g>
+  <g class="record">
+    <circle cx="930" cy="220" r="104" fill="url(#disc)" stroke="#A69BFF" stroke-opacity=".48" stroke-width="2"/>
+    <circle cx="930" cy="220" r="88" fill="none" stroke="#77719E" stroke-opacity=".28"/>
+    <circle cx="930" cy="220" r="73" fill="none" stroke="#77719E" stroke-opacity=".25"/>
+    <circle cx="930" cy="220" r="58" fill="none" stroke="#77719E" stroke-opacity=".22"/>
+    <circle cx="930" cy="220" r="43" fill="none" stroke="#77719E" stroke-opacity=".2"/>
+    <circle cx="930" cy="220" r="25" fill="#7565E9"/>
+    <circle cx="930" cy="220" r="5" fill="#E7E3FF"/>
+    <path d="M930 116 A104 104 0 0 1 1034 220" fill="none" stroke="#55DCCD" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+  </g>
+  <g transform="translate(1040 330)" font-family="Arial,sans-serif">
+    <text fill="#E7E4FF" font-size="11" letter-spacing="2">SIGNAL IS CLEAN</text>
+    <text y="22" fill="#8F8AAE" font-size="9" letter-spacing="1.5">MADE FOR THE NEXT TRACK</text>
+  </g>
+  <path d="M64 384H1136" stroke="#B6B2FF" stroke-opacity=".17"/>
+  <text x="76" y="410" fill="#8581A8" font-family="Arial,sans-serif" font-size="11" letter-spacing="2">DISCOVERY  ·  PLAYBACK  ·  YOUR LIBRARY</text>
+  <text x="1128" y="410" text-anchor="end" fill="#8581A8" font-family="Arial,sans-serif" font-size="11" letter-spacing="2">BUILT BY PAUZEDEVS</text>
+</svg>
