@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { PanResponder, useMemo, useRef, useState } from "react";
-import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Alert, Image, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { usePlayerStore } from "../store/player";
@@ -28,6 +28,7 @@ export default function NowPlayingScreen() {
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
+  const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
   const [progressWidth, setProgressWidth] = useState(0);
   const [progressLeft, setProgressLeft] = useState(0);
   const progressRef = useRef<View>(null);
@@ -48,7 +49,6 @@ export default function NowPlayingScreen() {
   }
 
   const liked = likedTracks.some((item) => item.id === track.id);
-  const duration = playbackDuration || track.durationMs / 1000;
   const progress = duration > 0 ? Math.min(100, (playbackPosition / duration) * 100) : 0;
   const cycleSpeed = () => {
     const speeds = [0.75, 1, 1.25, 1.5, 2];
