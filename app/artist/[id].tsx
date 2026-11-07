@@ -20,6 +20,8 @@ export default function ArtistScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={22} color={colors.text} /><Text style={styles.backText}>Back</Text></Pressable>
         {artistQuery.isLoading ? <Text style={styles.message}>Loading artist…</Text> : null}
+        {artistQuery.error ? <Text style={styles.error}>{artistQuery.error instanceof Error ? artistQuery.error.message : "Could not load artist details."}</Text> : null}
+        {!artistQuery.isLoading && !artistQuery.error && !artist ? <Text style={styles.message}>This artist could not be found.</Text> : null}
         {artist ? (
           <View style={styles.hero}>
             <Artwork uri={artist.artwork} size={116} radius={58} />
