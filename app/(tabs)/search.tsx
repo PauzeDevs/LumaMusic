@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArtistRow } from "../../components/ArtistRow";
 import { PlaylistRow } from "../../components/PlaylistRow";
@@ -10,6 +10,7 @@ import { ScrollReveal } from "../../components/ScrollReveal";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { getTrendingTracks, searchAudiusArtists, searchAudiusPlaylists, searchAudiusTracks } from "../../services/audius";
+import { enrichTrackWithMusicBrainz, searchMusicBrainzRecordings } from "../../services/musicbrainz";
 
 const filters = ["All", "Tracks", "Artists", "Playlists"];
 
@@ -31,6 +32,13 @@ export default function SearchScreen() {
     enabled: activeFilter === "All" || activeFilter === "Tracks",
     staleTime: 30_000
   });
+  const metadataQuery = useQuery({
+    queryKey: ["musicbrainz", "search", debouncedQuery],
+    queryFn: ({ signal }) => searchMusicBrainzRecordings(debouncedQuery, signal),
+    enabled: debouncedQuery.length > 0 && (activeFilter === "All" || activeFilter === "Tracks"),
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false
+  });
   const artistQuery = useQuery({
     queryKey: ["audius", "search", "artists", debouncedQuery],
     queryFn: () => searchAudiusArtists(debouncedQuery, 20, 0),
@@ -45,6 +53,11 @@ export default function SearchScreen() {
   });
 
   const tracks = trackQuery.data ?? [];
+  const metadata = metadataQuery.data ?? [];
+  const enrichedTracks = useMemo(
+    () => tracks.map((track) => enrichTrackWithMusicBrainz(track, metadata)),
+    [tracks, metadata]
+  );
   const artists = artistQuery.data ?? [];
   const playlists = playlistQuery.data ?? [];
   const loading = activeFilter === "Artists" ? artistQuery.isLoading : activeFilter === "Playlists" ? playlistQuery.isLoading : trackQuery.isLoading;
@@ -77,7 +90,7 @@ export default function SearchScreen() {
         {loading ? <Text style={styles.message}>Searching the catalogue…</Text> : null}
         {error ? <Text style={styles.error}>{error instanceof Error ? error.message : "Search is unavailable right now."}</Text> : null}
         {!loading && !error && activeFilter !== "Artists" && activeFilter !== "Playlists" && tracks.length > 0
-          ? tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />)
+          ? enrichedTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={enrichedTracks} />)
           : null}
         {!loading && !error && activeFilter === "Artists" && artists.length > 0
           ? artists.map((artist) => <ArtistRow key={artist.id} artist={artist} />)
@@ -92,7 +105,7 @@ export default function SearchScreen() {
             <Text style={styles.emptyCopy}>{debouncedQuery ? "Try another title, artist, or playlist name." : "Search the Audius catalogue for tracks, artists, and playlists."}</Text>
           </View>
         ) : null}
-        <Text style={styles.note}>Search and streaming results are provided by Audius. Track availability varies by artist and permissions.</Text>
+        <Text style={styles.note}>Audius provides playable uploads. Artist credits and release artwork are matched with MusicBrainz and Cover Art Archive when the match is reliable; otherwise the uploader is labelled separately.</Text>
         </ScrollReveal>
       </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
