@@ -27,11 +27,12 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
     <View style={styles.shell}>
       {track ? (
         <View style={styles.mini}>
+          <View pointerEvents="none" style={styles.glassHighlight} />
           <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}>
             <Artwork uri={track.artwork} size={42} radius={10} />
             <View style={styles.miniCopy}>
               <Text numberOfLines={1} style={styles.miniTitle}>{track.title}</Text>
-              <Text numberOfLines={1} style={styles.miniArtist}>{track.artist}</Text>
+              <Text numberOfLines={1} style={styles.miniArtist}>{track.artistCredited === false ? (track.uploader ? `Uploaded by ${track.uploader}` : "Artist credit unavailable") : track.artist}</Text>
             </View>
           </Pressable>
           <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}>
@@ -58,7 +59,8 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 
 const styles = StyleSheet.create({
   shell: { backgroundColor: "rgba(8,9,11,0.94)", borderTopWidth: 1, borderTopColor: "rgba(235,239,245,0.10)", paddingTop: 9, paddingBottom: 9 },
-  mini: { height: 60, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 10, borderRadius: 20, backgroundColor: "rgba(30,33,39,0.76)", borderWidth: 1, borderColor: "rgba(235,239,245,0.14)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  mini: { height: 60, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 10, borderRadius: 20, backgroundColor: "rgba(30,33,39,0.76)", borderWidth: 1, borderColor: "rgba(235,239,245,0.14)", shadowColor: "#FFFFFF", shadowOpacity: 0.035, shadowRadius: 16, shadowOffset: { width: 0, height: 5 }, elevation: 3, flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  glassHighlight: { position: "absolute", top: 0, left: 14, right: 14, height: 1, backgroundColor: "rgba(255,255,255,0.22)" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
   miniTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
