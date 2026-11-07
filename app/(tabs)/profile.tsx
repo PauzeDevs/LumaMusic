@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   handle: { color: colors.muted, fontSize: 11, marginTop: 4 },
   profileBadge: { width: 30, height: 30, borderRadius: 11, backgroundColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 11, marginTop: 4 },
-  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "750" },
+  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
   sectionMeta: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
   nowCard: { backgroundColor: "rgba(166,232,212,0.055)", borderWidth: 1, borderColor: "rgba(166,232,212,0.14)", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
   nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "rgba(166,232,212,0.1)", alignItems: "center", justifyContent: "center" },
