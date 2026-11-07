@@ -119,27 +119,26 @@ async function request<T>(path: string, params: Record<string, string | number |
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
-  let response: Response;
   try {
-    response = await fetch(url.toString(), {
+    const response = await fetch(url.toString(), {
       headers: { Accept: "application/json" },
       signal: controller.signal
     });
+
+    if (!response.ok) {
+      throw new Error("Audius request failed (" + response.status + "). Please try again.");
+    }
+
+    const payload = (await response.json()) as AudiusResponse<T>;
+    if (payload.error) throw new Error(payload.message ?? payload.error);
+    if (payload.data === undefined) throw new Error("Audius returned an unexpected response.");
+    return payload.data;
   } catch (error) {
     if (controller.signal.aborted) throw new Error("Audius request timed out. Check your connection and try again.");
     throw new Error(error instanceof Error ? error.message : "Could not connect to Audius.");
   } finally {
     clearTimeout(timeout);
   }
-
-  if (!response.ok) {
-    throw new Error("Audius request failed (" + response.status + "). Please try again.");
-  }
-
-  const payload = (await response.json()) as AudiusResponse<T>;
-  if (payload.error) throw new Error(payload.message ?? payload.error);
-  if (payload.data === undefined) throw new Error("Audius returned an unexpected response.");
-  return payload.data;
 }
 
 export async function getTrendingTracks(limit = 20, offset = 0): Promise<MusicTrack[]> {
