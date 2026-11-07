@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
@@ -14,6 +14,7 @@ export default function LyricsScreen() {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
+  const requestVersion = useRef(0);
   const activeIndex = useMemo(() => {
     if (lyrics.status !== "available") return -1;
     let active = -1;
@@ -21,19 +22,31 @@ export default function LyricsScreen() {
     return active;
   }, [lyrics, position]);
 
-  useEffect(() => {
-    let alive = true;
-    if (!track) { setLyrics({ status: "not_found" }); return () => { alive = false; }; }
+  const loadLyrics = useCallback(async (targetTrack: NonNullable<typeof track>) => {
+    const version = ++requestVersion.current;
+    const controller = new AbortController();
     setLyrics({ status: "loading" });
-    getLyrics(track).then((result) => { if (alive) setLyrics(result); });
-    return () => { alive = false; };
+    const result = await getLyrics(targetTrack, controller.signal);
+    if (requestVersion.current === version) setLyrics(result);
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    if (!track) { setLyrics({ status: "not_found" }); return; }
+    let cancelled = false;
+    const controller = new AbortController();
+    const version = ++requestVersion.current;
+    setLyrics({ status: "loading" });
+    getLyrics(track, controller.signal).then((result) => {
+      if (!cancelled && requestVersion.current === version) setLyrics(result);
+    });
+    return () => { cancelled = true; controller.abort(); };
   }, [track?.id]);
 
   useEffect(() => {
     if (activeIndex >= 0) scrollRef.current?.scrollTo({ y: Math.max(0, activeIndex * 66 - 170), animated: true });
   }, [activeIndex]);
 
-  const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
+  const retry = () => { if (track) { const version = ++requestVersion.current; const controller = new AbortController(); setLyrics({ status: "loading" }); getLyrics(track, controller.signal).then((result) => { if (requestVersion.current === version) setLyrics(result); }); } };
   const openAttribution = () => {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
