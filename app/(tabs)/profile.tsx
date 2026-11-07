@@ -33,7 +33,7 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Your listening</Text><Text style={styles.sectionMeta}>NOW</Text></View>
         <View style={styles.nowCard}>
-          <View style={styles.nowIcon}><Ionicons name="waveform" size={20} color={colors.mint} /></View>
+          <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
             <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Audius stream" : "Pick a track and let the room fill up."}</Text>
