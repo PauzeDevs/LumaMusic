@@ -1,5 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,6 +17,10 @@ export default function LibraryScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const recentTracks = useLibraryStore((s) => s.recentTracks);
+  const playlists = useLibraryStore((s) => s.playlists);
+  const createPlaylist = useLibraryStore((s) => s.createPlaylist);
+  const [createVisible, setCreateVisible] = useState(false);
+  const [playlistName, setPlaylistName] = useState("");
   const { playTrack } = useAudioEngine();
   const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
     queryKey: ["audius", "library-discovery-playlists", 6],
@@ -29,7 +34,7 @@ export default function LibraryScreen() {
             <Text style={styles.eyebrow}>YOUR COLLECTION</Text>
             <Text style={styles.title}>Your library.</Text>
           </View>
-          <Pressable style={styles.add} onPress={() => Alert.alert("Create a playlist", "Playlist creation and local storage will be connected after the UI phase.")}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
+          <Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
         </View>
         <View style={styles.shortcuts}>
           <Pressable style={styles.liked} onPress={() => likedTracks.length ? void playTrack(likedTracks[0], likedTracks).catch((err: unknown) => Alert.alert("Couldn’t play liked songs", err instanceof Error ? err.message : "Try again.")) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
@@ -48,6 +53,23 @@ export default function LibraryScreen() {
             </View>
             <Ionicons name="chevron-forward" size={17} color={colors.muted} />
           </Pressable>
+        </View>
+        <View style={styles.statsCard}>
+          <View style={styles.stat}><Text style={styles.statValue}>{recentTracks.length}</Text><Text style={styles.statLabel}>RECENT TRACKS</Text></View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}><Text style={styles.statValue}>{likedTracks.length}</Text><Text style={styles.statLabel}>LIKED SONGS</Text></View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}><Text style={styles.statValue}>{playlists.length}</Text><Text style={styles.statLabel}>PLAYLISTS</Text></View>
+        </View>
+        <View style={styles.section}>
+          <SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} />
+          {playlists.length === 0 ? <Text style={styles.note}>Build your own collections. They stay on this device.</Text> : playlists.map((playlist) => (
+            <View key={playlist.id} style={styles.localPlaylist}>
+              <View style={styles.localPlaylistIcon}><Ionicons name="albums-outline" size={19} color={colors.accent} /></View>
+              <View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>{playlist.name}</Text><Text style={styles.shortcutSub}>{playlist.tracks.length} tracks · On this device</Text></View>
+              <Pressable onPress={() => Alert.alert(playlist.name, "Manage this local playlist?", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => useLibraryStore.getState().deletePlaylist(playlist.id) }])}><Ionicons name="ellipsis-horizontal" size={19} color={colors.muted} /></Pressable>
+            </View>
+          ))}
         </View>
         <View style={styles.section}>
           <SectionHeading title="Discover playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
@@ -75,6 +97,20 @@ export default function LibraryScreen() {
         </View>
         <Text style={styles.note}>Favourites and listening history are saved on this device. Playlists and local music scanning are still being built.</Text>
       </ScrollView>
+      <Modal visible={createVisible} transparent animationType="fade" onRequestClose={() => setCreateVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalEyebrow}>YOUR COLLECTION</Text>
+            <Text style={styles.modalTitle}>New playlist</Text>
+            <TextInput value={playlistName} onChangeText={setPlaylistName} placeholder="Give it a name" placeholderTextColor={colors.subtle} style={styles.modalInput} maxLength={40} autoFocus />
+            <Text style={styles.modalHint}>Your playlist is stored locally on this device.</Text>
+            <View style={styles.modalActions}>
+              <Pressable onPress={() => { setCreateVisible(false); setPlaylistName(""); }} style={styles.modalCancel}><Text style={styles.modalCancelText}>Cancel</Text></Pressable>
+              <Pressable onPress={() => { const name = playlistName.trim(); if (!name) return; createPlaylist(name); setPlaylistName(""); setCreateVisible(false); }} style={styles.modalCreate}><Text style={styles.modalCreateText}>Create playlist</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
     </SafeAreaView>
   );
@@ -94,6 +130,24 @@ const styles = StyleSheet.create({
   downloadIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#182D2A", alignItems: "center", justifyContent: "center" },
   shortcutTitle: { color: colors.text, fontSize: 13, fontWeight: "700" },
   shortcutSub: { color: colors.muted, fontSize: 11, marginTop: 4 },
+  statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingVertical: 17, marginBottom: 27 },
+  stat: { alignItems: "center", flex: 1, gap: 5 },
+  statValue: { color: colors.text, fontSize: 20, fontWeight: "800" },
+  statLabel: { color: colors.subtle, fontSize: 7, fontWeight: "800", letterSpacing: 1 },
+  statDivider: { width: 1, height: 28, backgroundColor: colors.border },
+  localPlaylist: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, backgroundColor: colors.surface, borderRadius: 15, marginBottom: 8 },
+  localPlaylistIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: 22 },
+  modalCard: { backgroundColor: colors.surfaceElevated, borderRadius: 22, borderWidth: 1, borderColor: colors.border, padding: 20 },
+  modalEyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
+  modalTitle: { color: colors.text, fontSize: 23, fontWeight: "800", marginTop: 7 },
+  modalInput: { color: colors.text, backgroundColor: colors.background, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 12, marginTop: 18, borderWidth: 1, borderColor: colors.border, fontSize: 13 },
+  modalHint: { color: colors.subtle, fontSize: 10, lineHeight: 16, marginTop: 10 },
+  modalActions: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 20 },
+  modalCancel: { paddingHorizontal: 14, paddingVertical: 11 },
+  modalCancelText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
+  modalCreate: { paddingHorizontal: 15, paddingVertical: 11, borderRadius: 12, backgroundColor: colors.accent },
+  modalCreateText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 28 },
   playlistGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 18 },
   playlist: { width: "48%" },
