@@ -82,7 +82,7 @@ export default function NowPlayingScreen() {
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
-            <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
+            <Text numberOfLines={1} style={styles.artist}>{track.artistCredited === false ? (track.uploader ? `Uploaded by ${track.uploader}` : "Artist credit unavailable") : track.artist}</Text>
           </View>
           <Pressable style={styles.like} onPress={() => toggleLike(track)}>
             <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={colors.accent} />
