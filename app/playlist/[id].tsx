@@ -20,6 +20,8 @@ export default function PlaylistScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={22} color={colors.text} /><Text style={styles.backText}>Back</Text></Pressable>
         {playlistQuery.isLoading ? <Text style={styles.message}>Loading playlist…</Text> : null}
+        {playlistQuery.error ? <Text style={styles.error}>{playlistQuery.error instanceof Error ? playlistQuery.error.message : "Could not load playlist details."}</Text> : null}
+        {!playlistQuery.isLoading && !playlistQuery.error && !playlist ? <Text style={styles.message}>This playlist could not be found.</Text> : null}
         {playlist ? (
           <View style={styles.hero}>
             <Artwork uri={playlist.artwork} size={190} radius={22} />
