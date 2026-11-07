@@ -11,7 +11,7 @@ import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
 function formatTime(seconds: number) {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
   return `${Math.floor(safeSeconds / 60)}:${String(safeSeconds % 60).padStart(2, "0")}`;
 }
 
@@ -32,7 +32,8 @@ export default function NowPlayingScreen() {
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
-  const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
+  const trackDuration = (track?.durationMs ?? 0) / 1000;
+  const duration = Number.isFinite(playbackDuration) && playbackDuration > 0 ? playbackDuration : Number.isFinite(trackDuration) ? trackDuration : 0;
   const [progressWidth, setProgressWidth] = useState(0);
   const [progressLeft, setProgressLeft] = useState(0);
   const progressRef = useRef<View>(null);
