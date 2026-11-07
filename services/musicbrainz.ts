@@ -29,6 +29,7 @@ const API_BASE = "https://musicbrainz.org/ws/2";
 const USER_AGENT = "LumaMusic/0.2 (https://lumamusic.devs.surf)";
 const REQUEST_INTERVAL_MS = 1_100;
 let lastRequestAt = 0;
+let requestQueue: Promise<void> = Promise.resolve();
 
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -51,6 +52,24 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+async function waitForRequestSlot(signal?: AbortSignal): Promise<void> {
+  const previous = requestQueue;
+  let release = () => {};
+  requestQueue = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous.catch(() => undefined);
+  try {
+    const waitMs = Math.max(0, REQUEST_INTERVAL_MS - (Date.now() - lastRequestAt));
+    if (waitMs > 0) await wait(waitMs, signal);
+    if (signal?.aborted) throw new Error("Metadata request cancelled.");
+    lastRequestAt = Date.now();
+  } finally {
+    release();
+  }
+}
+
 function normalize(value: string): string {
   return value
     .normalize("NFKD")
@@ -58,6 +77,10 @@ function normalize(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+function escapeLucenePhrase(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function getArtistCredit(recording: MusicBrainzRecording): string {
@@ -85,26 +108,18 @@ function getCoverArtUrl(recording: MusicBrainzRecording): string | undefined {
   return undefined;
 }
 
-/**
- * Search the community-maintained MusicBrainz recording catalogue.
- * Requests are serialized to respect MusicBrainz's one-request-per-second policy.
- */
-export async function searchMusicBrainzRecordings(
-  query: string,
-  signal?: AbortSignal
+async function searchRecordings(
+  luceneQuery: string,
+  signal?: AbortSignal,
+  limit = 25
 ): Promise<MusicBrainzRecording[]> {
-  const normalized = query.trim();
-  if (!normalized) return [];
+  if (!luceneQuery.trim()) return [];
 
-  const waitMs = Math.max(0, REQUEST_INTERVAL_MS - (Date.now() - lastRequestAt));
-  if (waitMs > 0) await wait(waitMs, signal);
-  if (signal?.aborted) throw new Error("Metadata request cancelled.");
-  lastRequestAt = Date.now();
-
+  await waitForRequestSlot(signal);
   const url = new URL(API_BASE + "/recording/");
-  url.searchParams.set("query", `recording:"${normalized.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`);
+  url.searchParams.set("query", luceneQuery);
   url.searchParams.set("fmt", "json");
-  url.searchParams.set("limit", "25");
+  url.searchParams.set("limit", String(Math.min(100, Math.max(1, limit))));
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -120,6 +135,35 @@ export async function searchMusicBrainzRecordings(
 
   const payload = (await response.json()) as MusicBrainzSearchResponse;
   return Array.isArray(payload.recordings) ? payload.recordings : [];
+}
+
+/**
+ * Search for a single track title in MusicBrainz.
+ */
+export function searchMusicBrainzRecordings(
+  query: string,
+  signal?: AbortSignal
+): Promise<MusicBrainzRecording[]> {
+  const normalized = query.trim();
+  if (!normalized) return Promise.resolve([]);
+  return searchRecordings(`recording:"${escapeLucenePhrase(normalized)}"`, signal, 25);
+}
+
+/**
+ * Resolve artwork and recording credits for a screen's list of tracks in one
+ * bounded MusicBrainz request, instead of making one request per row.
+ */
+export function searchMusicBrainzForTracks(
+  tracks: MusicTrack[],
+  signal?: AbortSignal
+): Promise<MusicBrainzRecording[]> {
+  const titles = Array.from(new Set(tracks.map((track) => track.title.trim()).filter(Boolean))).slice(0, 30);
+  if (titles.length === 0) return Promise.resolve([]);
+
+  const query = titles
+    .map((title) => `recording:"${escapeLucenePhrase(title)}"`)
+    .join(" OR ");
+  return searchRecordings(query, signal, 100);
 }
 
 /**
