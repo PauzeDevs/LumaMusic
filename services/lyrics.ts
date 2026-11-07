@@ -35,7 +35,7 @@ export function parseLrc(value: string): LyricLine[] {
   return lines.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 }
 
-export async function getLyrics(track: MusicTrack): Promise<LyricsState> {
+export async function getLyrics(track: MusicTrack, signal?: AbortSignal): Promise<LyricsState> {
   const endpoint = process.env.EXPO_PUBLIC_LYRICS_API_URL?.trim();
   if (!endpoint) return { status: "unconfigured" };
   const params = new URLSearchParams({
