@@ -17,7 +17,7 @@ export default function LibraryScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const recentTracks = useLibraryStore((s) => s.recentTracks);
-  const playlists = useLibraryStore((s) => s.playlists);
+  const localPlaylists = useLibraryStore((s) => s.playlists);
   const createPlaylist = useLibraryStore((s) => s.createPlaylist);
   const [createVisible, setCreateVisible] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
@@ -59,11 +59,11 @@ export default function LibraryScreen() {
           <View style={styles.statDivider} />
           <View style={styles.stat}><Text style={styles.statValue}>{likedTracks.length}</Text><Text style={styles.statLabel}>LIKED SONGS</Text></View>
           <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statValue}>{playlists.length}</Text><Text style={styles.statLabel}>PLAYLISTS</Text></View>
+          <View style={styles.stat}><Text style={styles.statValue}>{localPlaylists.length}</Text><Text style={styles.statLabel}>PLAYLISTS</Text></View>
         </View>
         <View style={styles.section}>
           <SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} />
-          {playlists.length === 0 ? <Text style={styles.note}>Build your own collections. They stay on this device.</Text> : playlists.map((playlist) => (
+          {localPlaylists.length === 0 ? <Text style={styles.note}>Build your own collections. They stay on this device.</Text> : localPlaylists.map((playlist) => (
             <View key={playlist.id} style={styles.localPlaylist}>
               <View style={styles.localPlaylistIcon}><Ionicons name="albums-outline" size={19} color={colors.accent} /></View>
               <View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>{playlist.name}</Text><Text style={styles.shortcutSub}>{playlist.tracks.length} tracks · On this device</Text></View>
