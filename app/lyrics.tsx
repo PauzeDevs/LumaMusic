@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   topFadeSpace: { height: 170 },
   bottomFadeSpace: { height: 220 },
   lyricLine: { color: "rgba(255,255,255,0.27)", fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
-  activeLine: { color: "#FFFFFF", fontSize: 27, lineHeight: 36, textShadowColor: "rgba(198,167,255,0.22)", textShadowRadius: 18 },
+  activeLine: { color: "#FFFFFF", fontSize: 27, lineHeight: 36, textShadowColor: "rgba(235,239,245,0.10)", textShadowRadius: 18 },
   pastLine: { color: "rgba(255,255,255,0.14)" },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
   providerText: { color: colors.subtle, fontSize: 9, textAlign: "center" },
