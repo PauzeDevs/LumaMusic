@@ -89,3 +89,13 @@ html{scroll-behavior:smooth}
 @keyframes velvet-rise{from{opacity:0;transform:translateY(18px);filter:blur(5px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
 @keyframes velvet-art{from{opacity:0;transform:translateY(24px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.js-reveal,.hero-copy .eyebrow,.hero-copy h1,.hero-copy .hero-description,.hero-copy .hero-actions,.hero-art{animation:none!important;opacity:1!important;transform:none!important;filter:none!important;transition:none!important}}
+
+/* Shared header styling for standalone legal documents */
+.nav.wrap{width:min(1180px,calc(100% - 64px));min-height:76px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line)}
+.nav .brand{display:inline-flex;align-items:center;gap:11px;font-size:15px;font-weight:800;letter-spacing:-.5px;color:var(--text);text-decoration:none}
+.nav .brand-mark{width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(237,84,116,.28);border-radius:11px;background:linear-gradient(145deg,rgba(237,84,116,.18),rgba(255,255,255,.025))}
+.nav .brand-mark svg{width:23px;height:23px;fill:none;stroke:#ff8299;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav .brand>span:last-child span{color:#ed5474}
+.nav .nav-cta{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:1px solid rgba(237,84,116,.24);border-radius:11px;color:#ff8299;font-size:11px;font-weight:700;text-decoration:none;transition:background .2s,border-color .2s}
+.nav .nav-cta:hover{background:rgba(237,84,116,.1);border-color:rgba(237,84,116,.5)}
+@media(max-width:600px){.nav.wrap{width:calc(100% - 40px);min-height:68px}.nav .brand{font-size:13px}.nav .nav-cta{font-size:10px;padding:0 10px}}
