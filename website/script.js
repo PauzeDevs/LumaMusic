@@ -21,3 +21,29 @@ if(menuButton&&mainNav){
   }
  });
 }
+
+/* Reveal sections as they enter the viewport */
+(()=>{
+ const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ const revealTargets=document.querySelectorAll(".section-heading,.feature-row,.feature-footnote,.catalogue-copy,.catalogue-facts,.legal-links a,.legal-note,.site-footer");
+ revealTargets.forEach((node,index)=>{
+  node.classList.add("js-reveal");
+  if(node.classList.contains("feature-row")) node.style.setProperty("--reveal-delay",((index%3)*75)+"ms");
+ });
+ if(reduceMotion||!("IntersectionObserver" in window)){
+  revealTargets.forEach(node=>node.classList.add("is-visible"));
+ }else{
+  const observer=new IntersectionObserver((entries,instance)=>{
+   entries.forEach(entry=>{
+    if(entry.isIntersecting){entry.target.classList.add("is-visible");instance.unobserve(entry.target);}
+   });
+  },{threshold:.12,rootMargin:"0px 0px -45px 0px"});
+  revealTargets.forEach(node=>observer.observe(node));
+ }
+ document.querySelectorAll('a[href^="#"]').forEach(link=>{
+  link.addEventListener("click",event=>{
+   const target=document.querySelector(link.getAttribute("href"));
+   if(target){event.preventDefault();target.scrollIntoView({behavior:reduceMotion?"auto":"smooth",block:"start"});}
+  });
+ });
+})();
