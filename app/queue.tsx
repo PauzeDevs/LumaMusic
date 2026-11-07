@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   caption: { color: colors.subtle, fontSize: 11, marginBottom: 14 },
   list: { paddingBottom: 28 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 15, marginBottom: 7, backgroundColor: colors.surface },
-  current: { borderWidth: 1, borderColor: "rgba(198,167,255,0.3)", backgroundColor: "rgba(198,167,255,0.07)" },
+  current: { borderWidth: 1, borderColor: "rgba(235,239,245,0.18)", backgroundColor: "rgba(235,239,245,0.045)" },
   trackTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   artist: { color: colors.muted, fontSize: 10, marginTop: 4 },
   actions: { flexDirection: "row", alignItems: "center", gap: 1 },
