@@ -99,3 +99,10 @@ html{scroll-behavior:smooth}
 .nav .nav-cta{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:1px solid rgba(237,84,116,.24);border-radius:11px;color:#ff8299;font-size:11px;font-weight:700;text-decoration:none;transition:background .2s,border-color .2s}
 .nav .nav-cta:hover{background:rgba(237,84,116,.1);border-color:rgba(237,84,116,.5)}
 @media(max-width:600px){.nav.wrap{width:calc(100% - 40px);min-height:68px}.nav .brand{font-size:13px}.nav .nav-cta{font-size:10px;padding:0 10px}}
+
+/* LumaMusic chrome wordmark identity */
+.wordmark-image{display:block;width:132px;height:48px;object-fit:cover;object-position:center;border-radius:8px}
+.hero-art.logo-showcase{padding:0;overflow:hidden;border-radius:22px}
+.hero-art.logo-showcase img{display:block;width:100%;height:auto;border-radius:0}
+.nav .brand-logo{display:block;width:132px;height:48px;object-fit:cover;object-position:center;border-radius:8px}
+@media(max-width:600px){.wordmark-image,.nav .brand-logo{width:112px;height:42px}}
