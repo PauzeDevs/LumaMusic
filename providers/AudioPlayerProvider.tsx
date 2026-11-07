@@ -194,8 +194,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [playTrackSafely, player, status.currentTime]);
 
   useEffect(() => {
-    if (status.didJustFinish) void playNext();
-  }, [status.didJustFinish, playNext]);
+    if (!status.didJustFinish) return;
+    if (usePlayerStore.getState().sleepTimerMinutes === -1) {
+      player.pause();
+      setSleepTimerMinutesState(null);
+      return;
+    }
+    void playNext();
+  }, [status.didJustFinish, playNext, player, setSleepTimerMinutesState]);
 
   const seekTo = useCallback(async (seconds: number) => {
     await player.seekTo(Math.max(0, seconds));

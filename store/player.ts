@@ -20,6 +20,9 @@ type PlayerState = {
   setPlaybackError: (error: string | null) => void;
   setPlaybackRate: (rate: number) => void;
   setSleepTimerMinutes: (minutes: number | null) => void;
+  removeFromQueue: (trackId: string) => void;
+  moveQueueTrack: (from: number, to: number) => void;
+  clearQueue: () => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
 };
@@ -50,6 +53,15 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
   setSleepTimerMinutes: (sleepTimerMinutes) => set({ sleepTimerMinutes }),
+  removeFromQueue: (trackId) => set((state) => ({ queue: state.queue.filter((track) => track.id !== trackId || track.id === state.currentTrack?.id) })),
+  moveQueueTrack: (from, to) => set((state) => {
+    if (from < 0 || to < 0 || from >= state.queue.length || to >= state.queue.length || from === to) return state;
+    const queue = [...state.queue];
+    const [moved] = queue.splice(from, 1);
+    queue.splice(to, 0, moved);
+    return { queue };
+  }),
+  clearQueue: () => set((state) => ({ queue: state.currentTrack ? [state.currentTrack] : [] })),
   toggleShuffle: () => set((state) => ({ isShuffled: !state.isShuffled })),
   cycleRepeat: () => set((state) => ({
     repeatMode: state.repeatMode === "off" ? "all" : state.repeatMode === "all" ? "one" : "off"
