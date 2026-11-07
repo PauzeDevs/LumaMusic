@@ -11,6 +11,7 @@ export function useSiriRefresh() {
   const refreshLock = useRef(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
 
   const onRefresh = useCallback(async () => {
     if (refreshLock.current) return;
@@ -23,6 +24,7 @@ export function useSiriRefresh() {
     try {
       await queryClient.refetchQueries({ type: "active" });
     } finally {
+      if (!mounted.current) return;
       finishTimer.current = setTimeout(() => {
         setRefreshing(false);
         refreshLock.current = false;
@@ -31,10 +33,14 @@ export function useSiriRefresh() {
     }
   }, [queryClient]);
 
-  useEffect(() => () => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    if (finishTimer.current) clearTimeout(finishTimer.current);
-    refreshLock.current = false;
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (finishTimer.current) clearTimeout(finishTimer.current);
+      refreshLock.current = false;
+    };
   }, []);
 
   return { refreshing, onRefresh, assistantVisible };
