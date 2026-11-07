@@ -117,9 +117,20 @@ async function request<T>(path: string, params: Record<string, string | number |
     if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
   });
 
-  const response = await fetch(url.toString(), {
-    headers: { Accept: "application/json" }
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("Audius request timed out. Check your connection and try again.");
+    throw new Error(error instanceof Error ? error.message : "Could not connect to Audius.");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new Error("Audius request failed (" + response.status + "). Please try again.");
