@@ -1,12 +1,13 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
-import { useState } from "react";
+import { Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
+import { ScrollReveal } from "../../components/ScrollReveal";
 import { getTrendingPlaylists } from "../../services/audius";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
@@ -15,6 +16,7 @@ import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function LibraryScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const recentTracks = useLibraryStore((s) => s.recentTracks);
   const localPlaylists = useLibraryStore((s) => s.playlists);
@@ -28,8 +30,8 @@ export default function LibraryScreen() {
   });
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
-        <View style={styles.top}>
+      <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
+        <ScrollReveal scrollY={scrollY}><View style={styles.top}>
           <View>
             <Text style={styles.eyebrow}>YOUR COLLECTION</Text>
             <Text style={styles.title}>Your library.</Text>
