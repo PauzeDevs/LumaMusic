@@ -47,7 +47,7 @@ export default function ProfileScreen() {
               if (item.title === "Playback") {
                 Alert.alert("Playback quality", "LumaMusic currently streams the format supplied by Audius. The source does not expose a dependable selectable bitrate ladder, so Auto / source-managed playback is used. A quality selector will appear when the streaming provider supports real quality variants.");
               } else if (item.title === "Appearance") {
-                Alert.alert("Appearance", "LumaMusic uses a dark matte palette with translucent, glass-inspired surfaces. Full system blur and material effects are being refined.");
+                Alert.alert("Appearance", "Dark matte graphite with restrained translucent glass surfaces and neutral silver highlights.");
               } else {
                 Alert.alert(item.title, "This setting will be connected in a later development phase.");
               }
