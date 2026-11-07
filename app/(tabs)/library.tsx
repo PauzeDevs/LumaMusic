@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   liked: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: "#1B1E23", flexDirection: "row", alignItems: "center", gap: 12 },
   heart: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
   downloads: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.border },
-  downloadIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#182D2A", alignItems: "center", justifyContent: "center" },
+  downloadIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#20242A", alignItems: "center", justifyContent: "center" },
   shortcutTitle: { color: colors.text, fontSize: 13, fontWeight: "700" },
   shortcutSub: { color: colors.muted, fontSize: 11, marginTop: 4 },
   statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingVertical: 17, marginBottom: 27 },
