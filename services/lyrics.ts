@@ -16,16 +16,23 @@ export type LyricsState =
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
 
 export function parseLrc(value: string): LyricLine[] {
-  return value.split(/\r?\n/).flatMap((row) => {
+  const lines: LyricLine[] = [];
+  for (const row of value.split(/\r?\n/)) {
     const timestamps = [...row.matchAll(timestampPattern)];
     const text = row.replace(timestampPattern, "").trim();
-    if (!text) return [];
-    if (!timestamps.length) return [{ time: null, text }];
-    return timestamps.map((match) => ({
-      time: Number(match[1]) * 60 + Number(match[2]) + (match[3] ? Number(`0.${match[3]}`) : 0),
-      text
-    }));
-  }).sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+    if (!text) continue;
+    if (timestamps.length === 0) {
+      lines.push({ time: null, text });
+      continue;
+    }
+    for (const match of timestamps) {
+      lines.push({
+        time: Number(match[1]) * 60 + Number(match[2]) + (match[3] ? Number(`0.${match[3]}`) : 0),
+        text
+      });
+    }
+  }
+  return lines.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 }
 
 export async function getLyrics(track: MusicTrack): Promise<LyricsState> {
