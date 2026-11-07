@@ -57,8 +57,8 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  shell: { backgroundColor: "#0B0C12", borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, paddingBottom: 8 },
-  mini: { height: 58, marginHorizontal: 12, marginBottom: 7, paddingHorizontal: 9, borderRadius: 15, backgroundColor: "#1B1E29", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  shell: { backgroundColor: "rgba(12,13,20,0.96)", borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)", paddingTop: 9, paddingBottom: 9 },
+  mini: { height: 60, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.075)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
   miniTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
