@@ -17,7 +17,7 @@ export type MusicBrainzRecording = {
   title?: string;
   score?: string;
   length?: number;
-  "artist-credit"?: MusicBrainzCredit[];
+  "artist-credit"?: Array<MusicBrainzCredit | string>;
   releases?: MusicBrainzRelease[];
 };
 
@@ -62,7 +62,9 @@ function normalize(value: string): string {
 
 function getArtistCredit(recording: MusicBrainzRecording): string {
   return (recording["artist-credit"] ?? [])
-    .map((credit) => (credit.name ?? credit.artist?.name ?? "") + (credit.joinphrase ?? ""))
+    .map((credit) => typeof credit === "string"
+      ? credit
+      : (credit.name ?? credit.artist?.name ?? "") + (credit.joinphrase ?? ""))
     .join("")
     .trim();
 }
