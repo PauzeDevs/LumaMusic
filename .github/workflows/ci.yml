@@ -1,4 +1,4 @@
-name: LumaMusic Android build and checks
+name: LumaMusic standalone Android build and checks
 
 on:
   workflow_dispatch:
@@ -8,8 +8,8 @@ on:
     branches: [main]
 
 jobs:
-  android-debug-apk:
-    name: Android debug APK
+  android-release-apk:
+    name: Standalone Android release APK
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -33,14 +33,14 @@ jobs:
         run: npx expo config --type public
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
-      - name: Build installable debug APK
+      - name: Build standalone release APK with embedded JavaScript
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
-      - name: Upload debug APK
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Upload standalone release APK
         uses: actions/upload-artifact@v4
         with:
-          name: lumamusic-android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: lumamusic-android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
   js-bundles:
