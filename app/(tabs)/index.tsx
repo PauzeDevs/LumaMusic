@@ -1,11 +1,12 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getTrendingPlaylists, getTrendingTracks } from "../../services/audius";
+import { enrichTrackWithMusicBrainz, searchMusicBrainzForTracks } from "../../services/musicbrainz";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { Artwork } from "../../components/Artwork";
@@ -22,17 +23,29 @@ export default function ListenScreen() {
     queryKey: ["audius", "trending", 20],
     queryFn: () => getTrendingTracks(20, 0)
   });
+  const metadataQuery = useQuery({
+    queryKey: ["musicbrainz", "trending", tracks.map((track) => track.id)],
+    queryFn: ({ signal }) => searchMusicBrainzForTracks(tracks, signal),
+    enabled: tracks.length > 0,
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false
+  });
+  const metadata = metadataQuery.data ?? [];
+  const enrichedTracks = useMemo(
+    () => tracks.map((track) => enrichTrackWithMusicBrainz(track, metadata)),
+    [tracks, metadata]
+  );
   const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
     queryKey: ["audius", "trending-playlists", 8],
     queryFn: () => getTrendingPlaylists(8, 0)
   });
 
   const startListening = () => {
-    if (!tracks.length) {
+    if (!enrichedTracks.length) {
       Alert.alert("Music is loading", error instanceof Error ? error.message : "Try again when discovery has loaded.");
       return;
     }
-    void playTrack(tracks[0], tracks).catch((err: unknown) => {
+    void playTrack(enrichedTracks[0], enrichedTracks).catch((err: unknown) => {
       Alert.alert("Couldn't start playback", err instanceof Error ? err.message : "Please try another track.");
     });
   };
@@ -57,7 +70,7 @@ export default function ListenScreen() {
         </Pressable></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
-          <Image source={{ uri: tracks[0]?.artwork ?? "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=900&q=85" }} style={styles.heroImage} />
+          {enrichedTracks[0]?.artwork ? <Image source={{ uri: enrichedTracks[0].artwork }} style={styles.heroImage} /> : null}
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
             <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
@@ -96,7 +109,7 @@ export default function ListenScreen() {
             </View>
           ) : null}
           {!loading && !error && tracks.length === 0 ? <Text style={styles.message}>No tracks are available right now.</Text> : null}
-          {!loading && !error ? tracks.slice(0, 6).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
+          {!loading && !error ? enrichedTracks.slice(0, 6).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={enrichedTracks} />) : null}
         </View></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
@@ -115,21 +128,21 @@ const styles = StyleSheet.create({
   topline: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, marginBottom: 22 },
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 2 },
   greeting: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -1.1, marginTop: 6 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#272333", borderWidth: 1, borderColor: "rgba(198,167,255,0.35)", alignItems: "center", justifyContent: "center" },
+  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#1A1D22", borderWidth: 1, borderColor: "rgba(235,239,245,0.16)", alignItems: "center", justifyContent: "center" },
   avatarText: { color: colors.accent, fontWeight: "800", fontSize: 15 },
   searchPrompt: { height: 50, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 22 },
   searchText: { color: colors.muted, fontSize: 13, flex: 1 },
-  hero: { height: 260, borderRadius: 24, overflow: "hidden", marginBottom: 30, backgroundColor: "#252035" },
+  hero: { height: 260, borderRadius: 24, overflow: "hidden", marginBottom: 30, backgroundColor: "#181B20" },
   heroImage: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%", opacity: 0.65 },
-  heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(8,8,15,0.38)" },
+  heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(5,6,8,0.48)" },
   heroContent: { flex: 1, padding: 22, justifyContent: "flex-end" },
   heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
-  heroTagText: { color: "#E7DDF9", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
+  heroTagText: { color: "#E4E7EC", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
   heroTitle: { color: "#FFFFFF", fontSize: 32, lineHeight: 35, fontWeight: "800", letterSpacing: -1.1 },
   heroSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 8 },
   heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: colors.accent, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, marginTop: 16 },
-  heroButtonText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
+  heroButtonText: { color: "#111317", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 30 },
   horizontal: { gap: 14, paddingRight: 20 },
   playlistCard: { width: 148 },

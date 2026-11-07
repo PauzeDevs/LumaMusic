@@ -1,12 +1,14 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
+import { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { TrackRow } from "../../components/TrackRow";
 import { colors } from "../../theme/colors";
 import { getAudiusArtist, getAudiusArtistTracks } from "../../services/audius";
+import { enrichTrackWithMusicBrainz, searchMusicBrainzForTracks } from "../../services/musicbrainz";
 
 export default function ArtistScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -14,12 +16,26 @@ export default function ArtistScreen() {
   const tracksQuery = useQuery({ queryKey: ["audius", "artist-tracks", id], queryFn: () => getAudiusArtistTracks(id, 30, 0), enabled: Boolean(id) });
   const artist = artistQuery.data;
   const tracks = tracksQuery.data ?? [];
+  const metadataQuery = useQuery({
+    queryKey: ["musicbrainz", "artist-tracks", id, tracks.map((track) => track.id)],
+    queryFn: ({ signal }) => searchMusicBrainzForTracks(tracks, signal),
+    enabled: tracks.length > 0,
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false
+  });
+  const metadata = metadataQuery.data ?? [];
+  const enrichedTracks = useMemo(
+    () => tracks.map((track) => enrichTrackWithMusicBrainz(track, metadata)),
+    [tracks, metadata]
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={22} color={colors.text} /><Text style={styles.backText}>Back</Text></Pressable>
         {artistQuery.isLoading ? <Text style={styles.message}>Loading artist…</Text> : null}
+        {artistQuery.error ? <Text style={styles.error}>{artistQuery.error instanceof Error ? artistQuery.error.message : "Could not load artist details."}</Text> : null}
+        {!artistQuery.isLoading && !artistQuery.error && !artist ? <Text style={styles.message}>This artist could not be found.</Text> : null}
         {artist ? (
           <View style={styles.hero}>
             <Artwork uri={artist.artwork} size={116} radius={58} />
@@ -35,7 +51,7 @@ export default function ArtistScreen() {
         </View>
         {tracksQuery.isLoading ? <Text style={styles.message}>Loading tracks…</Text> : null}
         {tracksQuery.error ? <Text style={styles.error}>{tracksQuery.error instanceof Error ? tracksQuery.error.message : "Could not load artist tracks."}</Text> : null}
-        {tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />)}
+        {enrichedTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={enrichedTracks} />)}
         {!tracksQuery.isLoading && tracks.length === 0 ? <Text style={styles.message}>No public tracks are available for this artist.</Text> : null}
       </ScrollView>
     </SafeAreaView>

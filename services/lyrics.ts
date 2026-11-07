@@ -35,7 +35,7 @@ export function parseLrc(value: string): LyricLine[] {
   return lines.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 }
 
-export async function getLyrics(track: MusicTrack): Promise<LyricsState> {
+export async function getLyrics(track: MusicTrack, signal?: AbortSignal): Promise<LyricsState> {
   const endpoint = process.env.EXPO_PUBLIC_LYRICS_API_URL?.trim();
   if (!endpoint) return { status: "unconfigured" };
   const params = new URLSearchParams({
@@ -46,7 +46,7 @@ export async function getLyrics(track: MusicTrack): Promise<LyricsState> {
     durationMs: String(track.durationMs ?? 0)
   });
   try {
-    const response = await fetch(`${endpoint.replace(/\/$/, "")}/v1/lyrics?${params.toString()}`);
+    const response = await fetch(`${endpoint.replace(/\/$/, "")}/v1/lyrics?${params.toString()}`, { signal });
     if (response.status === 404) return { status: "not_found" };
     if (response.status === 403) return { status: "restricted" };
     if (!response.ok) return { status: "error" };

@@ -40,7 +40,7 @@ export default function LibraryScreen() {
         </View></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.shortcuts}>
           <Pressable style={styles.liked} onPress={() => likedTracks.length ? void playTrack(likedTracks[0], likedTracks).catch((err: unknown) => Alert.alert("Couldn’t play liked songs", err instanceof Error ? err.message : "Try again.")) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
-            <View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View>
+            <View style={styles.heart}><Ionicons name="heart" size={19} color="#111317" /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.shortcutTitle}>Liked songs</Text>
               <Text style={styles.shortcutSub}>Your personal favourites</Text>
@@ -126,10 +126,10 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 32, fontWeight: "800", letterSpacing: -1, marginTop: 6 },
   add: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.surfaceElevated, alignItems: "center", justifyContent: "center" },
   shortcuts: { gap: 10, marginBottom: 30 },
-  liked: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: "#29213A", flexDirection: "row", alignItems: "center", gap: 12 },
+  liked: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: "#1B1E23", flexDirection: "row", alignItems: "center", gap: 12 },
   heart: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
   downloads: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.border },
-  downloadIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#182D2A", alignItems: "center", justifyContent: "center" },
+  downloadIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#20242A", alignItems: "center", justifyContent: "center" },
   shortcutTitle: { color: colors.text, fontSize: 13, fontWeight: "700" },
   shortcutSub: { color: colors.muted, fontSize: 11, marginTop: 4 },
   statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingVertical: 17, marginBottom: 27 },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   statLabel: { color: colors.subtle, fontSize: 7, fontWeight: "800", letterSpacing: 1 },
   statDivider: { width: 1, height: 28, backgroundColor: colors.border },
   localPlaylist: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, backgroundColor: colors.surface, borderRadius: 15, marginBottom: 8 },
-  localPlaylistIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
+  localPlaylistIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "rgba(235,239,245,0.08)", alignItems: "center", justifyContent: "center" },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: 22 },
   modalCard: { backgroundColor: colors.surfaceElevated, borderRadius: 22, borderWidth: 1, borderColor: colors.border, padding: 20 },
   modalEyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   modalCancel: { paddingHorizontal: 14, paddingVertical: 11 },
   modalCancelText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
   modalCreate: { paddingHorizontal: 15, paddingVertical: 11, borderRadius: 12, backgroundColor: colors.accent },
-  modalCreateText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
+  modalCreateText: { color: "#111317", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 28 },
   playlistGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 18 },
   playlist: { width: "48%" },

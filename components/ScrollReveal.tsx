@@ -1,42 +1,64 @@
-import { useMemo, useState, type PropsWithChildren } from "react";
-import { Animated, Dimensions, type LayoutChangeEvent } from "react-native";
+import { useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
+import { Animated, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 
 type Props = PropsWithChildren<{
   scrollY: Animated.Value;
   delay?: number;
 }>;
 
-const VIEWPORT_HEIGHT = Dimensions.get("window").height;
-
 export function ScrollReveal({ children, scrollY, delay = 0 }: Props) {
-  const [top, setTop] = useState(0);
+  const { height: viewportHeight } = useWindowDimensions();
+  const [top, setTop] = useState<number | null>(null);
+  const entrance = useRef(new Animated.Value(0)).current;
 
   const onLayout = (event: LayoutChangeEvent) => {
     setTop(event.nativeEvent.layout.y);
   };
 
-  const animatedStyle = useMemo(() => {
-    if (top <= VIEWPORT_HEIGHT) {
-      return { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] };
+  useEffect(() => {
+    if (top === null) return;
+    if (top <= viewportHeight) {
+      entrance.setValue(0);
+      const animation = Animated.timing(entrance, {
+        toValue: 1,
+        duration: 420,
+        delay,
+        useNativeDriver: true
+      });
+      animation.start();
+      return () => animation.stop();
     }
-    const start = Math.max(0, top - VIEWPORT_HEIGHT + delay);
-    const finish = Math.max(start + 1, top - VIEWPORT_HEIGHT * 0.58 + delay);
-    const progress = scrollY.interpolate({
+    entrance.setValue(1);
+  }, [delay, entrance, top, viewportHeight]);
+
+  const scrollProgress = useMemo(() => {
+    if (top === null || top <= viewportHeight) return null;
+    const start = Math.max(0, top - viewportHeight + 72 + delay);
+    const finish = Math.max(start + 1, top - viewportHeight * 0.58 + delay);
+    return scrollY.interpolate({
       inputRange: [start, finish],
       outputRange: [0, 1],
       extrapolate: "clamp"
     });
-    return {
-      opacity: progress,
-      transform: [
-        { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
-        { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.985, 1] }) }
-      ]
-    };
-  }, [delay, scrollY, top]);
+  }, [delay, scrollY, top, viewportHeight]);
+
+  const opacity = scrollProgress ? Animated.multiply(entrance, scrollProgress) : entrance;
+  const entranceOffset = entrance.interpolate({
+    inputRange: [0, 1],
+    outputRange: [18, 0]
+  });
+  const scrollOffset = scrollProgress
+    ? scrollProgress.interpolate({ inputRange: [0, 1], outputRange: [20, 0], extrapolate: "clamp" })
+    : 0;
 
   return (
-    <Animated.View onLayout={onLayout} style={animatedStyle}>
+    <Animated.View
+      onLayout={onLayout}
+      style={{
+        opacity,
+        transform: [{ translateY: typeof scrollOffset === "number" ? entranceOffset : Animated.add(entranceOffset, scrollOffset) }]
+      }}
+    >
       {children}
     </Animated.View>
   );

@@ -10,7 +10,7 @@ import { colors } from "../theme/colors";
 export default function QueueScreen() {
   const queue = usePlayerStore((s) => s.queue);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
-  const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
+  const removeQueueItem = usePlayerStore((s) => s.removeQueueItem);
   const moveQueueTrack = usePlayerStore((s) => s.moveQueueTrack);
   const clearQueue = usePlayerStore((s) => s.clearQueue);
   const { playTrack } = useAudioEngine();
@@ -27,16 +27,16 @@ export default function QueueScreen() {
         {queue.map((track, index) => {
           const isCurrent = track.id === currentTrack?.id;
           return (
-            <View key={track.id} style={[styles.row, isCurrent && styles.current]}>
+            <View key={`${track.id}-${index}`} style={[styles.row, isCurrent && styles.current]}>
               <Artwork uri={track.artwork} size={48} radius={11} />
               <Pressable style={{ flex: 1 }} onPress={() => { void playTrack(track, queue).then(() => router.back()).catch((error: unknown) => Alert.alert("Playback failed", error instanceof Error ? error.message : "Try again.")); }}>
                 <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
-                <Text numberOfLines={1} style={styles.artist}>{isCurrent ? "NOW PLAYING · " : ""}{track.artist}</Text>
+                <Text numberOfLines={1} style={styles.artist}>{isCurrent ? "NOW PLAYING · " : ""}{track.artistCredited === false ? (track.uploader ? `Uploaded by ${track.uploader}` : "Artist credit unavailable") : track.artist}</Text>
               </Pressable>
               <View style={styles.actions}>
                 <Pressable disabled={index === 0} onPress={() => moveQueueTrack(index, index - 1)} style={styles.action}><Ionicons name="chevron-up" size={17} color={index === 0 ? colors.subtle : colors.muted} /></Pressable>
                 <Pressable disabled={index === queue.length - 1} onPress={() => moveQueueTrack(index, index + 1)} style={styles.action}><Ionicons name="chevron-down" size={17} color={index === queue.length - 1 ? colors.subtle : colors.muted} /></Pressable>
-                {!isCurrent ? <Pressable onPress={() => removeFromQueue(track.id)} style={styles.action}><Ionicons name="close" size={18} color={colors.muted} /></Pressable> : null}
+                {!isCurrent ? <Pressable onPress={() => removeQueueItem(index)} style={styles.action}><Ionicons name="close" size={18} color={colors.muted} /></Pressable> : null}
               </View>
             </View>
           );
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   caption: { color: colors.subtle, fontSize: 11, marginBottom: 14 },
   list: { paddingBottom: 28 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 15, marginBottom: 7, backgroundColor: colors.surface },
-  current: { borderWidth: 1, borderColor: "rgba(198,167,255,0.3)", backgroundColor: "rgba(198,167,255,0.07)" },
+  current: { borderWidth: 1, borderColor: "rgba(235,239,245,0.18)", backgroundColor: "rgba(235,239,245,0.045)" },
   trackTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   artist: { color: colors.muted, fontSize: 10, marginTop: 4 },
   actions: { flexDirection: "row", alignItems: "center", gap: 1 },

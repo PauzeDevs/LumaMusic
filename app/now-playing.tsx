@@ -1,19 +1,23 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { Alert, Image, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Alert, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
+import { Artwork } from "../components/Artwork";
+import { EntranceAnimation } from "../components/EntranceAnimation";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
 function formatTime(seconds: number) {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
-  return Math.floor(safeSeconds / 60) + ":" + String(safeSeconds % 60).padStart(2, "0");
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  return `${Math.floor(safeSeconds / 60)}:${String(safeSeconds % 60).padStart(2, "0")}`;
 }
 
 export default function NowPlayingScreen() {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const artworkSize = Math.max(220, Math.min(windowWidth - 44, windowHeight * 0.39));
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -28,7 +32,8 @@ export default function NowPlayingScreen() {
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
-  const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
+  const trackDuration = (track?.durationMs ?? 0) / 1000;
+  const duration = Number.isFinite(playbackDuration) && playbackDuration > 0 ? playbackDuration : Number.isFinite(trackDuration) ? trackDuration : 0;
   const [progressWidth, setProgressWidth] = useState(0);
   const [progressLeft, setProgressLeft] = useState(0);
   const progressRef = useRef<View>(null);
@@ -67,19 +72,19 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.header}>
+      <EntranceAnimation><View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text style={styles.headerTitle}>From your discovery</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text numberOfLines={1} style={styles.headerTitle}>{track.source === "audius" ? "Streaming from Audius" : "From your library"}</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
-      </View>
-      <View style={styles.main}>
-        <View style={styles.artFrame}>
-          <Image source={{ uri: track.artwork }} style={styles.artwork} />
+      </View></EntranceAnimation>
+      <EntranceAnimation delay={80} style={{ flex: 1 }}><View style={styles.main}>
+        <View style={[styles.artFrame, { width: artworkSize, height: artworkSize }]}>
+          <Artwork uri={track.artwork} size={artworkSize} radius={25} />
         </View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
-            <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
+            <Text numberOfLines={1} style={styles.artist}>{track.artistCredited === false ? (track.uploader ? `Uploaded by ${track.uploader}` : "Artist credit unavailable") : track.artist}</Text>
           </View>
           <Pressable style={styles.like} onPress={() => toggleLike(track)}>
             <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={colors.accent} />
@@ -90,14 +95,14 @@ export default function NowPlayingScreen() {
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
             <View style={[styles.progressThumb, { left: `${progress}%` }]} />
           </View>
-          <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
+          <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{duration > 0 && Number.isFinite(duration) ? formatTime(duration) : "--:--"}</Text></View>
         </View>
         {isBuffering ? <Text style={styles.status}>Buffering audio…</Text> : null}
         {playbackError ? <Text style={styles.error}>{playbackError}</Text> : null}
         <View style={styles.controls}>
           <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
           <Pressable onPress={() => { void playPrevious(); }}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
-          <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
+          <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#111317" /></Pressable>
           <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
           <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
@@ -105,8 +110,8 @@ export default function NowPlayingScreen() {
           <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
           <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
         </View>
-      </View>
-      <View style={styles.bottom}>
+      </View></EntranceAnimation>
+      <EntranceAnimation delay={180}><View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
@@ -117,33 +122,33 @@ export default function NowPlayingScreen() {
         <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing are managed by your device audio settings.")}>
           <Ionicons name="bluetooth" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
         </Pressable>
-      </View>
-      <Text style={styles.disclaimer}>Streaming provided by Audius · Track availability depends on source permissions</Text>
+      </View></EntranceAnimation>
+      <EntranceAnimation delay={240}><Text style={styles.disclaimer}>Streaming provided by Audius · Track availability depends on source permissions</Text></EntranceAnimation>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
-  header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  headerButton: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
-  headerCopy: { alignItems: "center", gap: 3 },
+  header: { minHeight: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  headerButton: { width: 42, height: 42, flexShrink: 0, alignItems: "center", justifyContent: "center" },
+  headerCopy: { flex: 1, minWidth: 0, alignItems: "center", gap: 4 },
   overline: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
-  headerTitle: { color: colors.muted, fontSize: 11 },
+  headerTitle: { color: colors.muted, fontSize: 12, fontWeight: "600", maxWidth: "100%", textAlign: "center" },
   main: { flex: 1, justifyContent: "center" },
-  artFrame: { width: "100%", aspectRatio: 1, borderRadius: 25, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 30 },
+  artFrame: { alignSelf: "center", borderRadius: 25, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 24 },
   artwork: { width: "100%", height: "100%" },
   trackInfo: { flexDirection: "row", alignItems: "center", gap: 16 },
   trackTitle: { color: colors.text, fontSize: 23, fontWeight: "800", letterSpacing: -0.6 },
   artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
   like: { padding: 8 },
   progressArea: { marginTop: 28 },
-  progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
+  progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292D34", overflow: "visible", position: "relative" },
   progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
   progressThumb: { position: "absolute", width: 12, height: 12, borderRadius: 6, backgroundColor: colors.text, top: -4, marginLeft: -6, borderWidth: 2, borderColor: colors.accent },
   timeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
-  time: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
+  time: { color: colors.subtle, fontSize: 12, lineHeight: 18, fontVariant: ["tabular-nums"], minWidth: 38 },
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
@@ -151,9 +156,9 @@ const styles = StyleSheet.create({
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 18 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottom: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 15, flexWrap: "wrap" },
-  bottomAction: { flexDirection: "row", alignItems: "center", gap: 7 },
-  bottomText: { color: colors.muted, fontSize: 11 },
-  disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, paddingBottom: 10 },
+  bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 14, gap: 2 },
+  bottomAction: { flex: 1, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
+  bottomText: { color: colors.muted, fontSize: 10, fontWeight: "600" },
+  disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, lineHeight: 14, paddingBottom: 10 },
   empty: { color: colors.text, textAlign: "center", marginTop: 80 }
 });

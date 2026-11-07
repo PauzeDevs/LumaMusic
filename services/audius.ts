@@ -6,6 +6,8 @@ const APP_NAME = "LumaMusic";
 type RawAudiusTrack = {
   id?: string;
   title?: string;
+  artist_name?: string;
+  artistName?: string;
   duration?: number;
   is_streamable?: boolean | string;
   isStreamable?: boolean | string;
@@ -18,7 +20,7 @@ type RawAudiusTrack = {
   artwork?: { _150x150?: string; _480x480?: string; _1000x1000?: string } | string | null;
   cover_art?: string | null;
   user?: { name?: string; handle?: string } | null;
-  artists?: Array<{ name?: string; artist_name?: string; handle?: string }>;
+  artists?: Array<{ name?: string; artist_name?: string; handle?: string; roles?: string[] }>;
 };
 
 type RawAudiusUser = {
@@ -54,7 +56,7 @@ function mapArtist(raw: RawAudiusUser) {
     name: raw.name ?? raw.handle ?? "Unknown artist",
     handle: raw.handle ?? "",
     bio: raw.bio ?? "",
-    artwork: picture ?? "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=900&q=85",
+    artwork: picture ?? "",
     followerCount: raw.follower_count ?? 0,
     trackCount: raw.track_count ?? 0
   };
@@ -65,7 +67,7 @@ function mapPlaylist(raw: RawAudiusPlaylist) {
   const artworkObject = typeof raw.artwork === "object" && raw.artwork !== null ? raw.artwork : null;
   const artwork = artworkObject?._480x480 ?? artworkObject?._1000x1000 ??
     (typeof raw.artwork === "string" ? raw.artwork : null) ??
-    "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=900&q=85";
+    "";
   return {
     id: "audius:" + raw.id,
     source: "audius" as const,
@@ -88,21 +90,36 @@ function mapTrack(raw: RawAudiusTrack): MusicTrack | null {
     artworkObject?._1000x1000 ??
     (typeof raw.artwork === "string" ? raw.artwork : null) ??
     raw.cover_art ??
-    "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=900&q=85";
+    "";
 
   const streamFlag = raw.is_streamable ?? raw.isStreamable;
   const isStreamable = streamFlag === true || streamFlag === "true";
   const gatedFlag = raw.is_stream_gated ?? raw.isStreamGated;
   const isStreamGated = gatedFlag === true || gatedFlag === "true";
 
+  const roleCreditedArtists = raw.artists?.filter((artist) =>
+    artist.roles?.some((role) => /artist|performer|singer|vocalist/i.test(role))
+  ) ?? [];
+  const legacyArtistEntries = raw.artists?.filter((artist) => !artist.roles?.length) ?? [];
+  const creditedArtist = raw.artist_name?.trim() || raw.artistName?.trim() ||
+    roleCreditedArtists.map((artist) => artist.name ?? artist.artist_name ?? artist.handle).filter((name): name is string => Boolean(name?.trim())).join(", ") ||
+    legacyArtistEntries.map((artist) => artist.name ?? artist.artist_name ?? artist.handle).find((name) => Boolean(name?.trim())) ||
+    undefined;
+  const uploader = raw.user?.name?.trim() || raw.user?.handle?.trim() || undefined;
+  const durationSeconds = typeof raw.duration === "number" && Number.isFinite(raw.duration)
+    ? Math.max(0, raw.duration)
+    : 0;
+
   return {
     id: "audius:" + raw.id,
     source: "audius",
     sourceTrackId: raw.id,
     title: raw.title,
-    artist: raw.user?.name ?? raw.user?.handle ?? raw.artists?.[0]?.name ?? raw.artists?.[0]?.artist_name ?? raw.artists?.[0]?.handle ?? "Unknown artist",
+    artist: creditedArtist ?? "Artist credit unavailable",
+    uploader,
+    artistCredited: Boolean(creditedArtist),
     artwork,
-    durationMs: Math.max(0, Math.round((raw.duration ?? 0) * 1000)),
+    durationMs: Math.round(durationSeconds * 1000),
     isStreamable: isStreamable && !isStreamGated,
     permalink: raw.permalink,
     genre: raw.genre,
@@ -117,18 +134,28 @@ async function request<T>(path: string, params: Record<string, string | number |
     if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
   });
 
-  const response = await fetch(url.toString(), {
-    headers: { Accept: "application/json" }
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    });
 
-  if (!response.ok) {
-    throw new Error("Audius request failed (" + response.status + "). Please try again.");
+    if (!response.ok) {
+      throw new Error("Audius request failed (" + response.status + "). Please try again.");
+    }
+
+    const payload = (await response.json()) as AudiusResponse<T>;
+    if (payload.error) throw new Error(payload.message ?? payload.error);
+    if (payload.data === undefined) throw new Error("Audius returned an unexpected response.");
+    return payload.data;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("Audius request timed out. Check your connection and try again.");
+    throw new Error(error instanceof Error ? error.message : "Could not connect to Audius.");
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const payload = (await response.json()) as AudiusResponse<T>;
-  if (payload.error) throw new Error(payload.message ?? payload.error);
-  if (payload.data === undefined) throw new Error("Audius returned an unexpected response.");
-  return payload.data;
 }
 
 export async function getTrendingTracks(limit = 20, offset = 0): Promise<MusicTrack[]> {

@@ -14,6 +14,7 @@ export default function LyricsScreen() {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
+  const requestVersion = useRef(0);
   const activeIndex = useMemo(() => {
     if (lyrics.status !== "available") return -1;
     let active = -1;
@@ -22,18 +23,22 @@ export default function LyricsScreen() {
   }, [lyrics, position]);
 
   useEffect(() => {
-    let alive = true;
-    if (!track) { setLyrics({ status: "not_found" }); return () => { alive = false; }; }
+    if (!track) { setLyrics({ status: "not_found" }); return; }
+    let cancelled = false;
+    const controller = new AbortController();
+    const version = ++requestVersion.current;
     setLyrics({ status: "loading" });
-    getLyrics(track).then((result) => { if (alive) setLyrics(result); });
-    return () => { alive = false; };
+    getLyrics(track, controller.signal).then((result) => {
+      if (!cancelled && requestVersion.current === version) setLyrics(result);
+    });
+    return () => { cancelled = true; controller.abort(); };
   }, [track?.id]);
 
   useEffect(() => {
     if (activeIndex >= 0) scrollRef.current?.scrollTo({ y: Math.max(0, activeIndex * 66 - 170), animated: true });
   }, [activeIndex]);
 
-  const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
+  const retry = () => { if (track) { const version = ++requestVersion.current; const controller = new AbortController(); setLyrics({ status: "loading" }); getLyrics(track, controller.signal).then((result) => { if (requestVersion.current === version) setLyrics(result); }); } };
   const openAttribution = () => {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
@@ -100,7 +105,7 @@ const styles = StyleSheet.create({
   topFadeSpace: { height: 170 },
   bottomFadeSpace: { height: 220 },
   lyricLine: { color: "rgba(255,255,255,0.27)", fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
-  activeLine: { color: "#FFFFFF", fontSize: 27, lineHeight: 36, textShadowColor: "rgba(198,167,255,0.22)", textShadowRadius: 18 },
+  activeLine: { color: "#FFFFFF", fontSize: 27, lineHeight: 36, textShadowColor: "rgba(235,239,245,0.10)", textShadowRadius: 18 },
   pastLine: { color: "rgba(255,255,255,0.14)" },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
   providerText: { color: colors.subtle, fontSize: 9, textAlign: "center" },

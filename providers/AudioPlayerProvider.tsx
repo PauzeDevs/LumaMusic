@@ -55,6 +55,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     });
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus]);
 
+  useEffect(() => {
+    if (status.error) setPlaybackError(status.error);
+  }, [status.error, setPlaybackError]);
+
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
   }, []);
