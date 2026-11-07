@@ -1,5 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
+import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
+import { useRef } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,11 +11,13 @@ import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh
 import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
+import { ScrollReveal } from "../../components/ScrollReveal";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function ListenScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
     queryKey: ["audius", "trending", 20],
     queryFn: () => getTrendingTracks(20, 0)
@@ -36,8 +39,8 @@ export default function ListenScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
-        <View style={styles.topline}>
+      <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
+        <ScrollReveal scrollY={scrollY}><View style={styles.topline}>
           <View>
             <Text style={styles.eyebrow}>YOUR SOUND, YOUR SPACE</Text>
             <Text style={styles.greeting}>Good evening.</Text>
