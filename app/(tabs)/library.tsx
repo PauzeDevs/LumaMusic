@@ -37,8 +37,8 @@ export default function LibraryScreen() {
             <Text style={styles.title}>Your library.</Text>
           </View>
           <Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
-        </View>
-        <View style={styles.shortcuts}>
+        </View></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><View style={styles.shortcuts}>
           <Pressable style={styles.liked} onPress={() => likedTracks.length ? void playTrack(likedTracks[0], likedTracks).catch((err: unknown) => Alert.alert("Couldn’t play liked songs", err instanceof Error ? err.message : "Try again.")) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
             <View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View>
             <View style={{ flex: 1 }}>
@@ -55,15 +55,15 @@ export default function LibraryScreen() {
             </View>
             <Ionicons name="chevron-forward" size={17} color={colors.muted} />
           </Pressable>
-        </View>
-        <View style={styles.statsCard}>
+        </View></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><View style={styles.statsCard}>
           <View style={styles.stat}><Text style={styles.statValue}>{recentTracks.length}</Text><Text style={styles.statLabel}>RECENT TRACKS</Text></View>
           <View style={styles.statDivider} />
           <View style={styles.stat}><Text style={styles.statValue}>{likedTracks.length}</Text><Text style={styles.statLabel}>LIKED SONGS</Text></View>
           <View style={styles.statDivider} />
           <View style={styles.stat}><Text style={styles.statValue}>{localPlaylists.length}</Text><Text style={styles.statLabel}>PLAYLISTS</Text></View>
-        </View>
-        <View style={styles.section}>
+        </View></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} />
           {localPlaylists.length === 0 ? <Text style={styles.note}>Build your own collections. They stay on this device.</Text> : localPlaylists.map((playlist) => (
             <View key={playlist.id} style={styles.localPlaylist}>
@@ -72,8 +72,8 @@ export default function LibraryScreen() {
               <Pressable onPress={() => Alert.alert(playlist.name, "Manage this local playlist?", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => useLibraryStore.getState().deletePlaylist(playlist.id) }])}><Ionicons name="ellipsis-horizontal" size={19} color={colors.muted} /></Pressable>
             </View>
           ))}
-        </View>
-        <View style={styles.section}>
+        </View></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Discover playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           {playlistsLoading ? <Text style={styles.note}>Finding playlists…</Text> : null}
           {playlistsError ? <Text style={styles.note}>Could not load playlists right now.</Text> : null}
@@ -87,18 +87,18 @@ export default function LibraryScreen() {
               </Pressable>
             ))}
           </View>
-        </View>
-        <View style={styles.section}>
+        </View></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Liked songs" />
           {likedTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={likedTracks} />)}
-        </View>
-        <View style={styles.section}>
+        </View></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Recently played" />
           {recentTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={recentTracks} />)}
           {recentTracks.length === 0 ? <Text style={styles.note}>Tracks you play will appear here.</Text> : null}
-        </View>
-        <Text style={styles.note}>Favourites and listening history are saved on this device. Playlists and local music scanning are still being built.</Text>
-      </ScrollView>
+        </View></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><Text style={styles.note}>Favourites and listening history are saved on this device. Playlists and local music scanning are still being built.</Text></ScrollReveal>
+      </Animated.ScrollView>
       <Modal visible={createVisible} transparent animationType="fade" onRequestClose={() => setCreateVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
