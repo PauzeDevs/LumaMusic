@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useState } from "react";
+import { PanResponder, useMemo, useRef, useState } from "react";
 import { Alert, Image, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
@@ -29,6 +29,19 @@ export default function NowPlayingScreen() {
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
   const [progressWidth, setProgressWidth] = useState(0);
+  const [progressLeft, setProgressLeft] = useState(0);
+  const progressRef = useRef<View>(null);
+  const seekFromScreenX = (screenX: number) => {
+    if (progressWidth <= 0 || duration <= 0) return;
+    const fraction = Math.max(0, Math.min(1, (screenX - progressLeft) / progressWidth));
+    void seekTo(duration * fraction);
+  };
+  const progressPanResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (_event, gesture) => seekFromScreenX(gesture.x0),
+    onPanResponderMove: (_event, gesture) => seekFromScreenX(gesture.moveX)
+  }), [progressWidth, progressLeft, duration, seekTo]);
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
@@ -73,16 +86,9 @@ export default function NowPlayingScreen() {
           </Pressable>
         </View>
         <View style={styles.progressArea}>
-          <View style={styles.progressTrack} onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)}>
+          <View ref={progressRef} style={styles.progressTrack} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
-            <Pressable
-              style={styles.progressHitArea}
-              onPress={(event) => {
-                if (progressWidth > 0) void seekTo(duration * Math.max(0, Math.min(1, event.nativeEvent.locationX / progressWidth)));
-              }}
-              accessibilityRole="adjustable"
-              accessibilityLabel="Seek through track"
-            />
+            <View style={[styles.progressThumb, { left: `${progress}%` }]} />
           </View>
           <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
         </View>
@@ -134,6 +140,7 @@ const styles = StyleSheet.create({
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
   progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
+  progressThumb: { position: "absolute", width: 12, height: 12, borderRadius: 6, backgroundColor: colors.text, top: -4, marginLeft: -6, borderWidth: 2, borderColor: colors.accent },
   timeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   time: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
