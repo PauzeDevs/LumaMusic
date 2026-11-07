@@ -16,7 +16,10 @@ export function ScrollReveal({ children, scrollY, delay = 0 }: Props) {
   };
 
   const animatedStyle = useMemo(() => {
-    const start = Math.max(0, top - VIEWPORT_HEIGHT * 0.92 + delay);
+    if (top <= VIEWPORT_HEIGHT) {
+      return { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] };
+    }
+    const start = Math.max(0, top - VIEWPORT_HEIGHT + delay);
     const finish = Math.max(start + 1, top - VIEWPORT_HEIGHT * 0.58 + delay);
     const progress = scrollY.interpolate({
       inputRange: [start, finish],
