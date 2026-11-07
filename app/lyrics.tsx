@@ -22,14 +22,6 @@ export default function LyricsScreen() {
     return active;
   }, [lyrics, position]);
 
-  const loadLyrics = useCallback(async (targetTrack: NonNullable<typeof track>) => {
-    const version = ++requestVersion.current;
-    const controller = new AbortController();
-    setLyrics({ status: "loading" });
-    const result = await getLyrics(targetTrack, controller.signal);
-    if (requestVersion.current === version) setLyrics(result);
-    return () => controller.abort();
-  }, []);
   useEffect(() => {
     if (!track) { setLyrics({ status: "not_found" }); return; }
     let cancelled = false;
