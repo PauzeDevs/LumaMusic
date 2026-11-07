@@ -69,7 +69,7 @@ export default function SearchScreen() {
             </Pressable>
           ))}
         </ScrollView>
-        </ScrollView></ScrollReveal>
+        </ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{heading}</Text>
           <Text style={styles.count}>{count} {activeFilter.toLowerCase()}</Text>
