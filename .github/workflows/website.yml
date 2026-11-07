@@ -6,6 +6,7 @@ on:
     paths:
       - "website/**"
       - "assets/lumamusic-soundstage.svg"
+      - "assets/lumamusic-logo.svg"
       - ".github/workflows/website.yml"
   workflow_dispatch:
 
@@ -36,6 +37,7 @@ jobs:
           mkdir -p site/assets
           cp -R website/. site/
           cp assets/lumamusic-soundstage.svg site/assets/lumamusic-soundstage.svg
+          cp assets/lumamusic-logo.svg site/assets/lumamusic-logo.svg
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
