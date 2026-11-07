@@ -69,7 +69,8 @@ export default function SearchScreen() {
             </Pressable>
           ))}
         </ScrollView>
-        <View style={styles.sectionHeader}>
+        </ScrollView></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{heading}</Text>
           <Text style={styles.count}>{count} {activeFilter.toLowerCase()}</Text>
         </View>
@@ -92,7 +93,8 @@ export default function SearchScreen() {
           </View>
         ) : null}
         <Text style={styles.note}>Search and streaming results are provided by Audius. Track availability varies by artist and permissions.</Text>
-      </ScrollView>
+        </ScrollReveal>
+      </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
     </SafeAreaView>
   );
