@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { Alert, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Alert, Dimensions, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { Artwork } from "../components/Artwork";
@@ -75,7 +75,7 @@ export default function NowPlayingScreen() {
       </View>
       <View style={styles.main}>
         <View style={styles.artFrame}>
-          <Artwork uri={track.artwork} size={340} radius={25} />
+          <Artwork uri={track.artwork} size={Dimensions.get("window").width - 44} radius={25} />
         </View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
