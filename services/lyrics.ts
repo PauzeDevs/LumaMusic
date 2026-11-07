@@ -46,7 +46,7 @@ export async function getLyrics(track: MusicTrack, signal?: AbortSignal): Promis
     durationMs: String(track.durationMs ?? 0)
   });
   try {
-    const response = await fetch(`${endpoint.replace(/\/$/, "")}/v1/lyrics?${params.toString()}`);
+    const response = await fetch(`${endpoint.replace(/\/$/, "")}/v1/lyrics?${params.toString()}`, { signal });
     if (response.status === 404) return { status: "not_found" };
     if (response.status === 403) return { status: "restricted" };
     if (!response.ok) return { status: "error" };
