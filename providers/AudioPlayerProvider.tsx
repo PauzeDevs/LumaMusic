@@ -27,6 +27,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playbackRequestRef = useRef(0);
   const setTrack = usePlayerStore((state) => state.setTrack);
   const setPlaybackStatus = usePlayerStore((state) => state.setPlaybackStatus);
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
@@ -54,6 +55,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       playbackError: status.error ?? null
     });
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus]);
+
+  useEffect(() => {
+    if (status.error) setPlaybackError(status.error);
+  }, [status.error, setPlaybackError]);
 
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
@@ -85,6 +90,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       throw new Error("This track is not available for streaming through Audius.");
     }
 
+    const requestId = ++playbackRequestRef.current;
     try {
       setPlaybackError(null);
       setTrack(track, nextQueue);
