@@ -107,7 +107,7 @@ export default function NowPlayingScreen() {
         </View>
       </View>
       <View style={styles.bottom}>
-        <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Up next", queue.map((item, index) => (index + 1) + ". " + item.title + " · " + item.artist).join("\n") || "Your queue is empty.")}>
+        <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
         <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? "LumaMusic") })}>
