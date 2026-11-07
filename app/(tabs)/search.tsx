@@ -1,11 +1,12 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArtistRow } from "../../components/ArtistRow";
 import { PlaylistRow } from "../../components/PlaylistRow";
 import { TrackRow } from "../../components/TrackRow";
+import { ScrollReveal } from "../../components/ScrollReveal";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { getTrendingTracks, searchAudiusArtists, searchAudiusPlaylists, searchAudiusTracks } from "../../services/audius";
@@ -14,6 +15,7 @@ const filters = ["All", "Tracks", "Artists", "Playlists"];
 
 export default function SearchScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
@@ -52,8 +54,8 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
-        <Text style={styles.eyebrow}>FIND YOUR NEXT FAVOURITE</Text>
+      <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
+        <ScrollReveal scrollY={scrollY}><Text style={styles.eyebrow}>FIND YOUR NEXT FAVOURITE</Text>
         <Text style={styles.title}>Search.</Text>
         <View style={styles.inputWrap}>
           <Ionicons name="search" size={19} color={colors.muted} />
