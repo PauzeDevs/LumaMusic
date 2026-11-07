@@ -1,5 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import { colors } from "../theme/colors";
 import { Artwork } from "./Artwork";
@@ -25,8 +26,11 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 
   return (
     <View style={styles.shell}>
+      <BlurView intensity={48} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+      <View pointerEvents="none" style={styles.shellHighlight} />
       {track ? (
         <View style={styles.mini}>
+          <BlurView intensity={58} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
           <View pointerEvents="none" style={styles.glassHighlight} />
           <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}>
             <Artwork uri={track.artwork} size={42} radius={10} />
@@ -58,8 +62,9 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  shell: { backgroundColor: "rgba(8,9,11,0.94)", borderTopWidth: 1, borderTopColor: "rgba(235,239,245,0.10)", paddingTop: 9, paddingBottom: 9 },
-  mini: { height: 60, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 10, borderRadius: 20, backgroundColor: "rgba(30,33,39,0.76)", borderWidth: 1, borderColor: "rgba(235,239,245,0.14)", shadowColor: "#FFFFFF", shadowOpacity: 0.035, shadowRadius: 16, shadowOffset: { width: 0, height: 5 }, elevation: 3, flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  shell: { backgroundColor: "rgba(8,9,11,0.72)", borderTopWidth: 1, borderTopColor: "rgba(235,239,245,0.10)", paddingTop: 9, paddingBottom: 9 },
+  shellHighlight: { position: "absolute", top: 0, left: 0, right: 0, height: 1, backgroundColor: "rgba(255,255,255,0.16)" },
+  mini: { height: 60, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 10, borderRadius: 20, backgroundColor: "rgba(30,33,39,0.48)", borderWidth: 1, borderColor: "rgba(235,239,245,0.14)", shadowColor: "#FFFFFF", shadowOpacity: 0.035, shadowRadius: 16, shadowOffset: { width: 0, height: 5 }, elevation: 3, flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
   glassHighlight: { position: "absolute", top: 0, left: 14, right: 14, height: 1, backgroundColor: "rgba(255,255,255,0.22)" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
