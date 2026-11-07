@@ -10,3 +10,51 @@
 @media(max-width:800px){.site-header,.site-footer,.hero{width:calc(100% - 40px)}.site-header{height:72px}.main-nav{display:none}.hero{grid-template-columns:1fr;gap:42px;padding:65px 0 78px;min-height:0}.hero h1{font-size:76px;letter-spacing:-5px}.hero-art{max-width:620px;width:100%;justify-self:center}.section{width:calc(100% - 40px)}.features-section{padding:78px 0 88px}.section-heading{grid-template-columns:1fr;gap:18px;margin-bottom:34px}.section-heading .eyebrow{margin:0}.section-heading h2,.catalogue-copy h2{font-size:54px}.section-intro{max-width:480px}.feature-row{grid-template-columns:34px 1fr;gap:12px 16px;padding:23px 0}.feature-description{grid-column:2;max-width:540px}.catalogue-section{padding:78px 20px;grid-template-columns:1fr;gap:32px}.legal-section{padding:82px 0}.site-footer{padding:22px 0;flex-wrap:wrap}.site-footer p{order:3;width:100%;margin:0}.legal-page{padding-top:58px}}
 @media(max-width:440px){.hero h1{font-size:62px}.hero-description{font-size:14px}.hero-facts{gap:20px}.hero-facts div{min-width:calc(50% - 12px)}.section-heading h2,.catalogue-copy h2{font-size:46px}.feature-row h3{font-size:16px}.footer-links{gap:13px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+/* Responsive navigation and layout hardening */
+.site-header{position:sticky;top:0;z-index:50;backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);background:rgba(8,9,13,.82);padding-inline:0}
+.menu-toggle{display:none}
+@media(max-width:900px){
+ .site-header{width:calc(100% - 36px);height:72px;gap:12px}
+ .menu-toggle{display:flex;flex-direction:column;justify-content:center;gap:5px;width:42px;height:42px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.025));cursor:pointer;flex:0 0 auto}
+ .menu-toggle span{display:block;width:16px;height:1.5px;background:#eeeaf5;margin:auto}
+ .main-nav{display:none;position:absolute;top:62px;left:0;right:0;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:17px;background:rgba(18,19,27,.97);box-shadow:0 20px 55px #000b;flex-direction:column;gap:0}
+ .main-nav.is-open{display:flex}
+ .main-nav a{padding:14px 12px;border-radius:10px;font-size:13px}
+ .main-nav a+a{border-top:1px solid rgba(255,255,255,.07)}
+ .source-link{margin-left:auto;padding:10px 11px;white-space:nowrap}
+ .hero{width:calc(100% - 40px);grid-template-columns:minmax(0,1fr);gap:34px;padding:54px 0 70px;min-height:0}
+ .hero-copy{min-width:0}
+ .hero h1{font-size:clamp(52px,12vw,76px);letter-spacing:-.065em;line-height:1.02;overflow-wrap:anywhere}
+ .hero-description{font-size:15px;line-height:1.75;max-width:36rem}
+ .hero-actions{flex-wrap:wrap;gap:10px;margin-top:25px}
+ .hero-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:34px;padding-top:18px}
+ .hero-facts strong{font-size:10px;line-height:1.5}
+ .hero-art{width:100%;max-width:620px;justify-self:center;padding:12px;border-radius:20px}
+ .hero-art figcaption{font-size:8px;gap:8px}
+ .section{width:calc(100% - 40px)}
+ .features-section{padding:72px 0 82px}
+ .section-heading{display:block;margin-bottom:32px}
+ .section-heading .eyebrow{margin-bottom:16px}
+ .section-heading h2,.catalogue-copy h2{font-size:clamp(42px,10vw,58px);letter-spacing:-.065em}
+ .section-intro{margin-top:18px;max-width:34rem}
+ .feature-row{grid-template-columns:30px minmax(0,1fr);gap:10px 14px;padding:22px 0}
+ .feature-row h3{font-size:16px}
+ .feature-description{grid-column:2;font-size:12px}
+ .catalogue-section{padding:72px 20px;grid-template-columns:minmax(0,1fr);gap:28px}
+ .legal-section{padding:76px 0}
+ .site-footer{width:calc(100% - 40px);padding:22px 0;flex-wrap:wrap}
+}
+@media(max-width:520px){
+ .wordmark{font-size:13px;gap:8px}
+ .wordmark-icon{width:30px;height:30px}
+ .source-link{font-size:10px}
+ .hero h1{font-size:clamp(48px,13vw,62px)}
+ .hero-facts{grid-template-columns:1fr 1fr;row-gap:18px}
+ .hero-facts div:last-child{grid-column:1/-1}
+ .button{padding:12px 13px;font-size:10px}
+ .hero-art{padding:9px}
+ .feature-row{grid-template-columns:24px minmax(0,1fr);gap:8px 12px}
+ .legal-links a{grid-template-columns:30px minmax(0,1fr) 20px;gap:6px 10px}
+ .legal-links small{line-height:1.6}
+ .footer-links{gap:13px}
+}
