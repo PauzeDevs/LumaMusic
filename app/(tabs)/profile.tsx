@@ -51,7 +51,7 @@ export default function ProfileScreen() {
               } else {
                 Alert.alert(item.title, "This setting will be connected in a later development phase.");
               }
-            }} style={[styles.setting, index === settings.length - 1 && styles.last]} android_ripple={{ color: "rgba(198,167,255,0.08)" }}>
+            }} style={[styles.setting, index === settings.length - 1 && styles.last]} android_ripple={{ color: "rgba(235,239,245,0.06)" }}>
               <View style={styles.settingIcon}><Ionicons name={item.icon} size={19} color={colors.accent} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.settingTitle}>{item.title}</Text>
@@ -80,25 +80,25 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 33, fontWeight: "800", letterSpacing: -1.2, marginTop: 9 },
   intro: { color: colors.muted, fontSize: 12, marginTop: 5, marginBottom: 22 },
   profileCard: { backgroundColor: "rgba(255,255,255,0.055)", borderRadius: 22, padding: 17, flexDirection: "row", alignItems: "center", gap: 13, borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", marginBottom: 27 },
-  avatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: "rgba(198,167,255,0.16)", borderWidth: 1, borderColor: "rgba(198,167,255,0.24)", alignItems: "center", justifyContent: "center" },
+  avatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: "rgba(235,239,245,0.09)", borderWidth: 1, borderColor: "rgba(235,239,245,0.16)", alignItems: "center", justifyContent: "center" },
   avatarText: { color: colors.accent, fontSize: 19, fontWeight: "800" },
   name: { color: colors.text, fontSize: 14, fontWeight: "700" },
   handle: { color: colors.muted, fontSize: 11, marginTop: 4 },
-  profileBadge: { width: 30, height: 30, borderRadius: 11, backgroundColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
+  profileBadge: { width: 30, height: 30, borderRadius: 11, backgroundColor: "rgba(235,239,245,0.07)", alignItems: "center", justifyContent: "center" },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 11, marginTop: 4 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
   sectionMeta: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
-  nowCard: { backgroundColor: "rgba(166,232,212,0.055)", borderWidth: 1, borderColor: "rgba(166,232,212,0.14)", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
-  nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "rgba(166,232,212,0.1)", alignItems: "center", justifyContent: "center" },
+  nowCard: { backgroundColor: "rgba(235,239,245,0.035)", borderWidth: 1, borderColor: "rgba(235,239,245,0.12)", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
+  nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "rgba(235,239,245,0.07)", alignItems: "center", justifyContent: "center" },
   nowTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   nowSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
   statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: "rgba(255,255,255,0.06)" },
-  statusPillActive: { backgroundColor: "rgba(166,232,212,0.12)" },
+  statusPillActive: { backgroundColor: "rgba(235,239,245,0.09)" },
   statusText: { color: colors.mint, fontSize: 8, fontWeight: "800", letterSpacing: 1 },
   settings: { backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 21, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", paddingHorizontal: 14, overflow: "hidden" },
   setting: { minHeight: 69, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)" },
   last: { borderBottomWidth: 0 },
-  settingIcon: { width: 37, height: 37, borderRadius: 13, backgroundColor: "rgba(198,167,255,0.09)", borderWidth: 1, borderColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
+  settingIcon: { width: 37, height: 37, borderRadius: 13, backgroundColor: "rgba(235,239,245,0.07)", borderWidth: 1, borderColor: "rgba(235,239,245,0.07)", alignItems: "center", justifyContent: "center" },
   settingTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   settingSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
   footerCard: { marginTop: 25, alignItems: "center", gap: 9, padding: 18, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.025)" },
