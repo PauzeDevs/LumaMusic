@@ -1,12 +1,14 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
+import { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { TrackRow } from "../../components/TrackRow";
 import { colors } from "../../theme/colors";
 import { getAudiusPlaylist, getAudiusPlaylistTracks } from "../../services/audius";
+import { enrichTrackWithMusicBrainz, searchMusicBrainzForTracks } from "../../services/musicbrainz";
 
 export default function PlaylistScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -14,6 +16,18 @@ export default function PlaylistScreen() {
   const tracksQuery = useQuery({ queryKey: ["audius", "playlist-tracks", id], queryFn: () => getAudiusPlaylistTracks(id, 50, 0), enabled: Boolean(id) });
   const playlist = playlistQuery.data;
   const tracks = tracksQuery.data ?? [];
+  const metadataQuery = useQuery({
+    queryKey: ["musicbrainz", "playlist-tracks", id, tracks.map((track) => track.id)],
+    queryFn: ({ signal }) => searchMusicBrainzForTracks(tracks, signal),
+    enabled: tracks.length > 0,
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false
+  });
+  const metadata = metadataQuery.data ?? [];
+  const enrichedTracks = useMemo(
+    () => tracks.map((track) => enrichTrackWithMusicBrainz(track, metadata)),
+    [tracks, metadata]
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -36,7 +50,7 @@ export default function PlaylistScreen() {
         </View>
         {tracksQuery.isLoading ? <Text style={styles.message}>Loading tracks…</Text> : null}
         {tracksQuery.error ? <Text style={styles.error}>{tracksQuery.error instanceof Error ? tracksQuery.error.message : "Could not load playlist tracks."}</Text> : null}
-        {tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />)}
+        {enrichedTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={enrichedTracks} />)}
         {!tracksQuery.isLoading && tracks.length === 0 ? <Text style={styles.message}>This playlist has no publicly available tracks.</Text> : null}
       </ScrollView>
     </SafeAreaView>
