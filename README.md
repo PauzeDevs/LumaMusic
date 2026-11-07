@@ -4,6 +4,7 @@
 
 <div align="center">
   <h3>Less noise. More music.</h3>
+  <a href="https://github.com/PauzeDevs/LumaMusic/actions/workflows/ci.yml"><img src="https://github.com/PauzeDevs/LumaMusic/actions/workflows/ci.yml/badge.svg?branch=main" alt="LumaMusic CI status" /></a>
   <p>A music discovery and listening experience built by <a href="https://github.com/PauzeDevs">PauzeDevs</a>.</p>
 </div>
 
