@@ -102,7 +102,7 @@ export default function NowPlayingScreen() {
         <View style={styles.controls}>
           <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
           <Pressable onPress={() => { void playPrevious(); }}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
-          <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
+          <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#111317" /></Pressable>
           <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
           <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
   like: { padding: 8 },
   progressArea: { marginTop: 28 },
-  progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
+  progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292D34", overflow: "visible", position: "relative" },
   progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
   progressThumb: { position: "absolute", width: 12, height: 12, borderRadius: 6, backgroundColor: colors.text, top: -4, marginLeft: -6, borderWidth: 2, borderColor: colors.accent },
