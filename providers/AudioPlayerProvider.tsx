@@ -1,5 +1,5 @@
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
-import { createContext, useCallback, useContext, useEffect, type PropsWithChildren } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, type PropsWithChildren } from "react";
 import { getAudiusStreamUrl } from "../services/audius";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
@@ -11,6 +11,8 @@ type AudioEngineValue = {
   playNext: () => Promise<void>;
   playPrevious: () => Promise<void>;
   seekTo: (seconds: number) => Promise<void>;
+  setPlaybackRate: (rate: number) => void;
+  setSleepTimer: (minutes: number | null) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
 };
@@ -24,9 +26,12 @@ function isPlayable(track: MusicTrack | undefined): track is MusicTrack {
 export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
+  const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setTrack = usePlayerStore((state) => state.setTrack);
   const setPlaybackStatus = usePlayerStore((state) => state.setPlaybackStatus);
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
+  const setPlaybackRateState = usePlayerStore((state) => state.setPlaybackRate);
+  const setSleepTimerMinutesState = usePlayerStore((state) => state.setSleepTimerMinutes);
   const toggleShuffleState = usePlayerStore((state) => state.toggleShuffle);
   const cycleRepeatState = usePlayerStore((state) => state.cycleRepeat);
 
@@ -50,6 +55,31 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     });
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus]);
 
+  useEffect(() => () => {
+    if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
+  }, []);
+
+  const setSleepTimer = useCallback((minutes: number | null) => {
+    if (sleepTimerRef.current) {
+      clearTimeout(sleepTimerRef.current);
+      sleepTimerRef.current = null;
+    }
+    setSleepTimerMinutesState(minutes);
+    if (minutes !== null && minutes > 0) {
+      sleepTimerRef.current = setTimeout(() => {
+        player.pause();
+        sleepTimerRef.current = null;
+        setSleepTimerMinutesState(null);
+      }, minutes * 60_000);
+    }
+  }, [player, setSleepTimerMinutesState]);
+
+  const setPlaybackRate = useCallback((rate: number) => {
+    const safeRate = Math.max(0.5, Math.min(2, rate));
+    player.setPlaybackRate(safeRate, "high");
+    setPlaybackRateState(safeRate);
+  }, [player, setPlaybackRateState]);
+
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[]) => {
     if (!isPlayable(track)) {
       throw new Error("This track is not available for streaming through Audius.");
@@ -62,6 +92,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const sourceTrackId = track.sourceTrackId;
       if (!sourceTrackId) throw new Error("This track is missing its Audius stream ID.");
       player.replace(getAudiusStreamUrl(sourceTrackId));
+      player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
       player.setActiveForLockScreen(true, {
         title: track.title,
         artist: track.artist,
@@ -176,6 +207,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     playNext,
     playPrevious,
     seekTo,
+    setPlaybackRate,
+    setSleepTimer,
     toggleShuffle: toggleShuffleState,
     cycleRepeat: cycleRepeatState
   };

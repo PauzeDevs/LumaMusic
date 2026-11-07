@@ -20,12 +20,14 @@ export default function NowPlayingScreen() {
   const playbackPosition = usePlayerStore((s) => s.playbackPosition);
   const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const playbackError = usePlayerStore((s) => s.playbackError);
+  const playbackRate = usePlayerStore((s) => s.playbackRate);
+  const sleepTimerMinutes = usePlayerStore((s) => s.sleepTimerMinutes);
   const isShuffled = usePlayerStore((s) => s.isShuffled);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const queue = usePlayerStore((s) => s.queue);
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
-  const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo } = useAudioEngine();
+  const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
   const [progressWidth, setProgressWidth] = useState(0);
 
   if (!track) {
@@ -35,13 +37,27 @@ export default function NowPlayingScreen() {
   const liked = likedTracks.some((item) => item.id === track.id);
   const duration = playbackDuration || track.durationMs / 1000;
   const progress = duration > 0 ? Math.min(100, (playbackPosition / duration) * 100) : 0;
+  const cycleSpeed = () => {
+    const speeds = [0.75, 1, 1.25, 1.5, 2];
+    const index = speeds.indexOf(playbackRate);
+    setPlaybackRate(speeds[(index + 1) % speeds.length]);
+  };
+  const chooseSleepTimer = () => Alert.alert("Sleep timer", "Pause playback after", [
+    { text: "15 minutes", onPress: () => setSleepTimer(15) },
+    { text: "30 minutes", onPress: () => setSleepTimer(30) },
+    { text: "45 minutes", onPress: () => setSleepTimer(45) },
+    { text: "1 hour", onPress: () => setSleepTimer(60) },
+    { text: "End of this track", onPress: () => setSleepTimer(-1) },
+    ...(sleepTimerMinutes !== null ? [{ text: "Cancel timer", style: "destructive" as const, onPress: () => setSleepTimer(null) }] : []),
+    { text: "Close", style: "cancel" as const }
+  ]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
         <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text style={styles.headerTitle}>From your discovery</Text></View>
-        <Pressable onPress={() => Alert.alert("Track options", "More track actions will be added in a later release.")} style={styles.headerButton}><Ionicons name="ellipsis-horizontal" size={22} color={colors.text} /></Pressable>
+        <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
         <View style={styles.artFrame}>
@@ -78,6 +94,10 @@ export default function NowPlayingScreen() {
           <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
           <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
           <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
+        </View>
+        <View style={styles.extraControls}>
+          <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
+          <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
         </View>
       </View>
       <View style={styles.bottom}>
@@ -120,6 +140,9 @@ const styles = StyleSheet.create({
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
   play: { width: 66, height: 66, borderRadius: 33, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 18 },
+  extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
   bottom: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 15 },
   bottomAction: { flexDirection: "row", alignItems: "center", gap: 7 },
   bottomText: { color: colors.muted, fontSize: 11 },
