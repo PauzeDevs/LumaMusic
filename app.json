@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "LumaMusic",
+    "icon": "./assets/lumamusic-logo.svg",
     "slug": "luma-music",
     "scheme": "lumamusic",
     "version": "0.1.0",
@@ -29,7 +30,8 @@
     "android": {
       "package": "dev.pauze.lumamusic",
       "adaptiveIcon": {
-        "backgroundColor": "#090A0F"
+        "foregroundImage": "./assets/lumamusic-logo.svg",
+        "backgroundColor": "#180006"
       }
     },
     "experiments": {
