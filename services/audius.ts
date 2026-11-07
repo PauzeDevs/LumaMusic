@@ -20,7 +20,7 @@ type RawAudiusTrack = {
   artwork?: { _150x150?: string; _480x480?: string; _1000x1000?: string } | string | null;
   cover_art?: string | null;
   user?: { name?: string; handle?: string } | null;
-  artists?: Array<{ name?: string; artist_name?: string; handle?: string }>;
+  artists?: Array<{ name?: string; artist_name?: string; handle?: string; roles?: string[] }>;
 };
 
 type RawAudiusUser = {
@@ -97,8 +97,13 @@ function mapTrack(raw: RawAudiusTrack): MusicTrack | null {
   const gatedFlag = raw.is_stream_gated ?? raw.isStreamGated;
   const isStreamGated = gatedFlag === true || gatedFlag === "true";
 
+  const roleCreditedArtists = raw.artists?.filter((artist) =>
+    artist.roles?.some((role) => /artist|performer|singer|vocalist/i.test(role))
+  ) ?? [];
+  const legacyArtistEntries = raw.artists?.filter((artist) => !artist.roles?.length) ?? [];
   const creditedArtist = raw.artist_name?.trim() || raw.artistName?.trim() ||
-    raw.artists?.map((artist) => artist.name ?? artist.artist_name ?? artist.handle).find((name) => Boolean(name?.trim())) ||
+    roleCreditedArtists.map((artist) => artist.name ?? artist.artist_name ?? artist.handle).filter((name): name is string => Boolean(name?.trim())).join(", ") ||
+    legacyArtistEntries.map((artist) => artist.name ?? artist.artist_name ?? artist.handle).find((name) => Boolean(name?.trim())) ||
     undefined;
   const uploader = raw.user?.name?.trim() || raw.user?.handle?.trim() || undefined;
   const durationSeconds = typeof raw.duration === "number" && Number.isFinite(raw.duration)
