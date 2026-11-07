@@ -5,6 +5,7 @@ import { Alert, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindo
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
 import { Artwork } from "../components/Artwork";
+import { EntranceAnimation } from "../components/EntranceAnimation";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
@@ -70,12 +71,12 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.header}>
+      <EntranceAnimation><View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
         <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text numberOfLines={1} style={styles.headerTitle}>{track.source === "audius" ? "Streaming from Audius" : "From your library"}</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
-      </View>
-      <View style={styles.main}>
+      </View></EntranceAnimation>
+      <EntranceAnimation delay={80} style={{ flex: 1 }}><View style={styles.main}>
         <View style={[styles.artFrame, { width: artworkSize, height: artworkSize }]}>
           <Artwork uri={track.artwork} size={artworkSize} radius={25} />
         </View>
@@ -108,8 +109,8 @@ export default function NowPlayingScreen() {
           <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
           <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
         </View>
-      </View>
-      <View style={styles.bottom}>
+      </View></EntranceAnimation>
+      <EntranceAnimation delay={180}><View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
@@ -120,8 +121,8 @@ export default function NowPlayingScreen() {
         <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing are managed by your device audio settings.")}>
           <Ionicons name="bluetooth" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
         </Pressable>
-      </View>
-      <Text style={styles.disclaimer}>Streaming provided by Audius · Track availability depends on source permissions</Text>
+      </View></EntranceAnimation>
+      <EntranceAnimation delay={240}><Text style={styles.disclaimer}>Streaming provided by Audius · Track availability depends on source permissions</Text></EntranceAnimation>
     </SafeAreaView>
   );
 }
