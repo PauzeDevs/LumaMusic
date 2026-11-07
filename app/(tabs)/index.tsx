@@ -48,15 +48,15 @@ export default function ListenScreen() {
           <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profile")}>
             <Text style={styles.avatarText}>P</Text>
           </Pressable>
-        </View>
+        </View></ScrollReveal>
 
-        <Pressable style={styles.searchPrompt} onPress={() => router.push("/(tabs)/search")}>
+        <ScrollReveal scrollY={scrollY} delay={25}><Pressable style={styles.searchPrompt} onPress={() => router.push("/(tabs)/search")}>
           <Ionicons name="search" size={19} color={colors.muted} />
           <Text style={styles.searchText}>Songs, artists, moods...</Text>
           <Ionicons name="options-outline" size={18} color={colors.subtle} />
-        </Pressable>
+        </Pressable></ScrollReveal>
 
-        <View style={styles.hero}>
+        <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
           <Image source={{ uri: tracks[0]?.artwork ?? "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=900&q=85" }} style={styles.heroImage} />
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
@@ -68,9 +68,9 @@ export default function ListenScreen() {
               <Text style={styles.heroButtonText}>Start listening</Text>
             </Pressable>
           </View>
-        </View>
+        </View></ScrollReveal>
 
-        <View style={styles.section}>
+        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Trending playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
           {playlistsError ? <Text style={styles.errorText}>Could not load playlists right now.</Text> : null}
@@ -84,9 +84,9 @@ export default function ListenScreen() {
               </Pressable>
             ))}
           </ScrollView>
-        </View>
+        </View></ScrollReveal>
 
-        <View style={styles.section}>
+        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Trending on Audius" action="Refresh" onPress={() => { void loadTrending(); }} />
           {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
           {error ? (
@@ -97,13 +97,13 @@ export default function ListenScreen() {
           ) : null}
           {!loading && !error && tracks.length === 0 ? <Text style={styles.message}>No tracks are available right now.</Text> : null}
           {!loading && !error ? tracks.slice(0, 6).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
-        </View>
+        </View></ScrollReveal>
 
-        <View style={styles.sourceNote}>
+        <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
           <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
           <Text style={styles.sourceText}>Independent music discovery, powered by Audius.</Text>
-        </View>
-      </ScrollView>
+        </View></ScrollReveal>
+      </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
     </SafeAreaView>
   );
