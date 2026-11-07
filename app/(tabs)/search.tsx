@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   filter: { borderRadius: 20, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 15, paddingVertical: 8 },
   filterActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
-  filterTextActive: { color: "#17111F" },
+  filterTextActive: { color: "#111317" },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "700" },
   count: { color: colors.subtle, fontSize: 11 },
