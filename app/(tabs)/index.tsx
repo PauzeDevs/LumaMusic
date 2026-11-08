@@ -43,7 +43,7 @@ export default function ListenScreen() {
         <ScrollReveal scrollY={scrollY}><View style={styles.topline}>
           <View>
             <Text style={styles.eyebrow}>YOUR SOUND, YOUR SPACE</Text>
-            <Text style={styles.greeting}>Good evening.</Text>
+            <Text style={styles.greeting}>{new Date().getHours() < 12 ? "Good morning." : new Date().getHours() < 18 ? "Good afternoon." : "Good evening."}</Text>
           </View>
           <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profile")}>
             <Text style={styles.avatarText}>P</Text>
@@ -57,7 +57,7 @@ export default function ListenScreen() {
         </Pressable></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
-          <Image source={{ uri: tracks[0]?.artwork ?? "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=900&q=85" }} style={styles.heroImage} />
+          {tracks[0]?.artwork ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
             <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
   searchText: { color: colors.muted, fontSize: 13, flex: 1 },
   hero: { height: 260, borderRadius: 24, overflow: "hidden", marginBottom: 30, backgroundColor: "#252035" },
   heroImage: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%", opacity: 0.65 },
+  heroPlaceholder: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
   heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(8,8,15,0.38)" },
   heroContent: { flex: 1, padding: 22, justifyContent: "flex-end" },
   heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
