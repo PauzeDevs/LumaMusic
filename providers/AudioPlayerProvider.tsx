@@ -79,7 +79,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     setPlaybackRateState(safeRate);
   }, [player, setPlaybackRateState]);
 
-  const playTrack = useCallback(async (track: MusicTrack) => {
+  const playTrack = useCallback(async (track: MusicTrack, _nextQueue?: MusicTrack[]) => {
     if (track.youtubeUrl) {
       setPlaybackError(null);
       useLibraryStore.getState().addRecentTrack(track);
