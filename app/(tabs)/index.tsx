@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getTrendingPlaylists, getTrendingTracks } from "../../services/audius";
+import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { Artwork } from "../../components/Artwork";
@@ -19,12 +19,12 @@ export default function ListenScreen() {
   const { playTrack } = useAudioEngine();
   const scrollY = useRef(new Animated.Value(0)).current;
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
-    queryKey: ["audius", "trending", 20],
-    queryFn: () => getTrendingTracks(20, 0)
+    queryKey: ["youtubeMusic", "trending", 20],
+    queryFn: () => getDiscoveryTracks(20)
   });
   const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
-    queryKey: ["audius", "trending-playlists", 8],
-    queryFn: () => getTrendingPlaylists(8, 0)
+    queryKey: ["youtubeMusic", "trending-playlists", 8],
+    queryFn: () => getFeaturedPlaylists(8)
   });
 
   const startListening = () => {
@@ -71,7 +71,7 @@ export default function ListenScreen() {
         </View></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Trending playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
+          <SectionHeading title="Featured playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
           {playlistsError ? <Text style={styles.errorText}>Could not load playlists right now.</Text> : null}
           {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.message}>No public playlists are available right now.</Text> : null}
@@ -87,11 +87,11 @@ export default function ListenScreen() {
         </View></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Trending on Audius" action="Refresh" onPress={() => { void loadTrending(); }} />
+          <SectionHeading title="Fresh on YouTube Music" action="Refresh" onPress={() => { void loadTrending(); }} />
           {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
           {error ? (
             <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load Audius discovery."}</Text>
+              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load YouTube Music discovery."}</Text>
               <Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable>
             </View>
           ) : null}
@@ -101,7 +101,7 @@ export default function ListenScreen() {
 
         <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
           <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
-          <Text style={styles.sourceText}>Independent music discovery, powered by Audius.</Text>
+          <Text style={styles.sourceText}>Music discovery from YouTube Music.</Text>
         </View></ScrollReveal>
       </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
