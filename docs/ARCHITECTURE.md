@@ -3,14 +3,14 @@
 **Status:** Phase 1 baseline. Implementation details are validated during scaffolding and technical spikes.
 
 ## Architecture overview
-LumaMusic uses a TypeScript React Native client. Audius is the first remote music source. Provider-specific logic stays behind a music-source adapter so additional licensed providers can be added without rewriting screens or the player UI.
+LumaMusic uses a TypeScript React Native client. YouTube Music is the current remote discovery source. Provider-specific logic stays behind a music-source adapter so additional licensed providers can be added without rewriting screens or the player UI.
 
 Data flow:
 - Expo Router renders screens and reusable components.
 - Application/domain layer owns search, library, queue, and playback use cases.
 - TanStack Query owns remote data and caching.
 - Zustand owns transient player and UI state.
-- MusicSource adapter talks to Audius.
+- MusicSource adapter talks to YouTube Music discovery.
 - AudioEngine adapter wraps expo-audio and owns the shared native player.
 - Zustand persist middleware with AsyncStorage stores favourites and recent tracks locally.
 
@@ -21,7 +21,7 @@ Data flow:
 | Mobile app | React Native + Expo | Android and iOS |
 | Language | TypeScript | Strict mode |
 | Navigation | Expo Router | File-based routes |
-| Audius integration | Audius REST API | Read-only endpoints; official SDK can be added if OAuth or write actions are needed |
+| YouTube Music integration | YouTube Music web search endpoint (unofficial) | Read-only endpoints; official SDK can be added if OAuth or write actions are needed |
 | Server-state cache | TanStack Query | Search, trending, artist and playlist data |
 | Client/player state | Zustand | Queue, playback UI, preferences |
 | Persistence | AsyncStorage | Favourites and recent history; SQLite can be added for larger libraries |
@@ -46,8 +46,8 @@ Conceptual interface:
       getPlayableStream(track: Track): Promise<PlayableStream>;
     }
 
-The Audius adapter will:
-- Use the official read-only REST API initially; keep provider calls isolated in the Audius adapter.
+The YouTube Music adapter will:
+- Use the official read-only REST API initially; keep provider calls isolated in the YouTube Music adapter.
 - Normalize raw Audius responses into app-owned domain types.
 - Preserve source IDs, canonical URLs, artwork, artist attribution, duration, and availability flags.
 - Treat stream URLs as source-controlled values; do not persist them as permanent track identifiers.
@@ -57,7 +57,7 @@ The Audius adapter will:
 ## Domain models
 
 ### Track
-- id: stable app identifier namespaced by source, e.g. audius:<source-id>
+- id: stable app identifier namespaced by source, e.g. youtube:<video-id>
 - source: provider identifier
 - sourceTrackId: provider track ID
 - title
@@ -103,7 +103,7 @@ The proof of concept must demonstrate on real Android and iOS devices:
 
 Do not mark the audio experience production-ready until this test passes.
 
-## Audius API and credential handling
+## YouTube Music discovery and account handling
 Current official Audius documentation describes:
 - Free API plan: 10 requests/second and 500,000 requests/month.
 - API key may be used in client-side contexts.
@@ -155,7 +155,7 @@ Queue policy:
 - Use OS secure storage for user session tokens.
 - Collect minimal personal data.
 - Provide clear privacy disclosures for listening history and analytics.
-- Do not scrape other streaming services or extract their audio.
+- Do not bypass access controls or claim official Google/YouTube authorization. Keep native playback disabled until an authorized playback method is confirmed.
 - Do not download, cache, re-host, or redistribute tracks unless the provider explicitly permits it.
 - Preserve required attribution and canonical source links.
 - Verify Audius terms and each track's availability before enabling playback or downloads.
@@ -184,6 +184,6 @@ Device QA:
 ## Phase gates
 - **Gate 1 — Specification:** product and architecture documents reviewed.
 - **Gate 2 — UI:** main screens work with typed mock data; no provider dependency in visual components.
-- **Gate 3 — Integration:** Audius adapter and real search / streaming are connected.
+- **Gate 3 — Integration:** YouTube Music adapter and real search / streaming are connected.
 - **Gate 4 — Audio:** background and lock-screen acceptance tests pass on both platforms.
 - **Gate 5 — Release:** QA, privacy disclosures, rights review, and production configuration complete.
