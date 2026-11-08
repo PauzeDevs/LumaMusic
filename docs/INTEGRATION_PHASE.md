@@ -1,15 +1,15 @@
 # LumaMusic Integration Phase
 
-**Status:** Audius discovery, artist/playlist browsing, local library persistence, and initial audio playback wiring are committed. Physical-device and build validation remain outstanding.
+**Status:** YouTube Music search discovery and official-app handoff are implemented on the feature branch. Native in-app playback remains a separate integration milestone.
 
-## Audius endpoints used
-- GET /v1/tracks/trending — Home discovery.
-- GET /v1/tracks/search — debounced track search.
-- GET /v1/users/search and /v1/users/{id} — artist search and profile.
-- GET /v1/users/{id}/tracks — artist track list.
-- GET /v1/playlists/search, /v1/playlists/trending, and /v1/playlists/{id} — playlist discovery and details.
-- GET /v1/playlists/{id}/tracks — playlist track list.
-- GET /v1/tracks/{track_id}/stream — source stream endpoint for eligible tracks.
+## YouTube Music endpoints used
+- POST /youtubei/v1/search — Home discovery query.
+- POST /youtubei/v1/search — debounced track search.
+- Artist pages hand off to the YouTube Music channel page.
+- Artist tracklists open on YouTube Music.
+- Playlist links open on YouTube Music.
+- Playlist tracklists open on YouTube Music.
+- Native stream resolution is not enabled; selecting a track opens its YouTube Music page.
 
 Requests include app_name=LumaMusic. No bearer token is embedded in the app. A developer API key may be added later if required for higher request limits.
 
@@ -18,9 +18,9 @@ The app maps provider responses into the MusicTrack domain type. Provider IDs ar
 
 ## Playback flow
 1. User selects a result from Home or Search.
-2. App verifies the normalized track is streamable and has a source ID.
-3. App creates the Audius stream endpoint URL.
-4. expo-audio loads the remote stream.
+2. App opens the track's canonical YouTube Music URL.
+3. The official YouTube Music client or website handles playback.
+4. Native in-app streaming is not part of this phase.
 5. App sets lock-screen metadata and updates shared Zustand playback state.
 6. Mini-player and Now Playing read from the same state.
 
@@ -38,14 +38,14 @@ The app maps provider responses into the MusicTrack domain type. Provider IDs ar
 ## Not yet integrated
 - Artist and playlist pagination beyond the first page.
 - User-created playlist management and full listening-history controls.
-- Audius OAuth and account-linked write actions.
+- YouTube Music OAuth and account-linked write actions.
 - Local-device music scanning.
 - Remote next/previous lock-screen queue actions.
 - Offline downloads.
-- Any mainstream label catalogue beyond what artists have made available through Audius.
+- Any mainstream label catalogue beyond what artists have made available through YouTube Music.
 
 ## Rights and catalogue limits
-Audius is a discovery and streaming source, not a guarantee of the full Spotify/Apple Music catalogue. A track may be unavailable, gated, removed, or not streamable. LumaMusic must respect each track's access state and the Audius terms. The app does not scrape, extract, re-host, or download tracks from other streaming services.
+YouTube Music is a discovery and streaming source, not a guarantee of the full Spotify/Apple Music catalogue. A track may be unavailable, gated, removed, or not streamable. LumaMusic must respect each track's access state and the YouTube Music terms. The app does not scrape, extract, re-host, or download tracks from other streaming services.
 
 ## QA still required
 - Confirm live API responses on device and handle schema differences.
