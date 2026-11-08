@@ -123,7 +123,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
       void playTrack(state.currentTrack, state.queue).catch((error: unknown) => {
-        setPlaybackError(error instanceof Error ? error.message : "Could not open YouTube Music.");
+        setPlaybackError(error instanceof Error ? error.message : "Could not open the selected track.");
       });
       return;
     }
