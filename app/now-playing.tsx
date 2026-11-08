@@ -78,7 +78,7 @@ export default function NowPlayingScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>PLAYING ON</Text><Text style={styles.headerTitle}>YouTube Music</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "PLAYING ON" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "YouTube Music" : "Your library"}</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
