@@ -33,6 +33,7 @@ export default function NowPlayingScreen() {
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
   const isExternalPlayback = track?.source === "youtube_music";
+  const isLocalPlayback = track?.source === "local";
   const [artworkFailed, setArtworkFailed] = useState(false);
   useEffect(() => setArtworkFailed(false), [track?.id, track?.artwork]);
   const [progressWidth, setProgressWidth] = useState(0);
@@ -82,7 +83,7 @@ export default function NowPlayingScreen() {
       <BlurView tint="dark" intensity={32} style={styles.ambientBlur} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "OPENED IN" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "External player" : "Your library"}</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "OPENED IN" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "External player" : isLocalPlayback ? "Local audio" : "Your library"}</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -141,7 +142,7 @@ export default function NowPlayingScreen() {
           <Ionicons name="options-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Audio</Text>
         </Pressable>
       </View></View>
-      <Text style={styles.disclaimer}>LumaMusic · External playback</Text>
+      <Text style={styles.disclaimer}>{isExternalPlayback ? "LumaMusic · External playback" : isLocalPlayback ? "LumaMusic · Native audio engine" : "LumaMusic"}</Text>
     </SafeAreaView>
   );
 }

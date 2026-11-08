@@ -1,6 +1,8 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
 import { useRef, useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,11 +22,49 @@ export default function LibraryScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const recentTracks = useLibraryStore((s) => s.recentTracks);
+  const localTracks = useLibraryStore((s) => s.localTracks);
+  const addLocalTracks = useLibraryStore((s) => s.addLocalTracks);
   const localPlaylists = useLibraryStore((s) => s.playlists);
   const createPlaylist = useLibraryStore((s) => s.createPlaylist);
   const [createVisible, setCreateVisible] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
   const { playTrack } = useAudioEngine();
+  const importLocalAudio = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "audio/*",
+        multiple: true,
+        copyToCacheDirectory: true
+      });
+      if (result.canceled) return;
+      const documentDirectory = FileSystem.documentDirectory;
+      if (!documentDirectory) throw new Error("LumaMusic could not access its permanent storage directory.");
+      const musicDirectory = documentDirectory + "music/";
+      await FileSystem.makeDirectoryAsync(musicDirectory, { intermediates: true });
+      const tracks = await Promise.all(result.assets.map(async (asset) => {
+        const extension = asset.name.match(/\.[^.]+$/)?.[0] ?? "";
+        const baseName = asset.name.replace(/\.[^.]+$/, "");
+        const stableName = encodeURIComponent(baseName) + "-" + (asset.size ?? 0) + "-" + (asset.lastModified ?? 0) + extension;
+        const destinationUri = musicDirectory + stableName;
+        const existing = await FileSystem.getInfoAsync(destinationUri);
+        if (!existing.exists) await FileSystem.copyAsync({ from: asset.uri, to: destinationUri });
+        return {
+          id: "local:" + stableName,
+          title: baseName,
+          artist: "On this device",
+          artwork: "",
+          durationMs: 0,
+          source: "local" as const,
+          localUri: destinationUri,
+          isStreamable: true
+        };
+      }));
+      addLocalTracks(tracks);
+      Alert.alert("Audio imported", tracks.length + (tracks.length === 1 ? " file is" : " files are") + " ready in your local library.");
+    } catch (error) {
+      Alert.alert("Import failed", error instanceof Error ? error.message : "Could not import those audio files.");
+    }
+  };
   const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
     queryKey: ["youtubeMusic", "library-discovery-playlists", 6],
     queryFn: () => getFeaturedPlaylists(6)
@@ -48,15 +88,19 @@ export default function LibraryScreen() {
             </View>
             <Ionicons name="chevron-forward" size={17} color="rgba(255,255,255,0.65)" />
           </Pressable>
-          <Pressable style={styles.downloads} onPress={() => Alert.alert("Local music", "Device music scanning is planned for a later release.")}>
+          <Pressable style={styles.downloads} onPress={() => void importLocalAudio()}>
             <View style={styles.downloadIcon}><Ionicons name="download-outline" size={19} color={colors.mint} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.shortcutTitle}>Local music</Text>
-              <Text style={styles.shortcutSub}>On this device</Text>
+              <Text style={styles.shortcutSub}>{localTracks.length ? localTracks.length + " imported · Add more" : "Import audio files from your device"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={17} color={colors.muted} />
           </Pressable>
         </View></ScrollReveal>
+        {localTracks.length > 0 ? <ScrollReveal scrollY={scrollY}><View style={styles.section}>
+          <SectionHeading title="Local audio" action="Add files" onPress={() => void importLocalAudio()} />
+          {localTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={localTracks} />)}
+        </View></ScrollReveal> : null}
         <ScrollReveal scrollY={scrollY}><GlassSurface style={styles.statsCard} contentStyle={styles.statsContent}>
           <View style={styles.stat}><Text style={styles.statValue}>{recentTracks.length}</Text><Text style={styles.statLabel}>RECENT TRACKS</Text></View>
           <View style={styles.statDivider} />
