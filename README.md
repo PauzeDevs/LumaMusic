@@ -15,7 +15,7 @@
 
 Find tracks, artists and playlists. Press play. Build a library that feels like yours.
 
-- **Discover** music through the Audius catalogue.
+- **Discover** music through the YouTube Music catalogue.
 - **Explore** artist and playlist pages.
 - **Listen** with playback and queue controls.
 - **Keep close** your favourites and listening history.
@@ -23,7 +23,7 @@ Find tracks, artists and playlists. Press play. Build a library that feels like 
 
 ### UNDER THE HOOD
 
-React Native · Expo · TypeScript · Expo Router · Audius API · TanStack Query · Zustand · AsyncStorage · expo-audio
+React Native · Expo · TypeScript · Expo Router · YouTube Music web search · TanStack Query · Zustand · AsyncStorage · expo-audio
 
 ### START THE PLAYER
 
@@ -45,7 +45,7 @@ Use an Expo development build when testing native audio. Background playback and
 
 ### THE CATALOGUE
 
-Audius is the initial discovery and streaming source. Its catalogue is not equivalent to Spotify or Apple Music, and mainstream English, Hindi or Punjabi releases are not guaranteed. Availability and permitted use vary by track. LumaMusic respects source permissions, attribution requirements and Audius terms. It does not scrape or extract audio from other streaming services.
+YouTube Music is the current discovery source. Search results open in the official YouTube Music client or website. LumaMusic is an independent, unofficial project and does not claim Google authorization. Native in-app playback remains a separate milestone.
 
 ---
 
