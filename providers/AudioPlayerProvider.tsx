@@ -20,14 +20,13 @@ type AudioEngineValue = {
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
 
 function isPlayable(track: MusicTrack | undefined): track is MusicTrack {
-  return Boolean(track && track.source === "audius" && track.sourceTrackId && track.isStreamable);
+  return Boolean(track?.youtubeUrl);
 }
 
 export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const setTrack = usePlayerStore((state) => state.setTrack);
   const setPlaybackStatus = usePlayerStore((state) => state.setPlaybackStatus);
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
   const setPlaybackRateState = usePlayerStore((state) => state.setPlaybackRate);
@@ -80,7 +79,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     setPlaybackRateState(safeRate);
   }, [player, setPlaybackRateState]);
 
-  const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[]) => {
+  const playTrack = useCallback(async (track: MusicTrack) => {
     if (track.youtubeUrl) {
       setPlaybackError(null);
       useLibraryStore.getState().addRecentTrack(track);
