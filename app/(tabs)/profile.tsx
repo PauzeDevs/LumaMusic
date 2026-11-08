@@ -36,9 +36,9 @@ export default function ProfileScreen() {
           <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
-            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · YouTube Music handoff" : "Pick a track and let the room fill up."}</Text>
+            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Playing on YouTube Music" : "Pick a track and let the room fill up."}</Text>
           </View>
-          <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "READY" : "IDLE"}</Text></View>
+          <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "OPEN" : "IDLE"}</Text></View>
         </View>
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Preferences</Text><Text style={styles.sectionMeta}>PERSONALISE</Text></View>
         <View style={styles.settings}>
