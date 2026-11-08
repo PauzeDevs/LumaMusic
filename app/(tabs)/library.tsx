@@ -8,7 +8,7 @@ import { Artwork } from "../../components/Artwork";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { ScrollReveal } from "../../components/ScrollReveal";
-import { getTrendingPlaylists } from "../../services/audius";
+import { getFeaturedPlaylists } from "../../services/youtubeMusic";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { useLibraryStore } from "../../store/library";
@@ -25,8 +25,8 @@ export default function LibraryScreen() {
   const [playlistName, setPlaylistName] = useState("");
   const { playTrack } = useAudioEngine();
   const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
-    queryKey: ["audius", "library-discovery-playlists", 6],
-    queryFn: () => getTrendingPlaylists(6, 0)
+    queryKey: ["youtubeMusic", "library-discovery-playlists", 6],
+    queryFn: () => getFeaturedPlaylists(6)
   });
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
