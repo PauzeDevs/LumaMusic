@@ -4,8 +4,10 @@ export type MusicTrack = {
   artist: string;
   artwork: string;
   durationMs: number;
-  source: "mock" | "audius";
+  source: "mock" | "audius" | "youtube_music";
   sourceTrackId?: string;
+  youtubeVideoId?: string;
+  youtubeUrl?: string;
   isStreamable?: boolean;
   permalink?: string;
   genre?: string;
@@ -18,7 +20,7 @@ export type MusicPlaylist = {
   subtitle: string;
   artwork: string;
   trackIds: string[];
-  source?: "audius" | "mock";
+  source?: "audius" | "youtube_music" | "mock";
   sourcePlaylistId?: string;
   trackCount?: number;
   permalink?: string;
@@ -34,4 +36,3 @@ export type MusicArtist = {
   followerCount: number;
   trackCount: number;
 };
-
