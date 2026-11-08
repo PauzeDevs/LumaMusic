@@ -9,7 +9,7 @@ export function ArtistRow({ artist }: { artist: MusicArtist }) {
   return (
     <Pressable
       style={styles.row}
-      onPress={() => router.push({ pathname: "/artist/[id]", params: { id: artist.sourceArtistId } })}
+      onPress={() => router.push({ pathname: "/artist/[id]", params: { id: artist.sourceArtistId, name: artist.name } })}
     >
       <Artwork uri={artist.artwork} size={54} radius={27} />
       <View style={styles.copy}>
