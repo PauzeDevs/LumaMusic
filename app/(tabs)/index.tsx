@@ -77,7 +77,7 @@ export default function ListenScreen() {
           {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.message}>No public playlists are available right now.</Text> : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
             {playlists.map((playlist) => (
-              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId } }) : null}>
+              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : null}>
                 <Artwork uri={playlist.artwork} size={148} radius={18} />
                 <Text numberOfLines={1} style={styles.cardTitle}>{playlist.title}</Text>
                 <Text numberOfLines={1} style={styles.cardSubtitle}>{playlist.subtitle}</Text>
