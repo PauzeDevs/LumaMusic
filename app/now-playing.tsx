@@ -123,7 +123,7 @@ export default function NowPlayingScreen() {
             <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
             <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
           </View>
-        ) : null}>
+        ) : null}
       </View>
       <View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
