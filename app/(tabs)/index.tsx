@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +18,7 @@ export default function ListenScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [heroArtworkFailed, setHeroArtworkFailed] = useState(false);
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
     queryKey: ["youtubeMusic", "trending", 20],
     queryFn: () => getDiscoveryTracks(20)
@@ -26,6 +27,8 @@ export default function ListenScreen() {
     queryKey: ["youtubeMusic", "trending-playlists", 8],
     queryFn: () => getFeaturedPlaylists(8)
   });
+
+  useEffect(() => setHeroArtworkFailed(false), [tracks[0]?.artwork]);
 
   const startListening = () => {
     if (!tracks.length) {
@@ -57,7 +60,7 @@ export default function ListenScreen() {
         </Pressable></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
-          {tracks[0]?.artwork ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
+          {tracks[0]?.artwork && !heroArtworkFailed ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} onError={() => setHeroArtworkFailed(true)} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
             <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
