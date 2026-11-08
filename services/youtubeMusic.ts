@@ -16,6 +16,7 @@ type Obj = Record<string, any>;
 function readText(value: any): string {
   if (!value) return "";
   if (typeof value === "string") return value;
+  if (typeof value.text === "string") return value.text;
   if (Array.isArray(value.runs)) return value.runs.map((run: Obj) => run.text ?? "").join("");
   return value.simpleText ?? "";
 }
