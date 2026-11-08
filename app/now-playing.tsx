@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Image, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../theme/colors";
@@ -30,6 +30,8 @@ export default function NowPlayingScreen() {
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
   const isExternalPlayback = track?.source === "youtube_music";
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  useEffect(() => setArtworkFailed(false), [track?.id, track?.artwork]);
   const [progressWidth, setProgressWidth] = useState(0);
   const [progressLeft, setProgressLeft] = useState(0);
   const progressRef = useRef<View>(null);
@@ -81,7 +83,7 @@ export default function NowPlayingScreen() {
       </View>
       <View style={styles.main}>
         <View style={styles.artFrame}>
-          <Image source={{ uri: track.artwork }} style={styles.artwork} />
+          {track.artwork && !artworkFailed ? <Image source={{ uri: track.artwork }} style={styles.artwork} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
         </View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
@@ -127,7 +129,7 @@ export default function NowPlayingScreen() {
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? "LumaMusic") })}>
+        <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? track.youtubeUrl ?? "LumaMusic") })}>
           <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
         </Pressable>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/lyrics")}><Ionicons name="text" size={20} color={colors.muted} /><Text style={styles.bottomText}>Lyrics</Text></Pressable>
@@ -150,6 +152,7 @@ const styles = StyleSheet.create({
   main: { flex: 1, justifyContent: "center" },
   artFrame: { width: "100%", aspectRatio: 1, borderRadius: 25, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 30 },
   artwork: { width: "100%", height: "100%" },
+  artworkFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
   trackInfo: { flexDirection: "row", alignItems: "center", gap: 16 },
   trackTitle: { color: colors.text, fontSize: 23, fontWeight: "800", letterSpacing: -0.6 },
   artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
