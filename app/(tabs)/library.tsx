@@ -36,7 +36,7 @@ export default function LibraryScreen() {
             <Text style={styles.eyebrow}>YOUR COLLECTION</Text>
             <Text style={styles.title}>Your library.</Text>
           </View>
-          <Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable>
+          <View style={styles.topActions}><Pressable style={styles.importButton} onPress={() => router.push("/import-playlist")}><Ionicons name="swap-horizontal" size={15} color={colors.accent} /><Text style={styles.importText}>Import</Text></Pressable><Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable></View>
         </View></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.shortcuts}>
           <Pressable style={styles.liked} onPress={() => likedTracks.length ? void playTrack(likedTracks[0], likedTracks).catch((err: unknown) => Alert.alert("Couldn’t play liked songs", err instanceof Error ? err.message : "Try again.")) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
@@ -66,11 +66,11 @@ export default function LibraryScreen() {
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} />
           {localPlaylists.length === 0 ? <Text style={styles.note}>Build your own collections. They stay on this device.</Text> : localPlaylists.map((playlist) => (
-            <View key={playlist.id} style={styles.localPlaylist}>
+            <Pressable key={playlist.id} style={styles.localPlaylist} onPress={() => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })}>
               <View style={styles.localPlaylistIcon}><Ionicons name="albums-outline" size={19} color={colors.accent} /></View>
               <View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>{playlist.name}</Text><Text style={styles.shortcutSub}>{playlist.tracks.length} tracks · On this device</Text></View>
-              <Pressable onPress={() => Alert.alert(playlist.name, "Manage this local playlist?", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => useLibraryStore.getState().deletePlaylist(playlist.id) }])}><Ionicons name="ellipsis-horizontal" size={19} color={colors.muted} /></Pressable>
-            </View>
+              <Ionicons name="chevron-forward" size={17} color={colors.muted} />
+            </Pressable>
           ))}
         </View></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
@@ -97,7 +97,7 @@ export default function LibraryScreen() {
           {recentTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={recentTracks} />)}
           {recentTracks.length === 0 ? <Text style={styles.note}>Tracks you play will appear here.</Text> : null}
         </View></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><Text style={styles.note}>Favourites and listening history are saved on this device. Playlists and local music scanning are still being built.</Text></ScrollReveal>
+        <ScrollReveal scrollY={scrollY}><Text style={styles.note}>Favourites, listening history and local playlists are saved on this device. Import a playlist export to bring collections across services.</Text></ScrollReveal>
       </Animated.ScrollView>
       <Modal visible={createVisible} transparent animationType="fade" onRequestClose={() => setCreateVisible(false)}>
         <View style={styles.modalBackdrop}>
@@ -137,6 +137,9 @@ const styles = StyleSheet.create({
   statValue: { color: colors.text, fontSize: 20, fontWeight: "800" },
   statLabel: { color: colors.subtle, fontSize: 7, fontWeight: "800", letterSpacing: 1 },
   statDivider: { width: 1, height: 28, backgroundColor: colors.border },
+  topActions: { flexDirection: "row", alignItems: "center", gap: 9 },
+  importButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, height: 40, borderRadius: 13, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  importText: { color: colors.text, fontSize: 10, fontWeight: "700" },
   localPlaylist: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, backgroundColor: colors.surface, borderRadius: 15, marginBottom: 8 },
   localPlaylistIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: 22 },

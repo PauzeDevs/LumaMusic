@@ -1,9 +1,11 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { usePlayerStore } from "../../store/player";
+import { useLibraryStore } from "../../store/library";
+import { router } from "expo-router";
 
 const settings = [
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
@@ -36,7 +38,7 @@ export default function ProfileScreen() {
           <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
-            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Playing externally" : "Pick a track and let the room fill up."}</Text>
+            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Opened in external player" : "Pick a track and let the room fill up."}</Text>
           </View>
           <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "OPEN" : "IDLE"}</Text></View>
         </View>
@@ -45,11 +47,20 @@ export default function ProfileScreen() {
           {settings.map((item, index) => (
             <Pressable key={item.title} onPress={() => {
               if (item.title === "Playback") {
-                Alert.alert("Playback quality", "Playback currently opens in the external player. Native in-app playback and quality selection are not enabled yet.");
+                router.push("/audio-settings");
+              } else if (item.title === "Privacy") {
+                Alert.alert("Clear local library?", "This removes liked songs, listening history and local playlists from this device.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Clear library", style: "destructive", onPress: () => useLibraryStore.getState().clearLibrary() }
+                ]);
+              } else if (item.title === "Account") {
+                Alert.alert("LumaMusic account", "Cloud accounts and cross-device sync are not configured. Your collection currently stays on this device.");
+              } else if (item.title === "Notifications") {
+                Alert.alert("Notifications", "Push notifications are not enabled in this build. No notification permission has been requested.");
               } else if (item.title === "Appearance") {
-                Alert.alert("Appearance", "LumaMusic uses a dark matte palette with translucent, glass-inspired surfaces. Full system blur and material effects are being refined.");
+                Alert.alert("Appearance", "LumaMusic is using its dark matte theme with restrained glass-inspired surfaces.");
               } else {
-                Alert.alert(item.title, "This setting will be connected in a later development phase.");
+                void Linking.openURL("https://github.com/PauzeDevs/LumaMusic");
               }
             }} style={[styles.setting, index === settings.length - 1 && styles.last]} android_ripple={{ color: "rgba(198,167,255,0.08)" }}>
               <View style={styles.settingIcon}><Ionicons name={item.icon} size={19} color={colors.accent} /></View>

@@ -16,11 +16,11 @@ export default function LyricsScreen() {
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
   const activeIndex = useMemo(() => {
-    if (lyrics.status !== "available") return -1;
+    if (lyrics.status !== "available" || isExternalPlayback) return -1;
     let active = -1;
     lyrics.lines.forEach((line, index) => { if (line.time !== null && line.time <= position) active = index; });
     return active;
-  }, [lyrics, position]);
+  }, [lyrics, position, isExternalPlayback]);
 
   useEffect(() => {
     let alive = true;
@@ -71,7 +71,7 @@ export default function LyricsScreen() {
           </View>
         </> : null}
       </View>
-      <View style={styles.bottomBar}><Pressable onPress={() => router.back()} style={styles.backToPlayer}><Ionicons name="chevron-down" size={16} color={colors.text} /><Text style={styles.backText}>Back to player</Text></Pressable><Text style={styles.syncLabel}>{lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null) ? "SYNCED LYRICS" : "LYRICS"}</Text></View>
+      <View style={styles.bottomBar}><Pressable onPress={() => router.back()} style={styles.backToPlayer}><Ionicons name="chevron-down" size={16} color={colors.text} /><Text style={styles.backText}>Back to player</Text></Pressable><Text style={styles.syncLabel}>{lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null) ? (isExternalPlayback ? "TIMESTAMPS · NOT SYNCED" : "SYNCED LYRICS") : "LYRICS"}</Text></View>
     </SafeAreaView>
   );
 }

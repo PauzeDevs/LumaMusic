@@ -7,6 +7,7 @@ import { colors } from "../theme/colors";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
+import { usePreferencesStore } from "../store/preferences";
 
 function formatTime(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -25,6 +26,7 @@ export default function NowPlayingScreen() {
   const isShuffled = usePlayerStore((s) => s.isShuffled);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const queue = usePlayerStore((s) => s.queue);
+  const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
@@ -78,7 +80,7 @@ export default function NowPlayingScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "PLAYING ON" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "External player" : "Your library"}</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "OPENED IN" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "External player" : "Your library"}</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -102,9 +104,9 @@ export default function NowPlayingScreen() {
           </View>
         ) : (
           <View style={styles.progressArea}>
-            <View ref={progressRef} style={styles.progressTrack} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
-              <View style={[styles.progressThumb, { left: `${progress}%` }]} />
+            <View ref={progressRef} style={[styles.progressTrack, progressBarStyle === "classic" && styles.progressTrackClassic]} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
+              <View style={[styles.progressFill, progressBarStyle === "classic" && styles.progressFillClassic, { width: `${progress}%` }]} />
+              <View style={[styles.progressThumb, progressBarStyle === "classic" && styles.progressThumbClassic, { left: `${progress}%` }]} />
             </View>
             <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
           </View>
@@ -133,8 +135,8 @@ export default function NowPlayingScreen() {
           <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
         </Pressable>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/lyrics")}><Ionicons name="text" size={20} color={colors.muted} /><Text style={styles.bottomText}>Lyrics</Text></Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => Alert.alert("Audio devices", "Bluetooth and device routing are managed by your device audio settings.")}>
-          <Ionicons name="bluetooth" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
+        <Pressable style={styles.bottomAction} onPress={() => router.push("/audio-settings")}>
+          <Ionicons name="options-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Audio</Text>
         </Pressable>
       </View>
       <Text style={styles.disclaimer}>LumaMusic · External playback</Text>
@@ -162,9 +164,12 @@ const styles = StyleSheet.create({
   externalPlaybackText: { color: colors.muted, fontSize: 10 },
   externalDuration: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
+  progressTrackClassic: { height: 8, borderRadius: 8 },
   progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
+  progressFillClassic: { height: 8, borderRadius: 8 },
   progressThumb: { position: "absolute", width: 12, height: 12, borderRadius: 6, backgroundColor: colors.text, top: -4, marginLeft: -6, borderWidth: 2, borderColor: colors.accent },
+  progressThumbClassic: { width: 14, height: 14, borderRadius: 7, top: -3, marginLeft: -7 },
   timeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   time: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
