@@ -1,6 +1,6 @@
 # LumaMusic UI and Integration Status
 
-**Status:** UI prototype is committed. Initial Audius discovery and audio-engine wiring are in place; device validation is still outstanding.
+**Status:** UI prototype is committed. Initial YouTube Music discovery and audio-engine wiring are in place; device validation is still outstanding.
 
 ## Screens
 - Listen / Home
@@ -16,10 +16,10 @@
 - Dark matte palette with lavender, mint, and soft pink accents.
 
 ## UI interactions
-- Audius trending tracks populate the Listen screen.
-- Search uses debounced Audius track, artist, and playlist queries.
+- YouTube Music trending tracks populate the Listen screen.
+- Search uses debounced YouTube Music track, artist, and playlist queries.
 - Artist and playlist results open dedicated detail screens.
-- Selecting an eligible Audius track requests its stream URL and starts the shared player.
+- Selecting an eligible YouTube Music track requests its stream URL and starts the shared player.
 - Mini-player opens Now Playing and controls playback.
 - Queue, next/previous, shuffle, repeat, seek, and share controls are wired to app/player state.
 - Track rows can add/remove favourites; favourites and recent listening history persist locally.
@@ -27,11 +27,11 @@
 - Playlist creation, local music scanning, device routing, and account settings still display explicit coming-soon feedback.
 
 ## Integration boundaries
-- Audius read-only REST API is used for trending tracks/playlists, track search, artist search, and playlist search.
+- YouTube Music read-only REST API is used for trending tracks/playlists, track search, artist search, and playlist search.
 - The app sends app_name=LumaMusic and does not embed a bearer token.
 - expo-audio is configured for background playback and lock-screen metadata.
 - Track access flags are checked before playback.
-- The catalogue and stream availability remain dependent on Audius and individual track permissions.
+- The catalogue and stream availability remain dependent on YouTube Music and individual track permissions.
 
 ## Known gaps
 - User-created playlists are not implemented yet.
