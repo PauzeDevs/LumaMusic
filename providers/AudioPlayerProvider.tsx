@@ -1,6 +1,6 @@
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, type PropsWithChildren } from "react";
-import { getAudiusStreamUrl } from "../services/audius";
+import { Linking } from "react-native";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import type { MusicTrack } from "../types/music";
@@ -19,21 +19,27 @@ type AudioEngineValue = {
 
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
 
-function isPlayable(track: MusicTrack | undefined): track is MusicTrack {
-  return Boolean(track && track.source === "audius" && track.sourceTrackId && track.isStreamable);
+type ExternalMusicTrack = MusicTrack & { source: "youtube_music"; youtubeUrl: string };
+
+function isExternalTrack(track: MusicTrack | null | undefined): track is ExternalMusicTrack {
+  return Boolean(track?.source === "youtube_music" && typeof track.youtubeUrl === "string" && track.youtubeUrl.length > 0);
+}
+
+function isPlayable(track: MusicTrack | undefined): track is ExternalMusicTrack {
+  return isExternalTrack(track);
 }
 
 export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const setTrack = usePlayerStore((state) => state.setTrack);
   const setPlaybackStatus = usePlayerStore((state) => state.setPlaybackStatus);
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
   const setPlaybackRateState = usePlayerStore((state) => state.setPlaybackRate);
   const setSleepTimerMinutesState = usePlayerStore((state) => state.setSleepTimerMinutes);
   const toggleShuffleState = usePlayerStore((state) => state.toggleShuffle);
   const cycleRepeatState = usePlayerStore((state) => state.cycleRepeat);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
 
   useEffect(() => {
     setAudioModeAsync({
@@ -46,6 +52,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
+    // YouTube Music owns playback after the handoff. Do not overwrite its
+    // track metadata with the idle status of LumaMusic's native audio player.
+    if (isExternalTrack(currentTrack)) return;
     setPlaybackStatus({
       isPlaying: status.playing,
       isBuffering: status.isBuffering,
@@ -53,13 +62,17 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       playbackDuration: status.duration,
       playbackError: status.error ?? null
     });
-  }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus]);
+  }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus, currentTrack?.id]);
 
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
   }, []);
 
   const setSleepTimer = useCallback((minutes: number | null) => {
+    if (isExternalTrack(usePlayerStore.getState().currentTrack)) {
+      setSleepTimerMinutesState(null);
+      return;
+    }
     if (sleepTimerRef.current) {
       clearTimeout(sleepTimerRef.current);
       sleepTimerRef.current = null;
@@ -75,63 +88,55 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [player, setSleepTimerMinutesState]);
 
   const setPlaybackRate = useCallback((rate: number) => {
+    if (isExternalTrack(usePlayerStore.getState().currentTrack)) return;
     const safeRate = Math.max(0.5, Math.min(2, rate));
     player.setPlaybackRate(safeRate, "high");
     setPlaybackRateState(safeRate);
   }, [player, setPlaybackRateState]);
 
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[]) => {
-    if (!isPlayable(track)) {
-      throw new Error("This track is not available for streaming through Audius.");
+    if (!isExternalTrack(track)) {
+      throw new Error("This track has no supported playback destination.");
     }
-
-    try {
-      setPlaybackError(null);
-      setTrack(track, nextQueue);
-      useLibraryStore.getState().addRecentTrack(track);
-      const sourceTrackId = track.sourceTrackId;
-      if (!sourceTrackId) throw new Error("This track is missing its Audius stream ID.");
-      player.replace(getAudiusStreamUrl(sourceTrackId));
-      player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
-      player.setActiveForLockScreen(true, {
-        title: track.title,
-        artist: track.artist,
-        albumTitle: "LumaMusic",
-        artworkUrl: track.artwork
-      }, {
-        showSeekBackward: true,
-        showSeekForward: true
-      });
-      player.play();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to start this track.";
-      setPlaybackError(message);
-      throw new Error(message);
-    }
-  }, [player, setPlaybackError, setTrack]);
+    const queue = nextQueue?.length ? nextQueue : [track];
+    usePlayerStore.getState().setTrack(track, queue);
+    usePlayerStore.getState().setPlaybackStatus({
+      isPlaying: false,
+      isBuffering: false,
+      playbackPosition: 0,
+      playbackDuration: Math.max(0, track.durationMs / 1000),
+      playbackError: null
+    });
+    useLibraryStore.getState().addRecentTrack(track);
+    await Linking.openURL(track.youtubeUrl);
+  }, []);
 
   const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[]) => {
     try {
       await playTrack(track, queue);
     } catch (error) {
-      setPlaybackError(error instanceof Error ? error.message : "Unable to play the next track.");
+      setPlaybackError(error instanceof Error ? error.message : "Unable to open this track.");
     }
   }, [playTrack, setPlaybackError]);
 
   const togglePlayback = useCallback(() => {
-    if (status.playing) {
-      player.pause();
-    } else if (usePlayerStore.getState().currentTrack) {
-      player.play();
+    const state = usePlayerStore.getState();
+    if (isExternalTrack(state.currentTrack)) {
+      void playTrack(state.currentTrack, state.queue).catch((error: unknown) => {
+        setPlaybackError(error instanceof Error ? error.message : "Could not open the selected track.");
+      });
+      return;
     }
-  }, [player, status.playing]);
+    if (status.playing) player.pause();
+    else if (state.currentTrack) player.play();
+  }, [playTrack, player, setPlaybackError, status.playing]);
 
   const playNext = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
     if (state.repeatMode === "one") {
-      await player.seekTo(0);
-      player.play();
+      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue);
+      else { await player.seekTo(0); player.play(); }
       return;
     }
 
@@ -140,13 +145,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
     if (state.isShuffled) {
       const candidates = state.queue.filter((item) => item.id !== state.currentTrack?.id && isPlayable(item));
-      if (candidates.length > 0) {
-        nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
-      } else if (state.repeatMode === "all") {
-        await player.seekTo(0);
-        player.play();
-        return;
-      }
+      if (candidates.length > 0) nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
+      else if (state.repeatMode === "all") nextTrack = state.queue.find(isPlayable);
     } else {
       for (let offset = 1; offset <= state.queue.length; offset += 1) {
         let index = currentIndex + offset;
@@ -155,25 +155,20 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           index %= state.queue.length;
         }
         const candidate = state.queue[index];
-        if (isPlayable(candidate)) {
-          nextTrack = candidate;
-          break;
-        }
+        if (isPlayable(candidate)) { nextTrack = candidate; break; }
       }
     }
 
-    if (nextTrack) {
-      await playTrackSafely(nextTrack, state.queue);
-    } else {
-      player.pause();
-    }
+    if (nextTrack) await playTrackSafely(nextTrack, state.queue);
+    else if (!isExternalTrack(state.currentTrack)) player.pause();
   }, [playTrackSafely, player]);
 
   const playPrevious = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
-    if (state.repeatMode === "one" || status.currentTime > 3) {
-      await player.seekTo(0);
+    if (state.repeatMode === "one" || (!isExternalTrack(state.currentTrack) && status.currentTime > 3)) {
+      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue);
+      else await player.seekTo(0);
       return;
     }
 
@@ -190,20 +185,22 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         return;
       }
     }
-    await player.seekTo(0);
+    if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue);
+    else await player.seekTo(0);
   }, [playTrackSafely, player, status.currentTime]);
 
   useEffect(() => {
-    if (!status.didJustFinish) return;
+    if (!status.didJustFinish || isExternalTrack(currentTrack)) return;
     if (usePlayerStore.getState().sleepTimerMinutes === -1) {
       player.pause();
       setSleepTimerMinutesState(null);
       return;
     }
     void playNext();
-  }, [status.didJustFinish, playNext, player, setSleepTimerMinutesState]);
+  }, [status.didJustFinish, currentTrack?.id, playNext, player, setSleepTimerMinutesState]);
 
   const seekTo = useCallback(async (seconds: number) => {
+    if (isExternalTrack(usePlayerStore.getState().currentTrack)) return;
     await player.seekTo(Math.max(0, seconds));
   }, [player]);
 

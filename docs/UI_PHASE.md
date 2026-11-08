@@ -1,49 +1,59 @@
 # LumaMusic UI and Integration Status
 
-**Status:** UI prototype is committed. Initial Audius discovery and audio-engine wiring are in place; device validation is still outstanding.
+**Current state:** YouTube Music catalogue discovery and external playback handoff are implemented. Native in-app YouTube Music streaming is not implemented in this phase.
 
 ## Screens
 - Listen / Home
 - Search
 - Library
-- Profile / Settings
+- Profile
 - Now Playing
+- Queue
+- Lyrics
+- Artist handoff
+- Playlist handoff
 
-## Shared UI
-- Custom bottom navigation with Listen, Search, Library, and You tabs.
-- Persistent mini-player above the tab bar.
-- Reusable artwork, section heading, and track-row components.
-- Dark matte palette with lavender, mint, and soft pink accents.
+## Shared interface
+- Dark matte palette with restrained lavender and mint accents.
+- Translucent glass-inspired surfaces and custom bottom navigation.
+- Persistent mini-player above the tab bar when a track has been selected.
+- Reusable artwork, section heading, artist, playlist and track rows.
+- Scroll reveal and animated refresh treatment.
 
-## UI interactions
-- Audius trending tracks populate the Listen screen.
-- Search uses debounced Audius track, artist, and playlist queries.
-- Artist and playlist results open dedicated detail screens.
-- Selecting an eligible Audius track requests its stream URL and starts the shared player.
-- Mini-player opens Now Playing and controls playback.
-- Queue, next/previous, shuffle, repeat, seek, and share controls are wired to app/player state.
-- Track rows can add/remove favourites; favourites and recent listening history persist locally.
-- Artwork has a fallback when remote images fail.
-- Playlist creation, local music scanning, device routing, and account settings still display explicit coming-soon feedback.
+## Implemented interactions
+- Home loads a YouTube Music discovery query and featured playlist results.
+- Search supports track, artist and playlist filters. The All filter combines all three result types.
+- Artist and playlist rows open their canonical YouTube Music pages.
+- Selecting a track records it in the local recent history, updates shared player metadata and opens its canonical YouTube Music page.
+- The mini-player and Now Playing screen show the selected track and identify YouTube Music as the playback destination.
+- Queue rows can be reordered, removed and opened. Next/previous actions hand off the selected queue track to YouTube Music.
+- Track rows can add or remove local favourites.
+- Liked tracks, recent selections and locally created playlists persist with AsyncStorage.
+- Missing or failed artwork uses the app's neutral music-note fallback rather than fabricated catalogue artwork.
 
-## Integration boundaries
-- Audius read-only REST API is used for trending tracks/playlists, track search, artist search, and playlist search.
-- The app sends app_name=LumaMusic and does not embed a bearer token.
-- expo-audio is configured for background playback and lock-screen metadata.
-- Track access flags are checked before playback.
-- The catalogue and stream availability remain dependent on Audius and individual track permissions.
+## Playback boundary
+- YouTube Music playback is handled by the official YouTube Music app or website after handoff.
+- LumaMusic does not currently receive live playback position, duration progress, play/pause state or audio-session events from YouTube Music.
+- LumaMusic therefore does not display a fake progress bar or claim that its own play/pause, seek, playback-rate or sleep-timer controls control external playback.
+- Native in-app streaming, synchronized background playback, lock-screen controls and live playback timing remain future work pending an authorized playback route.
+- The Expo Audio engine remains the native playback abstraction for a future supported source.
 
-## Known gaps
-- User-created playlists are not implemented yet.
-- Queue remote controls on the OS lock screen need a dedicated native-device validation pass.
-- Background playback has not yet been tested on physical Android and iOS devices.
-- No package-lock file has been generated yet.
-- GitHub Actions workflow is present, but no completed CI result has been verified.
+## Known future work
+- Native in-app audio playback through a permitted playback interface.
+- Live progress, seek synchronization, background controls and lock-screen metadata.
+- Licensed lyrics provider configuration and synced-lyrics validation.
+- Full artist/album/playlist metadata, tracklists and pagination.
+- Add/remove tracks in local playlists and local-device music scanning.
+- Connect settings and account actions to real functionality.
+- Validate small-screen layouts and accessibility on physical Android and iOS devices.
 
-## QA gate
-- Install dependencies and run the Expo compatibility check.
-- Run TypeScript checks.
-- Export Android and iOS bundles.
-- Inspect narrow Android and iPhone layouts.
-- Verify audio stream redirect behaviour, background playback, interruptions, and lock-screen controls.
-- Fix compile/runtime issues before release preparation.
+## QA checklist
+- Expo dependency compatibility check.
+- TypeScript check.
+- Android and iOS JavaScript bundle exports.
+- Android native prebuild and release APK build.
+- Live YouTube Music response parsing, empty results and request failures.
+- Installed-app and browser fallback for track, artist and playlist links.
+- Artwork loading and fallback behaviour.
+- Queue, favourites and recent history persistence after force-close/relaunch.
+- Physical-device UI, audio interruption and navigation testing.

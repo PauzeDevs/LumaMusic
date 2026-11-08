@@ -1,11 +1,11 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getTrendingPlaylists, getTrendingTracks } from "../../services/audius";
+import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { Artwork } from "../../components/Artwork";
@@ -18,14 +18,17 @@ export default function ListenScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [heroArtworkFailed, setHeroArtworkFailed] = useState(false);
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
-    queryKey: ["audius", "trending", 20],
-    queryFn: () => getTrendingTracks(20, 0)
+    queryKey: ["youtubeMusic", "trending", 20],
+    queryFn: () => getDiscoveryTracks(20)
   });
   const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
-    queryKey: ["audius", "trending-playlists", 8],
-    queryFn: () => getTrendingPlaylists(8, 0)
+    queryKey: ["youtubeMusic", "trending-playlists", 8],
+    queryFn: () => getFeaturedPlaylists(8)
   });
+
+  useEffect(() => setHeroArtworkFailed(false), [tracks[0]?.artwork]);
 
   const startListening = () => {
     if (!tracks.length) {
@@ -43,7 +46,7 @@ export default function ListenScreen() {
         <ScrollReveal scrollY={scrollY}><View style={styles.topline}>
           <View>
             <Text style={styles.eyebrow}>YOUR SOUND, YOUR SPACE</Text>
-            <Text style={styles.greeting}>Good evening.</Text>
+            <Text style={styles.greeting}>{new Date().getHours() < 12 ? "Good morning." : new Date().getHours() < 18 ? "Good afternoon." : "Good evening."}</Text>
           </View>
           <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profile")}>
             <Text style={styles.avatarText}>P</Text>
@@ -57,7 +60,7 @@ export default function ListenScreen() {
         </Pressable></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
-          <Image source={{ uri: tracks[0]?.artwork ?? "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=900&q=85" }} style={styles.heroImage} />
+          {tracks[0]?.artwork && !heroArtworkFailed ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} onError={() => setHeroArtworkFailed(true)} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
             <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
@@ -71,13 +74,13 @@ export default function ListenScreen() {
         </View></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Trending playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
+          <SectionHeading title="Featured playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
           {playlistsError ? <Text style={styles.errorText}>Could not load playlists right now.</Text> : null}
           {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.message}>No public playlists are available right now.</Text> : null}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
             {playlists.map((playlist) => (
-              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId } }) : null}>
+              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : null}>
                 <Artwork uri={playlist.artwork} size={148} radius={18} />
                 <Text numberOfLines={1} style={styles.cardTitle}>{playlist.title}</Text>
                 <Text numberOfLines={1} style={styles.cardSubtitle}>{playlist.subtitle}</Text>
@@ -87,11 +90,11 @@ export default function ListenScreen() {
         </View></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Trending on Audius" action="Refresh" onPress={() => { void loadTrending(); }} />
+          <SectionHeading title="Fresh discoveries" action="Refresh" onPress={() => { void loadTrending(); }} />
           {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
           {error ? (
             <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load Audius discovery."}</Text>
+              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load music discovery."}</Text>
               <Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable>
             </View>
           ) : null}
@@ -101,7 +104,7 @@ export default function ListenScreen() {
 
         <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
           <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
-          <Text style={styles.sourceText}>Independent music discovery, powered by Audius.</Text>
+          <Text style={styles.sourceText}>Music discovery for your next favourite.</Text>
         </View></ScrollReveal>
       </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
@@ -121,6 +124,7 @@ const styles = StyleSheet.create({
   searchText: { color: colors.muted, fontSize: 13, flex: 1 },
   hero: { height: 260, borderRadius: 24, overflow: "hidden", marginBottom: 30, backgroundColor: "#252035" },
   heroImage: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%", opacity: 0.65 },
+  heroPlaceholder: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
   heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(8,8,15,0.38)" },
   heroContent: { flex: 1, padding: 22, justifyContent: "flex-end" },
   heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },

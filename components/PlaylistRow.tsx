@@ -9,12 +9,12 @@ export function PlaylistRow({ playlist }: { playlist: MusicPlaylist }) {
   return (
     <Pressable
       style={styles.row}
-      onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId } }) : undefined}
+      onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : undefined}
     >
       <Artwork uri={playlist.artwork} size={58} radius={13} />
       <View style={styles.copy}>
         <Text numberOfLines={1} style={styles.name}>{playlist.title}</Text>
-        <Text numberOfLines={1} style={styles.subtitle}>{playlist.subtitle} · {playlist.trackCount ?? 0} tracks</Text>
+        <Text numberOfLines={1} style={styles.subtitle}>{playlist.subtitle}{playlist.trackCount && playlist.trackCount > 0 ? " · " + playlist.trackCount + " tracks" : ""}</Text>
       </View>
       <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
     </Pressable>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b070a">
-<meta name="description" content="LumaMusic is a mobile music player for Audius discovery, playback, queue management and a local music library. Built by PauzeDevs.">
+<meta name="description" content="LumaMusic is a mobile music discovery app with YouTube Music handoff, a personal queue and a local music library. Built by PauzeDevs.">
 <title>LumaMusic | PauzeDevs</title><link rel="icon" href="./assets/lumamusic-logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="./styles.css?v=5">
@@ -13,28 +13,28 @@
 <a class="source-link" href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">Source code <span>↗</span></a></header>
 <main id="top">
 <section class="hero"><div class="hero-copy"><p class="eyebrow">PAUZEDEVS <span>/</span> MOBILE MUSIC PLAYER</p><h1>Luma<span>Music</span></h1>
-<p class="hero-description">Discover Audius tracks, control playback, manage your queue and keep a personal library on your device.</p>
+<p class="hero-description">Discover YouTube Music tracks, open them in the official player, manage your queue and keep a personal library on your device.</p>
 <div class="hero-actions"><a class="button button-primary" href="#features">Explore app features <span>↓</span></a><a class="button button-secondary" href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">View repository ↗</a></div>
-<div class="hero-facts"><div><span class="fact-label">MUSIC SOURCE</span><strong>Audius</strong></div><div><span class="fact-label">APP STACK</span><strong>Expo · React Native</strong></div><div><span class="fact-label">DEVELOPER</span><strong>PauzeDevs</strong></div></div></div>
+<div class="hero-facts"><div><span class="fact-label">MUSIC SOURCE</span><strong>YouTube Music</strong></div><div><span class="fact-label">APP STACK</span><strong>Expo · React Native</strong></div><div><span class="fact-label">DEVELOPER</span><strong>PauzeDevs</strong></div></div></div>
 <figure class="hero-art"><img src="./assets/lumamusic-soundstage.svg" alt="Original LumaMusic soundstage artwork"><figcaption><span>LUMAMUSIC</span><span>PAUZEDEVS / 001</span></figcaption></figure></section>
 <section class="section features-section" id="features"><div class="section-heading"><p class="eyebrow">01 / IMPLEMENTED FEATURES</p><h2>What the app<br><span>actually does.</span></h2><p class="section-intro">A feature list based on the current application code. No concept screens or sample data.</p></div>
 <div class="feature-list">
-<article class="feature-row"><span class="feature-number">01</span><div><p class="feature-label">DISCOVERY</p><h3>Browse and search Audius</h3></div><p class="feature-description">Home displays trending tracks and trending playlists. Search can return tracks, artists and playlists from Audius.</p></article>
-<article class="feature-row"><span class="feature-number">02</span><div><p class="feature-label">PLAYBACK</p><h3>Control the current track</h3></div><p class="feature-description">Play, pause, skip forward or back, and seek through a track using the in-app progress control.</p></article>
-<article class="feature-row"><span class="feature-number">03</span><div><p class="feature-label">QUEUE</p><h3>Manage what plays next</h3></div><p class="feature-description">Open Up Next, move queued tracks, remove upcoming tracks, or clear the queue while keeping the current track.</p></article>
+<article class="feature-row"><span class="feature-number">01</span><div><p class="feature-label">DISCOVERY</p><h3>Browse and search YouTube Music</h3></div><p class="feature-description">Home displays discovery tracks and featured playlists. Search supports tracks, artists and playlists through an unofficial YouTube Music web interface.</p></article>
+<article class="feature-row"><span class="feature-number">02</span><div><p class="feature-label">PLAYBACK</p><h3>Open the official player</h3></div><p class="feature-description">Selecting a result opens its canonical YouTube Music page. Playback, live progress and audio controls are handled by YouTube Music, not by LumaMusic.</p></article>
+<article class="feature-row"><span class="feature-number">03</span><div><p class="feature-label">QUEUE</p><h3>Manage your queue</h3></div><p class="feature-description">Open Up Next, reorder or remove queued tracks, and choose which track to open next in YouTube Music.</p></article>
 <article class="feature-row"><span class="feature-number">04</span><div><p class="feature-label">PERSONAL LIBRARY</p><h3>Keep your saved music local</h3></div><p class="feature-description">Like tracks, create personal playlists and revisit recently played tracks. Library data is persisted on the device.</p></article>
-<article class="feature-row"><span class="feature-number">05</span><div><p class="feature-label">PLAYBACK OPTIONS</p><h3>Adjust the listening session</h3></div><p class="feature-description">Choose playback speed from 0.75× to 2×, enable shuffle or repeat, and set a timed pause or end-of-track sleep timer.</p></article>
-<article class="feature-row"><span class="feature-number">06</span><div><p class="feature-label">ARTISTS & PLAYLISTS</p><h3>Open artist and playlist pages</h3></div><p class="feature-description">View artist information and available tracks, or open supported playlist details and play tracks from those pages.</p></article>
-</div><p class="feature-footnote">Background audio and lock-screen controls are configured in the app. Behaviour can vary by operating system and device and still requires release-device testing.</p></section>
-<section class="catalogue-section" id="catalogue"><div class="catalogue-copy"><p class="eyebrow">02 / MUSIC CATALOGUE</p><h2>Powered by<br><span>Audius.</span></h2>
-<p>LumaMusic currently uses Audius for discovery, track metadata and eligible audio streams. The available catalogue depends on what Audius provides and what each track permits.</p>
+<article class="feature-row"><span class="feature-number">05</span><div><p class="feature-label">PLAYBACK OPTIONS</p><h3>Shape your queue</h3></div><p class="feature-description">Use shuffle and repeat preferences when moving through the LumaMusic queue. Playback speed and sleep-timer controls are not available for external YouTube Music playback.</p></article>
+<article class="feature-row"><span class="feature-number">06</span><div><p class="feature-label">ARTISTS & PLAYLISTS</p><h3>Explore artists and playlists</h3></div><p class="feature-description">Open artist channels and playlists directly in YouTube Music for their full details and tracklists.</p></article>
+</div><p class="feature-footnote">YouTube Music handles playback after handoff. LumaMusic does not currently synchronize external playback progress, background controls or lock-screen state.</p></section>
+<section class="catalogue-section" id="catalogue"><div class="catalogue-copy"><p class="eyebrow">02 / MUSIC CATALOGUE</p><h2>Powered by<br><span>YouTube Music.</span></h2>
+<p>LumaMusic currently uses an unofficial YouTube Music web search interface for discovery and metadata. Selecting a track opens the official YouTube Music app or website. Native in-app playback is not implemented.</p>
 <p>LumaMusic does not provide the full Spotify or Apple Music catalogue, and does not scrape or extract audio from those services. A track being available on another platform does not mean it will be available here.</p>
-<a class="text-link" href="https://audius.org" target="_blank" rel="noopener noreferrer">Audius official website ↗</a></div>
-<div class="catalogue-facts"><div><span>DISCOVERY API</span><strong>Audius</strong></div><div><span>STREAMS</span><strong>Eligible tracks only</strong></div><div><span>OTHER CATALOGUES</span><strong>Not mirrored</strong></div></div></section>
+<a class="text-link" href="https://music.youtube.com" target="_blank" rel="noopener noreferrer">YouTube Music official website ↗</a></div>
+<div class="catalogue-facts"><div><span>DISCOVERY</span><strong>Unofficial web search</strong></div><div><span>PLAYBACK</span><strong>Official app handoff</strong></div><div><span>OTHER CATALOGUES</span><strong>Not mirrored</strong></div></div></section>
 <section class="section legal-section" id="legal"><div class="section-heading"><p class="eyebrow">03 / PROJECT DOCUMENTS</p><h2>Policies &<br><span>legal notices.</span></h2><p class="section-intro">Each document opens separately so this page stays available.</p></div>
-<div class="legal-links"><a href="./privacy.html" target="_blank" rel="noopener noreferrer"><span>01</span><strong>Privacy policy</strong><small>Local data, Audius requests and third-party services</small><b>↗</b></a>
+<div class="legal-links"><a href="./privacy.html" target="_blank" rel="noopener noreferrer"><span>01</span><strong>Privacy policy</strong><small>Local data, YouTube Music requests and third-party services</small><b>↗</b></a>
 <a href="./terms.html" target="_blank" rel="noopener noreferrer"><span>02</span><strong>Terms of use</strong><small>Using the app, third-party content and limitations</small><b>↗</b></a>
-<a href="./attribution.html" target="_blank" rel="noopener noreferrer"><span>03</span><strong>Attribution & licences</strong><small>Audius, project technology and trademarks</small><b>↗</b></a>
+<a href="./attribution.html" target="_blank" rel="noopener noreferrer"><span>03</span><strong>Attribution & licences</strong><small>YouTube Music, project technology and trademarks</small><b>↗</b></a>
 <a href="https://github.com/PauzeDevs/LumaMusic/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"><span>04</span><strong>Software licence</strong><small>Eclipse Public License 2.0</small><b>↗</b></a></div>
 <p class="legal-note">These documents describe the current project and are not legal advice. They should be reviewed as the app's data practices and features change.</p></section>
 </main>

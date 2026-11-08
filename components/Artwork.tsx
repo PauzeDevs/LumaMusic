@@ -17,7 +17,7 @@ export function Artwork({ uri, size, radius = 16 }: ArtworkProps) {
 
   return (
     <View style={[styles.frame, { width: size, height: size, borderRadius: radius }]}>
-      {failed ? (
+      {failed || !uri ? (
         <View style={styles.fallback}>
           <Ionicons name="musical-notes" size={Math.max(18, size * 0.28)} color="#C6A7FF" />
         </View>

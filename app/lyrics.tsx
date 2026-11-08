@@ -12,6 +12,7 @@ export default function LyricsScreen() {
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const isExternalPlayback = track?.source === "youtube_music";
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
   const activeIndex = useMemo(() => {
@@ -49,7 +50,7 @@ export default function LyricsScreen() {
       {track ? <View style={styles.trackCard}>
         <Artwork uri={track.artwork} size={54} radius={12} />
         <View style={styles.trackCopy}><Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.artist}>{track.artist}</Text></View>
-        <View style={styles.livePill}><View style={[styles.liveDot, { opacity: isPlaying ? 1 : 0.45 }]} /><Text style={styles.liveText}>{isPlaying ? "LIVE" : "PAUSED"}</Text></View>
+        <View style={styles.livePill}><View style={[styles.liveDot, { opacity: isPlaying ? 1 : 0.45 }]} /><Text style={styles.liveText}>{isExternalPlayback ? "EXTERNAL" : isPlaying ? "LIVE" : "PAUSED"}</Text></View>
       </View> : null}
 
       <View style={styles.lyricsSurface}>

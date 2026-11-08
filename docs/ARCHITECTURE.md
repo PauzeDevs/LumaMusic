@@ -1,189 +1,55 @@
 # LumaMusic Technical Architecture
 
-**Status:** Phase 1 baseline. Implementation details are validated during scaffolding and technical spikes.
+**Status:** YouTube Music discovery migration in progress. Native streaming remains a separate milestone.
 
 ## Architecture overview
-LumaMusic uses a TypeScript React Native client. Audius is the first remote music source. Provider-specific logic stays behind a music-source adapter so additional licensed providers can be added without rewriting screens or the player UI.
 
-Data flow:
-- Expo Router renders screens and reusable components.
-- Application/domain layer owns search, library, queue, and playback use cases.
-- TanStack Query owns remote data and caching.
-- Zustand owns transient player and UI state.
-- MusicSource adapter talks to Audius.
-- AudioEngine adapter wraps expo-audio and owns the shared native player.
-- Zustand persist middleware with AsyncStorage stores favourites and recent tracks locally.
+LumaMusic uses a TypeScript React Native client built with Expo.
 
-## Proposed stack
+- Expo Router renders the app screens.
+- TanStack Query owns remote discovery data and caching.
+- Zustand owns player and library state.
+- AsyncStorage persists favourites, local playlists and recent selections.
+- `services/youtubeMusic.ts` isolates YouTube Music catalogue discovery.
+- `AudioPlayerProvider` remains the app-level audio-engine boundary.
 
-| Concern | Initial choice | Notes |
-|---|---|---|
-| Mobile app | React Native + Expo | Android and iOS |
-| Language | TypeScript | Strict mode |
-| Navigation | Expo Router | File-based routes |
-| Audius integration | Audius REST API | Read-only endpoints; official SDK can be added if OAuth or write actions are needed |
-| Server-state cache | TanStack Query | Search, trending, artist and playlist data |
-| Client/player state | Zustand | Queue, playback UI, preferences |
-| Persistence | AsyncStorage | Favourites and recent history; SQLite can be added for larger libraries |
-| Audio | expo-audio ~57.0.5 | Native playback, background audio config, and lock-screen metadata |
-| Testing | GitHub Actions checks | Dependency validation, TypeScript, and Android/iOS bundle exports; unit tests are a follow-up task |
-| Builds | EAS Build / Expo development builds | Native modules require development builds |
+## Current source integration
 
-Initial package versions are pinned in package.json. CI and physical-device checks must validate the dependency set. Expo Go is not the target runtime for native audio testing.
+The current provider sends public search requests to YouTube Music's undocumented InnerTube web endpoint. It normalizes track title, artist, artwork, duration and video ID into app-owned models. Search results are opened using their canonical YouTube Music URL.
 
-## Music-source adapter
-Screens and domain logic must not call Audius endpoints directly.
+This is an unofficial integration. YouTube Music does not publish this endpoint as a supported third-party API. LumaMusic is not affiliated with or endorsed by Google or YouTube and does not claim official authorization.
 
-Conceptual interface:
+## Playback boundary
 
-    export interface MusicSource {
-      searchTracks(query: string, page?: number): Promise<TrackPage>;
-      searchArtists(query: string, page?: number): Promise<ArtistPage>;
-      getTrendingTracks(options?: BrowseOptions): Promise<TrackPage>;
-      getArtistTracks(artistId: string, page?: number): Promise<TrackPage>;
-      getPlaylist(playlistId: string): Promise<Playlist>;
-      getPlaylistTracks(playlistId: string, page?: number): Promise<TrackPage>;
-      getPlayableStream(track: Track): Promise<PlayableStream>;
-    }
+The app's Expo Audio engine remains available as the native playback abstraction. YouTube Music search results currently have no native stream URL in LumaMusic, so selecting one hands playback to the official YouTube Music app or website. In-app stream extraction, playback synchronization, background streaming and lock-screen control for these tracks are not implemented or claimed.
 
-The Audius adapter will:
-- Use the official read-only REST API initially; keep provider calls isolated in the Audius adapter.
-- Normalize raw Audius responses into app-owned domain types.
-- Preserve source IDs, canonical URLs, artwork, artist attribution, duration, and availability flags.
-- Treat stream URLs as source-controlled values; do not persist them as permanent track identifiers.
-- Surface provider errors in typed form.
-- Respect track access controls and source terms.
+Any future native playback provider must use a playback method authorized for the intended use, respect access controls and provider terms, and avoid unauthorized downloading, caching, re-hosting or redistribution.
 
 ## Domain models
 
 ### Track
-- id: stable app identifier namespaced by source, e.g. audius:<source-id>
-- source: provider identifier
-- sourceTrackId: provider track ID
-- title
-- artistId / artistName
-- artworkUrl
-- durationMs (nullable)
-- canonicalUrl
-- isPlayable
-- availabilityReason (optional)
-- explicit (only if source provides reliable metadata)
+- `id`: stable source-namespaced ID, e.g. `youtube:<videoId>`
+- `source`: provider identifier
+- `sourceTrackId` / `youtubeVideoId`
+- `title`, `artist`, `artwork`, `durationMs`
+- `youtubeUrl`: canonical YouTube Music page
+- `isStreamable`: false until a supported native playback route exists
 
-### Artist
-- id, source, sourceArtistId, name, artworkUrl, canonicalUrl, bio (optional).
-
-### Playlist
-- id, name, description, artworkUrl, trackIds, createdAt, updatedAt, isLocal.
-
-### QueueItem
-- queueId (unique per queue entry)
-- trackId
-- addedAt
-- optional source context (search, playlist, artist, etc.).
-
-## State ownership
-- TanStack Query owns remote server state and request caching.
-- Zustand owns transient playback state: current item, queue, current index, shuffle, repeat, player visibility, and playback status.
-- Zustand persist middleware and AsyncStorage own the current durable local data: favourites and recently played tracks.
-- Transient playback status stays in the non-persisted player store to avoid frequent storage writes.
-- Larger local libraries and user-created playlists may move to SQLite when implemented.
-- Do not duplicate authoritative state across stores.
-
-## Audio engine decision
-The initial audio engine is expo-audio ~57.0.5. Its config plugin is enabled for background playback and configures the required Android foreground service and iOS audio background mode. Real-device testing is still required before calling background playback production-ready.
-
-The proof of concept must demonstrate on real Android and iOS devices:
-1. Background playback after app is backgrounded.
-2. Lock-screen / notification metadata and controls.
-3. Play, pause, seek, next, and previous.
-4. Audio focus and interruption handling.
-5. Bluetooth / headset controls.
-6. Queue continuity and recovery from stream errors.
-7. Compatibility with the chosen Expo SDK and development-build workflow.
-
-Do not mark the audio experience production-ready until this test passes.
-
-## Audius API and credential handling
-Current official Audius documentation describes:
-- Free API plan: 10 requests/second and 500,000 requests/month.
-- API key may be used in client-side contexts.
-- Bearer token must never be embedded in a browser or mobile client.
-- OAuth 2.0 Authorization Code with PKCE for user-authorized actions.
-
-Implementation rules:
-- Use public/read-only REST endpoints for discovery initially.
-- Public read-only requests can use the app_name parameter; register a free API key later if higher rate limits are needed.
-- Never place an app bearer token, client secret, or private key in the mobile bundle.
-- Use Audius OAuth PKCE only if account-linked actions are added.
-- Do not request write scope for the read-only MVP.
-- Handle rate limits, timeouts, retries, and provider errors.
-- Cache appropriate read-only results with bounded stale times.
-- Do not assume every Audius track is playable in every context.
-
-Official references:
-- API reference: https://docs.audius.co/api/
-- SDK guide: https://docs.audius.co/sdk/
-- OAuth / mobile guide: https://docs.audius.co/developers/guides/log-in-with-audius/
-
-## Playback lifecycle
-The player is a single app-level service, not a component-local audio instance.
-
-1. UI dispatches a play request with a domain Track.
-2. Playback service asks the relevant MusicSource for an authorized stream.
-3. Audio adapter loads the stream and reports status events.
-4. Zustand receives normalized playback state.
-5. Mini-player, Now Playing, queue, and OS media controls render from the same state.
-6. On failure, service reports a typed error and follows an explicit queue policy.
-
-Queue policy:
-- Selecting a track from a playlist enqueues the selected track and following playlist tracks.
-- Selecting a single search result enqueues that track without unexpectedly replacing unrelated user-created playlists.
-- Next/previous handles queue boundaries and repeat modes deterministically.
-- Removing the currently playing item has a defined transition.
+### Library
+- Liked tracks, recently opened tracks and user-created playlists are stored locally.
+- The legacy Audius source literal is retained temporarily for compatibility with previously persisted library entries. No active Audius service calls remain.
 
 ## Network and failure handling
+
 - Debounce search input.
-- Cancel obsolete requests where supported.
-- Paginate large result sets.
-- Use bounded retries for transient failures.
-- Do not retry permanent unavailable / forbidden responses endlessly.
-- Display offline, empty, rate-limited, and source-unavailable states.
-- Never use fabricated track metadata as fallback for real results.
+- Cache search results with bounded stale times.
+- Handle HTTP errors and empty responses without fabricated catalogue data.
+- Treat the web endpoint as changeable and undocumented.
+- Do not embed account cookies, passwords, bearer tokens or private credentials.
 
-## Security, privacy, and rights
-- Keep provider bearer tokens and private credentials out of the client.
-- Use OS secure storage for user session tokens.
-- Collect minimal personal data.
-- Provide clear privacy disclosures for listening history and analytics.
-- Do not scrape other streaming services or extract their audio.
-- Do not download, cache, re-host, or redistribute tracks unless the provider explicitly permits it.
-- Preserve required attribution and canonical source links.
-- Verify Audius terms and each track's availability before enabling playback or downloads.
-- Offline downloads are out of scope until explicitly permitted by the source.
+## Validation gates
 
-## Testing strategy
-Unit tests:
-- Provider response normalization.
-- Search debounce and pagination.
-- Queue insertion, removal, and reordering.
-- Shuffle and repeat boundary logic.
-- Persistence serialization and migration.
-
-Integration tests:
-- Audius search and trending requests.
-- Stream URL resolution for eligible tracks.
-- Restricted and unavailable track handling.
-- Player state synchronization across screens.
-
-Device QA:
-- Android foreground/background/notification controls.
-- iOS background audio and lock-screen controls.
-- Calls, alarms, Bluetooth route changes, headphones, network loss, and app termination.
-- Small and large screens, safe areas, and accessibility settings.
-
-## Phase gates
-- **Gate 1 — Specification:** product and architecture documents reviewed.
-- **Gate 2 — UI:** main screens work with typed mock data; no provider dependency in visual components.
-- **Gate 3 — Integration:** Audius adapter and real search / streaming are connected.
-- **Gate 4 — Audio:** background and lock-screen acceptance tests pass on both platforms.
-- **Gate 5 — Release:** QA, privacy disclosures, rights review, and production configuration complete.
+1. **Discovery:** verify track parsing and search on Android/iOS.
+2. **Playback:** select an authorized native playback method before wiring stream URLs into Expo Audio.
+3. **Audio QA:** validate background, lock-screen, interruption, Bluetooth and queue behavior on physical devices.
+4. **Release:** update privacy/attribution disclosures and complete rights review before release.

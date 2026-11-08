@@ -9,12 +9,12 @@ export function ArtistRow({ artist }: { artist: MusicArtist }) {
   return (
     <Pressable
       style={styles.row}
-      onPress={() => router.push({ pathname: "/artist/[id]", params: { id: artist.sourceArtistId } })}
+      onPress={() => router.push({ pathname: "/artist/[id]", params: { id: artist.sourceArtistId, name: artist.name } })}
     >
       <Artwork uri={artist.artwork} size={54} radius={27} />
       <View style={styles.copy}>
         <Text numberOfLines={1} style={styles.name}>{artist.name}</Text>
-        <Text numberOfLines={1} style={styles.handle}>{artist.handle ? "@" + artist.handle : "Audius artist"} · {artist.trackCount} tracks</Text>
+        <Text numberOfLines={1} style={styles.handle}>{artist.handle ? "@" + artist.handle : "YouTube Music artist"}{artist.trackCount > 0 ? " · " + artist.trackCount + " tracks" : ""}</Text>
       </View>
       <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
     </Pressable>

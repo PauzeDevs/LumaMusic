@@ -31,7 +31,7 @@ export default function QueueScreen() {
               <Artwork uri={track.artwork} size={48} radius={11} />
               <Pressable style={{ flex: 1 }} onPress={() => { void playTrack(track, queue).then(() => router.back()).catch((error: unknown) => Alert.alert("Playback failed", error instanceof Error ? error.message : "Try again.")); }}>
                 <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
-                <Text numberOfLines={1} style={styles.artist}>{isCurrent ? "NOW PLAYING · " : ""}{track.artist}</Text>
+                <Text numberOfLines={1} style={styles.artist}>{isCurrent ? "CURRENT TRACK · " : ""}{track.artist}</Text>
               </Pressable>
               <View style={styles.actions}>
                 <Pressable disabled={index === 0} onPress={() => moveQueueTrack(index, index - 1)} style={styles.action}><Ionicons name="chevron-up" size={17} color={index === 0 ? colors.subtle : colors.muted} /></Pressable>

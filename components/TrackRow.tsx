@@ -19,7 +19,7 @@ export function TrackRow({ track, index, showIndex = false, queue }: Props) {
 
   const handlePlay = () => {
     playTrack(track, queue ?? [track]).catch((error: unknown) => {
-      Alert.alert("Couldn't play this track", error instanceof Error ? error.message : "Please try another track.");
+      Alert.alert("Couldn't open this track", error instanceof Error ? error.message : "Please try again.");
     });
   };
 

@@ -3,16 +3,16 @@
 **Status:** Phase 1 baseline  
 **Owner:** PauzeDevs  
 **Platforms:** Android and iOS  
-**Initial music source:** Audius
+**Initial music source:** YouTube Music
 
 ## Product vision
-LumaMusic is a modern music discovery and listening app with a refined, editorial interface. It should feel fast, calm, personal, and music-first. The first release must accurately represent the music available from connected sources; it must not imply that Audius contains every mainstream or charting release.
+LumaMusic is a modern music discovery and listening app with a refined, editorial interface. It should feel fast, calm, personal, and music-first. The first release must accurately represent the music available from connected sources; it must not imply that YouTube Music contains every mainstream or charting release.
 
 ## Product principles
 1. Playback reliability first.
 2. Honest catalogue presentation and track-level availability.
 3. Fast discovery with designed loading, empty, and error states.
-4. Personal library with clear separation between local app actions and Audius account actions.
+4. Personal library with clear separation between local app actions and YouTube Music account actions.
 5. Native behaviour for audio focus, interruptions, background playback, headset controls, and lock-screen controls.
 6. Accessibility: readable contrast, scalable text, screen readers, and comfortable touch targets.
 
@@ -28,14 +28,14 @@ Persistent player:
 - Tap to open the full Now Playing screen.
 - Queue accessible from Now Playing.
 
-Secondary destinations: track details, artist profile, playlist details, album/collection details where supported, queue, settings, and Audius attribution information.
+Secondary destinations: track details, artist profile, playlist details, album/collection details where supported, queue, settings, and YouTube Music attribution information.
 
 ## MVP features
 
 ### Home and discovery
-- Trending tracks from Audius.
+- Trending tracks from YouTube Music.
 - New releases / recently added tracks where supported.
-- Curated sections based on available Audius data.
+- Curated sections based on available YouTube Music data.
 - Artwork, title, and artist shelves.
 - Pull-to-refresh and pagination where useful.
 - Loading skeletons, empty states, and retry states.
@@ -63,14 +63,14 @@ Secondary destinations: track details, artist profile, playlist details, album/c
 - Add and remove tracks from playlists.
 - Recently played history.
 - Persist library data across app restarts.
-- Keep local favourites distinct from actions on an authenticated Audius account.
+- Keep local favourites distinct from actions on an authenticated YouTube Music account.
 
 ### Artist and collection pages
 - Artist profile and available tracks.
 - Artist artwork / avatar and metadata.
 - Track lists with play actions.
 - Collection or playlist pages where supported.
-- Follow, repost, and other Audius account actions are not MVP requirements.
+- Follow, repost, and other YouTube Music account actions are not MVP requirements.
 
 ### Settings
 - Dark theme first; system theme may be added.
@@ -116,19 +116,19 @@ The first release will not claim the full Spotify, Apple Music, or YouTube Music
 1. User taps like.
 2. Local library updates immediately.
 3. The change persists locally.
-4. Audius account sync, if added later, requires explicit OAuth authorization.
+4. YouTube Music account sync, if added later, requires explicit OAuth authorization.
 
 ## MVP acceptance criteria
 - App launches offline and shows a useful offline state.
 - Home and Search distinguish loading, empty, error, and populated states.
-- Search returns real Audius results and handles pagination.
+- Search returns real YouTube Music results and handles pagination.
 - A permitted track can start, pause, seek when supported, and stop.
 - Queue state remains consistent while navigating.
 - Favourites and local playlists persist after force-close and relaunch.
 - Unavailable or restricted tracks show a useful message rather than crashing.
 - Background and lock-screen behaviour passes device testing before being marked complete.
 - No bearer tokens or private secrets are embedded in the client bundle.
-- Audius attribution and required source links are visible where applicable.
+- YouTube Music attribution and required source links are visible where applicable.
 
 ## First-test success measures
 - No crash in browse → search → play → queue.
