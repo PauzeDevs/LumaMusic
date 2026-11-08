@@ -1,5 +1,5 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import type { MusicTrack } from "../types/music";
 import { colors } from "../theme/colors";
 import { Artwork } from "./Artwork";
@@ -18,13 +18,8 @@ export function TrackRow({ track, index, showIndex = false, queue }: Props) {
   const isLiked = likedTracks.some((item) => item.id === track.id);
 
   const handlePlay = () => {
-    if (track.youtubeUrl) {
-      useLibraryStore.getState().addRecentTrack(track);
-      Linking.openURL(track.youtubeUrl).catch((error: unknown) => Alert.alert("Could not open YouTube Music", error instanceof Error ? error.message : "Please try again."));
-      return;
-    }
     playTrack(track, queue ?? [track]).catch((error: unknown) => {
-      Alert.alert("Couldn't play this track", error instanceof Error ? error.message : "Please try another track.");
+      Alert.alert("Couldn't open this track", error instanceof Error ? error.message : "Please try again.");
     });
   };
 
