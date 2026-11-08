@@ -33,21 +33,21 @@ export default function SearchScreen() {
   const artistQuery = useQuery({
     queryKey: ["youtubeMusic", "search", "artists", debouncedQuery],
     queryFn: () => searchYouTubeMusicArtists(debouncedQuery, 20),
-    enabled: Boolean(debouncedQuery) && activeFilter === "Artists",
+    enabled: Boolean(debouncedQuery) && (activeFilter === "All" || activeFilter === "Artists"),
     staleTime: 30_000
   });
   const playlistQuery = useQuery({
     queryKey: ["youtubeMusic", "search", "playlists", debouncedQuery],
     queryFn: () => searchYouTubeMusicPlaylists(debouncedQuery, 20),
-    enabled: Boolean(debouncedQuery) && activeFilter === "Playlists",
+    enabled: Boolean(debouncedQuery) && (activeFilter === "All" || activeFilter === "Playlists"),
     staleTime: 30_000
   });
   const tracks = trackQuery.data ?? [];
   const artists = artistQuery.data ?? [];
   const playlists = playlistQuery.data ?? [];
-  const loading = activeFilter === "Artists" ? artistQuery.isLoading : activeFilter === "Playlists" ? playlistQuery.isLoading : trackQuery.isLoading;
-  const error = activeFilter === "Artists" ? artistQuery.error : activeFilter === "Playlists" ? playlistQuery.error : trackQuery.error;
-  const count = activeFilter === "Artists" ? artists.length : activeFilter === "Playlists" ? playlists.length : tracks.length;
+  const loading = activeFilter === "All" ? trackQuery.isLoading || artistQuery.isLoading || playlistQuery.isLoading : activeFilter === "Artists" ? artistQuery.isLoading : activeFilter === "Playlists" ? playlistQuery.isLoading : trackQuery.isLoading;
+  const error = activeFilter === "All" ? trackQuery.error || artistQuery.error || playlistQuery.error : activeFilter === "Artists" ? artistQuery.error : activeFilter === "Playlists" ? playlistQuery.error : trackQuery.error;
+  const count = activeFilter === "All" ? tracks.length + artists.length + playlists.length : activeFilter === "Artists" ? artists.length : activeFilter === "Playlists" ? playlists.length : tracks.length;
   const heading = activeFilter === "Artists" ? "Artists" : activeFilter === "Playlists" ? "Playlists" : "Search results";
 
   return (
@@ -72,9 +72,18 @@ export default function SearchScreen() {
           {!debouncedQuery ? <Text style={styles.message}>Search YouTube Music by track, artist or playlist.</Text> : null}
           {loading ? <Text style={styles.message}>Searching YouTube Music…</Text> : null}
           {error ? <Text style={styles.error}>{error instanceof Error ? error.message : "Search is unavailable right now."}</Text> : null}
-          {!loading && !error && (activeFilter === "All" || activeFilter === "Tracks") ? tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
-          {!loading && !error && activeFilter === "Artists" ? artists.map((artist) => <ArtistRow key={artist.id} artist={artist} />) : null}
-          {!loading && !error && activeFilter === "Playlists" ? playlists.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} />) : null}
+          {!loading && !error && (activeFilter === "All" || activeFilter === "Tracks") && tracks.length > 0 ? <>
+            {activeFilter === "All" ? <Text style={styles.resultGroupTitle}>Tracks</Text> : null}
+            {tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />)}
+          </> : null}
+          {!loading && !error && (activeFilter === "All" || activeFilter === "Artists") && artists.length > 0 ? <>
+            {activeFilter === "All" ? <Text style={styles.resultGroupTitle}>Artists</Text> : null}
+            {artists.map((artist) => <ArtistRow key={artist.id} artist={artist} />)}
+          </> : null}
+          {!loading && !error && (activeFilter === "All" || activeFilter === "Playlists") && playlists.length > 0 ? <>
+            {activeFilter === "All" ? <Text style={styles.resultGroupTitle}>Playlists</Text> : null}
+            {playlists.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} />)}
+          </> : null}
           {debouncedQuery && !loading && !error && count === 0 ? <View style={styles.empty}>
             <Ionicons name="musical-notes-outline" size={30} color={colors.subtle} />
             <Text style={styles.emptyTitle}>Nothing found yet</Text>
@@ -100,6 +109,7 @@ const styles = StyleSheet.create({
   filterText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
   filterTextActive: { color: "#17111F" },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  resultGroupTitle: { color: colors.text, fontSize: 14, fontWeight: "700", marginTop: 16, marginBottom: 5 },
   sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "700" },
   count: { color: colors.subtle, fontSize: 11 },
   message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
