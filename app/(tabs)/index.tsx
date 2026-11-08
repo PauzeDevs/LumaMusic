@@ -90,11 +90,11 @@ export default function ListenScreen() {
         </View></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Fresh on YouTube Music" action="Refresh" onPress={() => { void loadTrending(); }} />
+          <SectionHeading title="Fresh discoveries" action="Refresh" onPress={() => { void loadTrending(); }} />
           {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
           {error ? (
             <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load YouTube Music discovery."}</Text>
+              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load music discovery."}</Text>
               <Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable>
             </View>
           ) : null}
@@ -104,7 +104,7 @@ export default function ListenScreen() {
 
         <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
           <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
-          <Text style={styles.sourceText}>Music discovery from YouTube Music.</Text>
+          <Text style={styles.sourceText}>Music discovery for your next favourite.</Text>
         </View></ScrollReveal>
       </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />

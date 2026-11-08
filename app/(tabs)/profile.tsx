@@ -9,7 +9,7 @@ const settings = [
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
   { icon: "notifications-outline", title: "Notifications", subtitle: "New music and updates" },
   { icon: "color-palette-outline", title: "Appearance", subtitle: "Dark matte · Glass-inspired surfaces" },
-  { icon: "musical-notes-outline", title: "Playback", subtitle: "YouTube Music app handoff" },
+  { icon: "musical-notes-outline", title: "Playback", subtitle: "External player handoff" },
   { icon: "shield-checkmark-outline", title: "Privacy", subtitle: "Your data and listening activity" },
   { icon: "information-circle-outline", title: "About LumaMusic", subtitle: "Version 0.1.0 · PauzeDevs" }
 ] as const;
@@ -36,7 +36,7 @@ export default function ProfileScreen() {
           <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
-            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Playing on YouTube Music" : "Pick a track and let the room fill up."}</Text>
+            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Playing externally" : "Pick a track and let the room fill up."}</Text>
           </View>
           <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "OPEN" : "IDLE"}</Text></View>
         </View>
@@ -45,7 +45,7 @@ export default function ProfileScreen() {
           {settings.map((item, index) => (
             <Pressable key={item.title} onPress={() => {
               if (item.title === "Playback") {
-                Alert.alert("Playback quality", "YouTube Music playback currently opens in the official app or website. Native in-app playback and quality selection are not enabled yet.");
+                Alert.alert("Playback quality", "Playback currently opens in the external player. Native in-app playback and quality selection are not enabled yet.");
               } else if (item.title === "Appearance") {
                 Alert.alert("Appearance", "LumaMusic uses a dark matte palette with translucent, glass-inspired surfaces. Full system blur and material effects are being refined.");
               } else {

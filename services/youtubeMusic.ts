@@ -80,7 +80,7 @@ async function searchRequest(query: string, params?: string): Promise<Obj> {
   });
 
   if (!response.ok) {
-    throw new Error("YouTube Music search failed (" + response.status + "). Please try again.");
+    throw new Error("Music search failed (" + response.status + "). Please try again.");
   }
   return response.json() as Promise<Obj>;
 }
@@ -146,7 +146,7 @@ function mapPlaylist(item: Obj): MusicPlaylist | null {
     source: "youtube_music",
     sourcePlaylistId: playlistId,
     title,
-    subtitle: readText(item.subtitle ?? item.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text) || "YouTube Music playlist",
+    subtitle: readText(item.subtitle ?? item.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text) || "Music playlist",
     artwork: imageFor(item),
     trackIds: [],
     trackCount: 0,
@@ -211,6 +211,6 @@ export async function searchYouTubeMusicArtists(query: string, limit = 20): Prom
 }
 
 export async function openTrackInYouTubeMusic(track: MusicTrack): Promise<void> {
-  if (!track.youtubeUrl) throw new Error("This track does not have a YouTube Music URL.");
+  if (!track.youtubeUrl) throw new Error("This track does not have a playable link.");
   await Linking.openURL(track.youtubeUrl);
 }

@@ -60,7 +60,7 @@ export default function NowPlayingScreen() {
   };
   const chooseSleepTimer = () => {
     if (isExternalPlayback) {
-      Alert.alert("Sleep timer unavailable", "Playback is handled by YouTube Music. Use its playback controls or your device settings for a sleep timer.");
+      Alert.alert("Sleep timer unavailable", "Playback is handled by the external player. Use its playback controls or your device settings for a sleep timer.");
       return;
     }
     Alert.alert("Sleep timer", "Pause playback after", [
@@ -78,7 +78,7 @@ export default function NowPlayingScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "PLAYING ON" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "YouTube Music" : "Your library"}</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "PLAYING ON" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "External player" : "Your library"}</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -97,7 +97,7 @@ export default function NowPlayingScreen() {
         {isExternalPlayback ? (
           <View style={styles.externalPlayback}>
             <Ionicons name="open-outline" size={15} color={colors.accent} />
-            <Text style={styles.externalPlaybackText}>Playback is controlled by YouTube Music</Text>
+            <Text style={styles.externalPlaybackText}>Playback is controlled externally</Text>
             <Text style={styles.externalDuration}>{duration > 0 ? formatTime(duration) + " total" : "Duration unavailable"}</Text>
           </View>
         ) : (
@@ -114,7 +114,7 @@ export default function NowPlayingScreen() {
         <View style={styles.controls}>
           <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
           <Pressable onPress={() => { void playPrevious(); }}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
-          <Pressable style={styles.play} onPress={togglePlayback} accessibilityRole="button" accessibilityLabel="Open track in YouTube Music"><Ionicons name={isExternalPlayback ? "open-outline" : isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
+          <Pressable style={styles.play} onPress={togglePlayback} accessibilityRole="button" accessibilityLabel="Open track in external player"><Ionicons name={isExternalPlayback ? "open-outline" : isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
           <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
           <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
@@ -137,7 +137,7 @@ export default function NowPlayingScreen() {
           <Ionicons name="bluetooth" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
         </Pressable>
       </View>
-      <Text style={styles.disclaimer}>LumaMusic · YouTube Music playback handoff</Text>
+      <Text style={styles.disclaimer}>LumaMusic · External playback</Text>
     </SafeAreaView>
   );
 }

@@ -54,7 +54,7 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
         <ScrollReveal scrollY={scrollY}>
-          <Text style={styles.eyebrow}>YOUTUBE MUSIC CATALOGUE</Text>
+          <Text style={styles.eyebrow}>MUSIC CATALOGUE</Text>
           <Text style={styles.title}>Search.</Text>
           <View style={styles.inputWrap}>
             <Ionicons name="search" size={19} color={colors.muted} />
@@ -69,8 +69,8 @@ export default function SearchScreen() {
         </ScrollReveal>
         <ScrollReveal scrollY={scrollY}>
           <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>{debouncedQuery ? heading : "Find something to play"}</Text><Text style={styles.count}>{count} {activeFilter.toLowerCase()}</Text></View>
-          {!debouncedQuery ? <Text style={styles.message}>Search YouTube Music by track, artist or playlist.</Text> : null}
-          {loading ? <Text style={styles.message}>Searching YouTube Music…</Text> : null}
+          {!debouncedQuery ? <Text style={styles.message}>Search tracks, artists or playlists.</Text> : null}
+          {loading ? <Text style={styles.message}>Searching…</Text> : null}
           {error ? <Text style={styles.error}>{error instanceof Error ? error.message : "Search is unavailable right now."}</Text> : null}
           {!loading && !error && (activeFilter === "All" || activeFilter === "Tracks") && tracks.length > 0 ? <>
             {activeFilter === "All" ? <Text style={styles.resultGroupTitle}>Tracks</Text> : null}
@@ -89,7 +89,7 @@ export default function SearchScreen() {
             <Text style={styles.emptyTitle}>Nothing found yet</Text>
             <Text style={styles.emptyCopy}>Try another title, artist or playlist name.</Text>
           </View> : null}
-          <Text style={styles.note}>Selecting a track opens its canonical YouTube Music page. Native in-app streaming is a separate playback milestone.</Text>
+          <Text style={styles.note}>Selecting a track opens it in the external player. In-app streaming is planned separately.</Text>
         </ScrollReveal>
       </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
