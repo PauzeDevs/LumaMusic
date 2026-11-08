@@ -29,6 +29,7 @@ export default function NowPlayingScreen() {
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
+  const isExternalPlayback = track?.source === "youtube_music";
   const [progressWidth, setProgressWidth] = useState(0);
   const [progressLeft, setProgressLeft] = useState(0);
   const progressRef = useRef<View>(null);
@@ -55,7 +56,12 @@ export default function NowPlayingScreen() {
     const index = speeds.indexOf(playbackRate);
     setPlaybackRate(speeds[(index + 1) % speeds.length]);
   };
-  const chooseSleepTimer = () => Alert.alert("Sleep timer", "Pause playback after", [
+  const chooseSleepTimer = () => {
+    if (isExternalPlayback) {
+      Alert.alert("Sleep timer unavailable", "Playback is handled by YouTube Music. Use its playback controls or your device settings for a sleep timer.");
+      return;
+    }
+    Alert.alert("Sleep timer", "Pause playback after", [
     { text: "15 minutes", onPress: () => setSleepTimer(15) },
     { text: "30 minutes", onPress: () => setSleepTimer(30) },
     { text: "45 minutes", onPress: () => setSleepTimer(45) },
@@ -63,13 +69,14 @@ export default function NowPlayingScreen() {
     { text: "End of this track", onPress: () => setSleepTimer(-1) },
     ...(sleepTimerMinutes !== null ? [{ text: "Cancel timer", style: "destructive" as const, onPress: () => setSleepTimer(null) }] : []),
     { text: "Close", style: "cancel" as const }
-  ]);
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text style={styles.headerTitle}>From your discovery</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>PLAYING ON</Text><Text style={styles.headerTitle}>YouTube Music</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -85,26 +92,36 @@ export default function NowPlayingScreen() {
             <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={colors.accent} />
           </Pressable>
         </View>
-        <View style={styles.progressArea}>
-          <View ref={progressRef} style={styles.progressTrack} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
-            <View style={[styles.progressFill, { width: `${progress}%` }]} />
-            <View style={[styles.progressThumb, { left: `${progress}%` }]} />
+        {isExternalPlayback ? (
+          <View style={styles.externalPlayback}>
+            <Ionicons name="open-outline" size={15} color={colors.accent} />
+            <Text style={styles.externalPlaybackText}>Playback is controlled by YouTube Music</Text>
+            <Text style={styles.externalDuration}>{formatTime(duration)} total</Text>
           </View>
-          <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
-        </View>
+        ) : (
+          <View style={styles.progressArea}>
+            <View ref={progressRef} style={styles.progressTrack} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
+              <View style={[styles.progressFill, { width: `${progress}%` }]} />
+              <View style={[styles.progressThumb, { left: `${progress}%` }]} />
+            </View>
+            <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
+          </View>
+        )}
         {isBuffering ? <Text style={styles.status}>Buffering audio…</Text> : null}
         {playbackError ? <Text style={styles.error}>{playbackError}</Text> : null}
         <View style={styles.controls}>
           <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
           <Pressable onPress={() => { void playPrevious(); }}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
-          <Pressable style={styles.play} onPress={togglePlayback}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
+          <Pressable style={styles.play} onPress={togglePlayback} accessibilityRole="button" accessibilityLabel="Open track in YouTube Music"><Ionicons name={isExternalPlayback ? "open-outline" : isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
           <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
           <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
-        <View style={styles.extraControls}>
-          <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
-          <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
-        </View>
+        {!isExternalPlayback ? (
+          <View style={styles.extraControls}>
+            <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
+            <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
+          </View>
+        ) : null}>
       </View>
       <View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
@@ -118,7 +135,7 @@ export default function NowPlayingScreen() {
           <Ionicons name="bluetooth" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
         </Pressable>
       </View>
-      <Text style={styles.disclaimer}>Playback handoff via YouTube Music · Native in-app playback is not enabled</Text>
+      <Text style={styles.disclaimer}>LumaMusic · YouTube Music playback handoff</Text>
     </SafeAreaView>
   );
 }
@@ -138,6 +155,9 @@ const styles = StyleSheet.create({
   artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
   like: { padding: 8 },
   progressArea: { marginTop: 28 },
+  externalPlayback: { marginTop: 28, minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, flexWrap: "wrap" },
+  externalPlaybackText: { color: colors.muted, fontSize: 10 },
+  externalDuration: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
   progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
