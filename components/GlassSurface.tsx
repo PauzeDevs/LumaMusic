@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(25,27,34,0.58)"
   },
   tint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(255,255,255,0.025)"
   },
   topSheen: {
