@@ -118,7 +118,7 @@ export default function NowPlayingScreen() {
           <Ionicons name="bluetooth" size={20} color={colors.muted} /><Text style={styles.bottomText}>Connect</Text>
         </Pressable>
       </View>
-      <Text style={styles.disclaimer}>Streaming provided by Audius · Track availability depends on source permissions</Text>
+      <Text style={styles.disclaimer}>Playback handoff via YouTube Music · Native in-app playback is not enabled</Text>
     </SafeAreaView>
   );
 }
