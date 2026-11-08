@@ -3,6 +3,7 @@ import { Animated, Pressable, RefreshControl, ScrollView, StyleSheet, Text, Text
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { GlassSurface } from "../../components/GlassSurface";
 import { ArtistRow } from "../../components/ArtistRow";
 import { PlaylistRow } from "../../components/PlaylistRow";
 import { TrackRow } from "../../components/TrackRow";
@@ -56,11 +57,11 @@ export default function SearchScreen() {
         <ScrollReveal scrollY={scrollY}>
           <Text style={styles.eyebrow}>MUSIC CATALOGUE</Text>
           <Text style={styles.title}>Search.</Text>
-          <View style={styles.inputWrap}>
+          <GlassSurface style={styles.inputWrap} contentStyle={styles.inputGlass}><View style={styles.inputInner}>
             <Ionicons name="search" size={19} color={colors.muted} />
             <TextInput value={query} onChangeText={setQuery} placeholder="Songs, artists, albums..." placeholderTextColor={colors.subtle} style={styles.input} returnKeyType="search" />
             {query.length > 0 ? <Pressable onPress={() => setQuery("")}><Ionicons name="close-circle" size={18} color={colors.muted} /></Pressable> : null}
-          </View>
+          </View></GlassSurface>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
             {filters.map((filter) => <Pressable key={filter} onPress={() => setActiveFilter(filter)} style={[styles.filter, activeFilter === filter && styles.filterActive]}>
               <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
@@ -101,13 +102,15 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingBottom: 30 },
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginTop: 12 },
   title: { color: colors.text, fontSize: 34, fontWeight: "800", letterSpacing: -1.2, marginTop: 6, marginBottom: 20 },
-  inputWrap: { height: 54, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 15 },
+  inputWrap: { height: 54, borderRadius: 16 },
+  inputGlass: { flex: 1 },
+  inputInner: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 15 },
   input: { color: colors.text, fontSize: 13, flex: 1, paddingVertical: 0 },
   filters: { gap: 8, paddingVertical: 18 },
-  filter: { borderRadius: 20, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 15, paddingVertical: 8 },
-  filterActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  filter: { borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", backgroundColor: "rgba(255,255,255,0.035)", paddingHorizontal: 15, paddingVertical: 8 },
+  filterActive: { backgroundColor: "rgba(232,236,242,0.16)", borderColor: "rgba(255,255,255,0.34)" },
   filterText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
-  filterTextActive: { color: "#17111F" },
+  filterTextActive: { color: colors.text },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   resultGroupTitle: { color: colors.text, fontSize: 14, fontWeight: "700", marginTop: 16, marginBottom: 5 },
   sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "700" },

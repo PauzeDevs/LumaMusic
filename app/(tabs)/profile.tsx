@@ -3,6 +3,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, RefreshC
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
+import { GlassSurface } from "../../components/GlassSurface";
 import { usePlayerStore } from "../../store/player";
 import { useLibraryStore } from "../../store/library";
 import { router } from "expo-router";
@@ -25,14 +26,14 @@ export default function ProfileScreen() {
         <View style={styles.topline}><View style={styles.liveDot} /><Text style={styles.eyebrow}>YOUR PERSONAL SPACE</Text></View>
         <Text style={styles.title}>Made for you.</Text>
         <Text style={styles.intro}>Your music world, tuned to your taste.</Text>
-        <View style={styles.profileCard}>
+        <GlassSurface style={styles.profileCard} contentStyle={styles.profileCardContent}>
           <View style={styles.avatar}><Text style={styles.avatarText}>P</Text></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>Music listener</Text>
             <Text style={styles.handle}>Your LumaMusic profile</Text>
           </View>
           <View style={styles.profileBadge}><Ionicons name="sparkles" size={13} color={colors.accent} /></View>
-        </View>
+        </GlassSurface>
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Your listening</Text><Text style={styles.sectionMeta}>NOW</Text></View>
         <View style={styles.nowCard}>
           <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
@@ -43,7 +44,7 @@ export default function ProfileScreen() {
           <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "OPEN" : "IDLE"}</Text></View>
         </View>
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Preferences</Text><Text style={styles.sectionMeta}>PERSONALISE</Text></View>
-        <View style={styles.settings}>
+        <GlassSurface style={styles.settings} contentStyle={styles.settingsContent}>
           {settings.map((item, index) => (
             <Pressable key={item.title} onPress={() => {
               if (item.title === "Playback") {
@@ -71,7 +72,7 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={16} color={colors.subtle} />
             </Pressable>
           ))}
-        </View>
+        </GlassSurface>
         <View style={styles.footerCard}>
           <Ionicons name="musical-notes" size={16} color={colors.accent} />
           <Text style={styles.footer}>Made for the love of listening.{"\n"}LumaMusic by PauzeDevs</Text>
@@ -90,7 +91,8 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.8 },
   title: { color: colors.text, fontSize: 33, fontWeight: "800", letterSpacing: -1.2, marginTop: 9 },
   intro: { color: colors.muted, fontSize: 12, marginTop: 5, marginBottom: 22 },
-  profileCard: { backgroundColor: "rgba(255,255,255,0.055)", borderRadius: 22, padding: 17, flexDirection: "row", alignItems: "center", gap: 13, borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", marginBottom: 27 },
+  profileCard: { borderRadius: 22, marginBottom: 27 },
+  profileCardContent: { padding: 17, flexDirection: "row", alignItems: "center", gap: 13 },
   avatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: "rgba(198,167,255,0.16)", borderWidth: 1, borderColor: "rgba(198,167,255,0.24)", alignItems: "center", justifyContent: "center" },
   avatarText: { color: colors.accent, fontSize: 19, fontWeight: "800" },
   name: { color: colors.text, fontSize: 14, fontWeight: "700" },
@@ -99,14 +101,15 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 11, marginTop: 4 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
   sectionMeta: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
-  nowCard: { backgroundColor: "rgba(166,232,212,0.055)", borderWidth: 1, borderColor: "rgba(166,232,212,0.14)", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
-  nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "rgba(166,232,212,0.1)", alignItems: "center", justifyContent: "center" },
+  nowCard: { backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
+  nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
   nowTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   nowSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
   statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: "rgba(255,255,255,0.06)" },
-  statusPillActive: { backgroundColor: "rgba(166,232,212,0.12)" },
+  statusPillActive: { backgroundColor: "rgba(255,255,255,0.1)" },
   statusText: { color: colors.mint, fontSize: 8, fontWeight: "800", letterSpacing: 1 },
-  settings: { backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 21, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", paddingHorizontal: 14, overflow: "hidden" },
+  settings: { borderRadius: 21 },
+  settingsContent: { paddingHorizontal: 14 },
   setting: { minHeight: 69, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)" },
   last: { borderBottomWidth: 0 },
   settingIcon: { width: 37, height: 37, borderRadius: 13, backgroundColor: "rgba(198,167,255,0.09)", borderWidth: 1, borderColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },

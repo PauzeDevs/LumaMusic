@@ -1,5 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import { colors } from "../theme/colors";
 import { Artwork } from "./Artwork";
@@ -26,6 +27,8 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 
   return (
     <View style={styles.shell}>
+      <BlurView tint="dark" intensity={75} style={StyleSheet.absoluteFill} />
+      <View pointerEvents="none" style={styles.shellSheen} />
       {track ? (
         <View style={styles.mini}>
           <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}>
@@ -58,8 +61,9 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  shell: { backgroundColor: "rgba(12,13,20,0.96)", borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)", paddingTop: 9, paddingBottom: 9 },
-  mini: { height: 60, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.075)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  shell: { marginHorizontal: 12, marginBottom: 8, borderRadius: 25, overflow: "hidden", backgroundColor: "rgba(18,20,25,0.72)", borderWidth: 1, borderColor: "rgba(255,255,255,0.16)", paddingTop: 9, paddingBottom: 10, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
+  shellSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: "rgba(255,255,255,0.24)" },
+  mini: { height: 60, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
   miniTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },

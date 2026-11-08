@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Image, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import { colors } from "../theme/colors";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
@@ -78,6 +79,7 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <BlurView tint="dark" intensity={32} style={styles.ambientBlur} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
         <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "OPENED IN" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "External player" : "Your library"}</Text></View>
@@ -127,7 +129,7 @@ export default function NowPlayingScreen() {
           </View>
         ) : null}
       </View>
-      <View style={styles.bottom}>
+      <View style={styles.bottomGlass}><BlurView tint="dark" intensity={60} style={StyleSheet.absoluteFill} /><View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
@@ -138,7 +140,7 @@ export default function NowPlayingScreen() {
         <Pressable style={styles.bottomAction} onPress={() => router.push("/audio-settings")}>
           <Ionicons name="options-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Audio</Text>
         </Pressable>
-      </View>
+      </View></View>
       <Text style={styles.disclaimer}>LumaMusic · External playback</Text>
     </SafeAreaView>
   );
@@ -146,13 +148,14 @@ export default function NowPlayingScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
+  ambientBlur: { ...StyleSheet.absoluteFillObject, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  headerButton: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: "rgba(255,255,255,0.065)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
   headerCopy: { alignItems: "center", gap: 3 },
   overline: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
   headerTitle: { color: colors.muted, fontSize: 11 },
   main: { flex: 1, justifyContent: "center" },
-  artFrame: { width: "100%", aspectRatio: 1, borderRadius: 25, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 30 },
+  artFrame: { width: "100%", aspectRatio: 1, borderRadius: 28, overflow: "hidden", backgroundColor: "#15171B", marginBottom: 30, borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 26, shadowOffset: { width: 0, height: 14 }, elevation: 12 },
   artwork: { width: "100%", height: "100%" },
   artworkFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
   trackInfo: { flexDirection: "row", alignItems: "center", gap: 16 },
@@ -175,11 +178,12 @@ const styles = StyleSheet.create({
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
-  play: { width: 66, height: 66, borderRadius: 33, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  play: { width: 68, height: 68, borderRadius: 34, backgroundColor: "#F0F2F5", alignItems: "center", justifyContent: "center" },
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 18 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottom: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 15, flexWrap: "wrap" },
+  bottomGlass: { borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", backgroundColor: "rgba(20,22,27,0.65)", marginBottom: 6 },
+  bottom: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 16, paddingHorizontal: 8, flexWrap: "wrap" },
   bottomAction: { flexDirection: "row", alignItems: "center", gap: 7 },
   bottomText: { color: colors.muted, fontSize: 11 },
   disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, paddingBottom: 10 },

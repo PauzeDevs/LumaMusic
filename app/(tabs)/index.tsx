@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { GlassSurface } from "../../components/GlassSurface";
 
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import { colors } from "../../theme/colors";
@@ -53,11 +54,11 @@ export default function ListenScreen() {
           </Pressable>
         </View></ScrollReveal>
 
-        <ScrollReveal scrollY={scrollY} delay={25}><Pressable style={styles.searchPrompt} onPress={() => router.push("/(tabs)/search")}>
+        <ScrollReveal scrollY={scrollY} delay={25}><GlassSurface style={styles.searchPrompt} contentStyle={styles.searchPromptContent}><Pressable style={styles.searchPromptInner} onPress={() => router.push("/(tabs)/search")}>
           <Ionicons name="search" size={19} color={colors.muted} />
           <Text style={styles.searchText}>Songs, artists, moods...</Text>
           <Ionicons name="options-outline" size={18} color={colors.subtle} />
-        </Pressable></ScrollReveal>
+        </Pressable></GlassSurface></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
           {tracks[0]?.artwork && !heroArtworkFailed ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} onError={() => setHeroArtworkFailed(true)} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
@@ -120,19 +121,21 @@ const styles = StyleSheet.create({
   greeting: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -1.1, marginTop: 6 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#272333", borderWidth: 1, borderColor: "rgba(198,167,255,0.35)", alignItems: "center", justifyContent: "center" },
   avatarText: { color: colors.accent, fontWeight: "800", fontSize: 15 },
-  searchPrompt: { height: 50, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 15, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 22 },
+  searchPrompt: { height: 52, borderRadius: 16, marginBottom: 22 },
+  searchPromptContent: { flex: 1 },
+  searchPromptInner: { flex: 1, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 10 },
   searchText: { color: colors.muted, fontSize: 13, flex: 1 },
-  hero: { height: 260, borderRadius: 24, overflow: "hidden", marginBottom: 30, backgroundColor: "#252035" },
+  hero: { height: 270, borderRadius: 25, overflow: "hidden", marginBottom: 30, backgroundColor: "#171A1F", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)" },
   heroImage: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%", opacity: 0.65 },
   heroPlaceholder: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
-  heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(8,8,15,0.38)" },
+  heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(4,5,7,0.48)" },
   heroContent: { flex: 1, padding: 22, justifyContent: "flex-end" },
   heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
   heroTagText: { color: "#E7DDF9", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
   heroTitle: { color: "#FFFFFF", fontSize: 32, lineHeight: 35, fontWeight: "800", letterSpacing: -1.1 },
   heroSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 8 },
-  heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: colors.accent, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, marginTop: 16 },
+  heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#F0F2F5", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, marginTop: 16 },
   heroButtonText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 30 },
   horizontal: { gap: 14, paddingRight: 20 },

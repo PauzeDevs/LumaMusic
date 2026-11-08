@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
+import { GlassSurface } from "../../components/GlassSurface";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { ScrollReveal } from "../../components/ScrollReveal";
@@ -56,13 +57,13 @@ export default function LibraryScreen() {
             <Ionicons name="chevron-forward" size={17} color={colors.muted} />
           </Pressable>
         </View></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><View style={styles.statsCard}>
+        <ScrollReveal scrollY={scrollY}><GlassSurface style={styles.statsCard} contentStyle={styles.statsContent}>
           <View style={styles.stat}><Text style={styles.statValue}>{recentTracks.length}</Text><Text style={styles.statLabel}>RECENT TRACKS</Text></View>
           <View style={styles.statDivider} />
           <View style={styles.stat}><Text style={styles.statValue}>{likedTracks.length}</Text><Text style={styles.statLabel}>LIKED SONGS</Text></View>
           <View style={styles.statDivider} />
           <View style={styles.stat}><Text style={styles.statValue}>{localPlaylists.length}</Text><Text style={styles.statLabel}>PLAYLISTS</Text></View>
-        </View></ScrollReveal>
+        </GlassSurface></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} />
           {localPlaylists.length === 0 ? <Text style={styles.note}>Build your own collections. They stay on this device.</Text> : localPlaylists.map((playlist) => (
@@ -126,13 +127,14 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 32, fontWeight: "800", letterSpacing: -1, marginTop: 6 },
   add: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.surfaceElevated, alignItems: "center", justifyContent: "center" },
   shortcuts: { gap: 10, marginBottom: 30 },
-  liked: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: "#29213A", flexDirection: "row", alignItems: "center", gap: 12 },
+  liked: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: "rgba(255,255,255,0.075)", flexDirection: "row", alignItems: "center", gap: 12 },
   heart: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
-  downloads: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.border },
+  downloads: { minHeight: 76, borderRadius: 17, padding: 14, backgroundColor: "rgba(255,255,255,0.045)", flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.border },
   downloadIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#182D2A", alignItems: "center", justifyContent: "center" },
   shortcutTitle: { color: colors.text, fontSize: 13, fontWeight: "700" },
   shortcutSub: { color: colors.muted, fontSize: 11, marginTop: 4 },
-  statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingVertical: 17, marginBottom: 27 },
+  statsCard: { borderRadius: 19, marginBottom: 27 },
+  statsContent: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", paddingVertical: 17 },
   stat: { alignItems: "center", flex: 1, gap: 5 },
   statValue: { color: colors.text, fontSize: 20, fontWeight: "800" },
   statLabel: { color: colors.subtle, fontSize: 7, fontWeight: "800", letterSpacing: 1 },
@@ -140,7 +142,7 @@ const styles = StyleSheet.create({
   topActions: { flexDirection: "row", alignItems: "center", gap: 9 },
   importButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, height: 40, borderRadius: 13, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   importText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  localPlaylist: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, backgroundColor: colors.surface, borderRadius: 15, marginBottom: 8 },
+  localPlaylist: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, backgroundColor: "rgba(255,255,255,0.045)", borderRadius: 15, marginBottom: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
   localPlaylistIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: 22 },
   modalCard: { backgroundColor: colors.surfaceElevated, borderRadius: 22, borderWidth: 1, borderColor: colors.border, padding: 20 },
