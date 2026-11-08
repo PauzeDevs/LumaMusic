@@ -19,11 +19,13 @@ type AudioEngineValue = {
 
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
 
-function isExternalTrack(track: MusicTrack | null | undefined): track is MusicTrack {
-  return Boolean(track?.source === "youtube_music" && track.youtubeUrl);
+type ExternalMusicTrack = MusicTrack & { source: "youtube_music"; youtubeUrl: string };
+
+function isExternalTrack(track: MusicTrack | null | undefined): track is ExternalMusicTrack {
+  return Boolean(track?.source === "youtube_music" && typeof track.youtubeUrl === "string" && track.youtubeUrl.length > 0);
 }
 
-function isPlayable(track: MusicTrack | undefined): track is MusicTrack {
+function isPlayable(track: MusicTrack | undefined): track is ExternalMusicTrack {
   return isExternalTrack(track);
 }
 
