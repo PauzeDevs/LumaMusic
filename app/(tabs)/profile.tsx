@@ -36,7 +36,7 @@ export default function ProfileScreen() {
           <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
-            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Audius stream" : "Pick a track and let the room fill up."}</Text>
+            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · YouTube Music handoff" : "Pick a track and let the room fill up."}</Text>
           </View>
           <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "READY" : "IDLE"}</Text></View>
         </View>
@@ -45,7 +45,7 @@ export default function ProfileScreen() {
           {settings.map((item, index) => (
             <Pressable key={item.title} onPress={() => {
               if (item.title === "Playback") {
-                Alert.alert("Playback quality", "LumaMusic currently streams the format supplied by Audius. The source does not expose a dependable selectable bitrate ladder, so Auto / source-managed playback is used. A quality selector will appear when the streaming provider supports real quality variants.");
+                Alert.alert("Playback quality", "YouTube Music playback currently opens in the official app or website. Native in-app playback and quality selection are not enabled yet.");
               } else if (item.title === "Appearance") {
                 Alert.alert("Appearance", "LumaMusic uses a dark matte palette with translucent, glass-inspired surfaces. Full system blur and material effects are being refined.");
               } else {
