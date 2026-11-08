@@ -1,6 +1,6 @@
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, type PropsWithChildren } from "react";
-import { getAudiusStreamUrl } from "../services/audius";
+import { Linking } from "react-native";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import type { MusicTrack } from "../types/music";
@@ -81,34 +81,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [player, setPlaybackRateState]);
 
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[]) => {
-    if (!isPlayable(track)) {
-      throw new Error("This track is not available for streaming through Audius.");
-    }
-
-    try {
+    if (track.youtubeUrl) {
       setPlaybackError(null);
-      setTrack(track, nextQueue);
       useLibraryStore.getState().addRecentTrack(track);
-      const sourceTrackId = track.sourceTrackId;
-      if (!sourceTrackId) throw new Error("This track is missing its Audius stream ID.");
-      player.replace(getAudiusStreamUrl(sourceTrackId));
-      player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
-      player.setActiveForLockScreen(true, {
-        title: track.title,
-        artist: track.artist,
-        albumTitle: "LumaMusic",
-        artworkUrl: track.artwork
-      }, {
-        showSeekBackward: true,
-        showSeekForward: true
-      });
-      player.play();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to start this track.";
-      setPlaybackError(message);
-      throw new Error(message);
+      await Linking.openURL(track.youtubeUrl);
+      return;
     }
-  }, [player, setPlaybackError, setTrack]);
+    throw new Error("This track has no supported native playback source.");
+  }, [setPlaybackError]);
 
   const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[]) => {
     try {
