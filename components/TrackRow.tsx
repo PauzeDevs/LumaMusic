@@ -18,7 +18,12 @@ export function TrackRow({ track, index, showIndex = false, queue }: Props) {
   const isLiked = likedTracks.some((item) => item.id === track.id);
 
   const handlePlay = () => {
-    if (track.youtubeUrl) {\n      useLibraryStore.getState().addRecentTrack(track);\n      Linking.openURL(track.youtubeUrl).catch((error: unknown) => Alert.alert("Could not open YouTube Music", error instanceof Error ? error.message : "Please try again."));\n      return;\n    }\n    playTrack(track, queue ?? [track]).catch((error: unknown) => {
+    if (track.youtubeUrl) {
+      useLibraryStore.getState().addRecentTrack(track);
+      Linking.openURL(track.youtubeUrl).catch((error: unknown) => Alert.alert("Could not open YouTube Music", error instanceof Error ? error.message : "Please try again."));
+      return;
+    }
+    playTrack(track, queue ?? [track]).catch((error: unknown) => {
       Alert.alert("Couldn't play this track", error instanceof Error ? error.message : "Please try another track.");
     });
   };
