@@ -98,7 +98,7 @@ export default function NowPlayingScreen() {
           <View style={styles.externalPlayback}>
             <Ionicons name="open-outline" size={15} color={colors.accent} />
             <Text style={styles.externalPlaybackText}>Playback is controlled by YouTube Music</Text>
-            <Text style={styles.externalDuration}>{formatTime(duration)} total</Text>
+            <Text style={styles.externalDuration}>{duration > 0 ? formatTime(duration) + " total" : "Duration unavailable"}</Text>
           </View>
         ) : (
           <View style={styles.progressArea}>
