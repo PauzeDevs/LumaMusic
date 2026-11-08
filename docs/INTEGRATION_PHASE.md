@@ -1,56 +1,48 @@
 # LumaMusic Integration Phase
 
-**Status:** YouTube Music search discovery and official-app handoff are implemented on the feature branch. Native in-app playback remains a separate integration milestone.
+**Status:** YouTube Music catalogue discovery and external playback handoff are implemented on `feat/youtube-music-provider`. Native in-app audio streaming is not implemented in this phase.
 
-## YouTube Music endpoints used
-- POST /youtubei/v1/search — Home discovery query.
-- POST /youtubei/v1/search — debounced track search.
-- Artist pages hand off to the YouTube Music channel page.
-- Artist tracklists open on YouTube Music.
-- Playlist links open on YouTube Music.
-- Playlist tracklists open on YouTube Music.
-- Native stream resolution is not enabled; selecting a track opens its YouTube Music page.
+## Discovery
 
-Requests include app_name=LumaMusic. No bearer token is embedded in the app. A developer API key may be added later if required for higher request limits.
+- Search uses the YouTube Music web client's InnerTube `search` endpoint.
+- The app maps track title, artist text, artwork, duration and video ID into the app-owned `MusicTrack` type.
+- Home discovery currently runs a curated `new music` query.
+- Featured playlist discovery uses a playlist-filtered search query.
+- Search results are cached by TanStack Query.
+- The integration is unofficial and undocumented. It is not a Google/YouTube public API and LumaMusic does not claim Google authorization or affiliation.
 
-## Track normalization
-The app maps provider responses into the MusicTrack domain type. Provider IDs are namespaced as audius:<id>. The adapter preserves title, artist attribution, artwork, duration, permalink, genre, play count, and streamability flags where supplied.
+## Playback handoff
 
-## Playback flow
-1. User selects a result from Home or Search.
-2. App opens the track's canonical YouTube Music URL.
-3. The official YouTube Music client or website handles playback.
-4. Native in-app streaming is not part of this phase.
-5. App sets lock-screen metadata and updates shared Zustand playback state.
-6. Mini-player and Now Playing read from the same state.
+1. The user selects a search or discovery result.
+2. LumaMusic opens the canonical `music.youtube.com/watch?v=<videoId>` URL.
+3. YouTube Music or the browser handles playback.
+4. LumaMusic records the selection in its local recently played list.
 
-## Current integration scope
-- Home trending tracks and playlists.
-- Debounced track, artist, and playlist search.
-- Artist profile and playlist detail screens.
-- Stream URL resolution.
-- Shared audio player.
-- Background playback configuration.
-- Lock-screen metadata.
-- Play/pause, next/previous, shuffle, repeat, seek, and share controls in the app UI.
-- Persisted liked tracks and recently played history using local device storage.
+The Expo Audio player remains in the project for the native playback layer, but YouTube Music tracks do not currently supply a native audio URL to it. In-app playback, seek synchronization, lock-screen controls for YouTube Music streams, background streaming and queue continuity are therefore not claimed as complete.
+
+## Data model
+
+YouTube Music tracks use namespaced IDs (`youtube:<videoId>`) and retain a canonical YouTube Music URL. The legacy `audius` source literal remains in the type temporarily so previously persisted library entries can be read safely; the Audius service and API requests have been removed from the active app code.
 
 ## Not yet integrated
-- Artist and playlist pagination beyond the first page.
-- User-created playlist management and full listening-history controls.
-- YouTube Music OAuth and account-linked write actions.
-- Local-device music scanning.
-- Remote next/previous lock-screen queue actions.
-- Offline downloads.
-- Any mainstream label catalogue beyond what artists have made available through YouTube Music.
 
-## Rights and catalogue limits
-YouTube Music is a discovery and streaming source, not a guarantee of the full Spotify/Apple Music catalogue. A track may be unavailable, gated, removed, or not streamable. LumaMusic must respect each track's access state and the YouTube Music terms. The app does not scrape, extract, re-host, or download tracks from other streaming services.
+- Native audio stream resolution through a permitted playback interface.
+- In-app play/pause, seek, next/previous and queue synchronization for YouTube Music audio.
+- Background audio and lock-screen controls for YouTube Music tracks.
+- Google account sign-in, library sync, likes, subscriptions or write actions.
+- Full artist/album/playlist detail parsing and pagination.
+- Local-device music scanning and offline downloads.
+
+## Privacy and rights
+
+The current discovery adapter does not collect Google passwords, cookies or account session tokens. It makes public web requests to YouTube Music and opens canonical track pages for playback. Google/YouTube may receive normal network metadata such as IP address and request information.
+
+Do not describe this unofficial integration as officially approved by Google. Any future native playback implementation must use a method that is authorized for the intended use, respect access controls and applicable terms, and avoid storing or redistributing audio without permission.
 
 ## QA still required
-- Confirm live API responses on device and handle schema differences.
-- Confirm stream redirects and supported audio formats on Android and iOS.
-- Confirm background playback and lock-screen play/pause.
-- Test calls, audio interruptions, headphones, Bluetooth disconnection, and network loss.
-- Run Expo dependency checks, TypeScript, and Android/iOS exports.
-- Validate AsyncStorage persistence and migrations on physical Android and iOS devices.
+
+- Validate live search response parsing on Android and iOS.
+- Verify empty, rate-limited, unavailable and changed-response cases.
+- Test opening YouTube Music links when the app is installed and when it is not.
+- Run Expo dependency checks, TypeScript and Android/iOS development builds.
+- Validate local library migration for older persisted Audius entries.
