@@ -32,7 +32,7 @@ npm install
 npx expo start
 ```
 
-Use an Expo development build when testing native audio. The current YouTube Music integration is discovery plus external playback handoff. Native in-app YouTube Music streaming, background stream control and lock-screen synchronization are not implemented yet.
+Use an Expo development build when testing native audio. The app includes native audio playback controls and background-audio configuration. Track availability and playback formats can vary; physical-device testing is required before describing every playback feature as production-ready.
 
 ### PROJECT FILES
 
