@@ -56,7 +56,7 @@ function withAndroidAutoMedia(config) {
       const dependencyBlock = /dependencies\s*\{/;
       if (!dependencyBlock.test(contents)) throw new Error("Could not locate the Android app dependencies block.");
       contents = contents.replace(dependencyBlock, (match) =>
-        match + '\n    implementation("androidx.media3:media3-exoplayer:1.7.1")\\n    implementation("androidx.media3:media3-session:1.7.1")'
+        match + '\n    implementation("androidx.media3:media3-exoplayer:1.7.1")\n    implementation("androidx.media3:media3-session:1.7.1")'
       );
     }
     mod.modResults.contents = contents;
