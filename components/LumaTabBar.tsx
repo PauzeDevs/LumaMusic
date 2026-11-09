@@ -49,7 +49,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
           const routeIndex = state.routes.findIndex((route) => route.name === tab.name);
           const focused = state.index === routeIndex;
           return (
-            <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={styles.tab}>
+            <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={[styles.tab, focused && styles.tabActive]}>
               <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.accent : colors.subtle} />
               <Text style={[styles.label, focused && styles.labelActive]}>{tab.label}</Text>
             </Pressable>
@@ -61,9 +61,9 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  shell: { marginHorizontal: 12, marginBottom: 8, borderRadius: 25, overflow: "hidden", backgroundColor: "rgba(19,20,22,0.94)", borderWidth: 1, borderColor: "rgba(255,255,255,0.075)", paddingTop: 9, paddingBottom: 10, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
+  shell: { marginHorizontal: 16, marginBottom: 9, borderRadius: 27, overflow: "hidden", backgroundColor: "rgba(20,21,23,0.97)", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)", paddingTop: 9, paddingBottom: 10, shadowColor: "#000", shadowOpacity: 0.28, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
   shellSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: "rgba(255,255,255,0.10)" },
-  mini: { height: 60, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: "rgba(255,255,255,0.065)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  mini: { height: 58, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.055)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
   miniTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
@@ -72,7 +72,8 @@ const styles = StyleSheet.create({
   progressTrack: { position: "absolute", bottom: 0, left: 0, right: 0, height: 2, backgroundColor: "rgba(255,255,255,0.12)" },
   progressFill: { width: "28%", height: 2, backgroundColor: colors.accent },
   tabs: { flexDirection: "row", justifyContent: "space-around", paddingTop: 4 },
-  tab: { alignItems: "center", gap: 4, minWidth: 58 },
+  tab: { alignItems: "center", justifyContent: "center", gap: 4, minWidth: 66, minHeight: 48, borderRadius: 18, paddingHorizontal: 10 },
+  tabActive: { backgroundColor: "rgba(255,255,255,0.075)" },
   label: { color: colors.subtle, fontSize: 10, fontWeight: "600" },
   labelActive: { color: colors.accent }
 });
