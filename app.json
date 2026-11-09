@@ -36,7 +36,8 @@
             "mediaPlayback"
           ]
         }
-      ]
+      ],
+      "./plugins/withAndroidAuto"
     ],
     "ios": {
       "supportsTablet": true,
