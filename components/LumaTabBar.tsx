@@ -23,7 +23,6 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const { togglePlayback } = useAudioEngine();
   const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
-  const isExternalTrack = track?.source === "youtube_music";
 
   return (
     <View style={styles.shell}>
@@ -35,7 +34,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
             <Artwork uri={track.artwork} size={42} radius={10} />
             <View style={styles.miniCopy}>
               <Text numberOfLines={1} style={styles.miniTitle}>{track.title}</Text>
-              <Text numberOfLines={1} style={styles.miniArtist}>{isExternalTrack ? track.artist + " · External" : track.artist}</Text>
+              <Text numberOfLines={1} style={styles.miniArtist}>{track.artist}</Text>
             </View>
           </Pressable>
           <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}>
