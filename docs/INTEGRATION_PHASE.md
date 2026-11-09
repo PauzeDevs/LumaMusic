@@ -1,6 +1,6 @@
 # LumaMusic Integration Phase
 
-**Status:** YouTube Music catalogue discovery and external playback handoff are implemented on `feat/youtube-music-provider`. Native in-app audio streaming is not implemented in this phase.
+**Status:** Catalogue discovery and native in-app audio playback are present in the current application. Playback resolution is best-effort and depends on a compatible audio format being available.
 
 ## Discovery
 
@@ -11,14 +11,14 @@
 - Search results are cached by TanStack Query.
 - The integration is unofficial and undocumented. It is not a Google/YouTube public API and LumaMusic does not claim Google authorization or affiliation.
 
-## Playback handoff
+## Native playback
 
-1. The user selects a search or discovery result.
-2. LumaMusic opens the canonical `music.youtube.com/watch?v=<videoId>` URL.
-3. YouTube Music or the browser handles playback.
-4. LumaMusic records the selection in its local recently played list.
+1. The user selects a catalogue result.
+2. The app resolves an available audio format for the selected track.
+3. The native audio player handles playback, progress, seeking and transport controls.
+4. LumaMusic records the selection in the local recently played list.
 
-The Expo Audio player remains in the project for the native playback layer, but YouTube Music tracks do not currently supply a native audio URL to it. In-app playback, seek synchronization, lock-screen controls for YouTube Music streams, background streaming and queue continuity are therefore not claimed as complete.
+The resolver is best-effort. It does not implement signature-cipher bypasses or DRM removal. Some tracks and formats may be unavailable, and background playback, lock-screen controls and queue continuity require physical-device validation.
 
 ## Data model
 
@@ -35,7 +35,7 @@ YouTube Music tracks use namespaced IDs (`youtube:<videoId>`) and retain a canon
 
 ## Privacy and rights
 
-The current discovery adapter does not collect Google passwords, cookies or account session tokens. It makes public web requests to YouTube Music and opens canonical track pages for playback. Google/YouTube may receive normal network metadata such as IP address and request information.
+The discovery adapter does not collect Google passwords, cookies or account session tokens. It makes public catalogue requests and may receive normal network metadata such as IP address and request information.
 
 Do not describe this unofficial integration as officially approved by Google. Any future native playback implementation must use a method that is authorized for the intended use, respect access controls and applicable terms, and avoid storing or redistributing audio without permission.
 
