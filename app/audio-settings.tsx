@@ -116,7 +116,7 @@ export default function AudioSettingsScreen() {
           <Text style={styles.noteText}>
             {localPlayback
               ? "Effects are active on this imported local track. Your settings are saved on this device."
-              : "Your effects settings are saved and will apply to imported local audio. YouTube Music playback stays external, so its audio cannot be processed by LumaMusic."}
+              : "Your effects settings are saved on this device. Processing options apply to imported local audio."}
           </Text>
         </GlassSurface>
       </ScrollView>
