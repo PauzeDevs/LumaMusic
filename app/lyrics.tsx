@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   lyricList: { paddingHorizontal: 24, alignItems: "flex-start" },
   topFadeSpace: { height: 170 },
   bottomFadeSpace: { height: 220 },
-  lyricLine: { color: "rgba(255,255,255,0.30)", fontSize: 24, lineHeight: 34, fontWeight: "650", letterSpacing: -0.6, marginBottom: 29 },
+  lyricLine: { color: "rgba(255,255,255,0.30)", fontSize: 24, lineHeight: 34, fontWeight: "600", letterSpacing: -0.6, marginBottom: 29 },
   activeLine: { color: "#FFFFFF", fontSize: 29, lineHeight: 38, textShadowColor: "rgba(224,106,115,0.14)", textShadowRadius: 16 },
   pastLine: { color: "rgba(255,255,255,0.14)" },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
