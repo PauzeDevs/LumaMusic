@@ -37,7 +37,7 @@ The first two are represented in the current client implementation. The native M
 - React Native bridge and shared queue handoff into the Android Media3 playback service.
 - Remote stream expiry recovery and retry policy.
 - Physical-device validation for media notification, lock-screen controls, audio focus, Bluetooth and headset buttons.
-- Lyrics provider and optional scrobbling integration.
+- Optional scrobbling integration.
 - Cross-device library sync and account sign-in.
 
 ## Privacy and rights
@@ -51,3 +51,11 @@ The catalogue adapter makes public catalogue requests. The app does not collect 
 - Test remote playback, seeking, queue transitions and background playback on a physical Android device.
 - Test local playback, interruptions, Bluetooth and headset controls.
 - Build and inspect a release APK before marking the integration stable.
+
+## Lyrics
+
+- Lyrics are fetched directly from the free LRCLIB API (`https://lrclib.net/api`) without an API key or proxy.
+- The client requests an exact title/artist/duration match first, then performs a title/artist search fallback and validates the returned metadata before displaying it.
+- Synced LRC timestamps are preferred; plain lyrics are displayed when synced lyrics are unavailable.
+- Requests identify LumaMusic, have a 12-second timeout, and do not retry rate-limited requests automatically. LRCLIB's rate limits and usage guidance must be respected.
+- Lyrics are fetched on demand for the selected track and are not stored or redistributed by LumaMusic.
