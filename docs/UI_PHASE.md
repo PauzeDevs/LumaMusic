@@ -1,6 +1,6 @@
 # LumaMusic UI and Integration Status
 
-**Current state:** YouTube Music catalogue discovery and external playback handoff are implemented. Native in-app YouTube Music streaming is not implemented in this phase.
+**Current state:** Catalogue discovery, native audio playback controls and the core library experience are implemented. Track availability and background behaviour still require device testing.
 
 ## Screens
 - Listen / Home
