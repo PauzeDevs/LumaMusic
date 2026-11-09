@@ -22,6 +22,7 @@
           "microphonePermission": false
         }
       ],
+      "./plugins/withAndroidAuto",
       [
         "react-native-audio-api",
         {
