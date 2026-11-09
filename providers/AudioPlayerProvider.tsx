@@ -73,6 +73,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const [localSource, setLocalSource] = useState<{ uri: string; instance: number } | null>(null);
   const localSourceSequence = useRef(0);
   const media3RemoteActive = useRef(false);
+  const playbackRequestId = useRef(0);
+  const pendingExternalPlayback = useRef<{ requestId: number; shouldPlay: boolean } | null>(null);
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const graphRef = useRef<AudioGraph | null>(null);
@@ -197,16 +199,20 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number) => {
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
+    const requestId = ++playbackRequestId.current;
     const queue = nextQueue?.length ? nextQueue : [track];
+    pendingExternalPlayback.current = null;
     if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
     if (media3RemoteActive.current && media3Native) void media3Native.pause();
     media3RemoteActive.current = false;
     disconnectGraph();
     usePlayerStore.getState().setTrack(track, queue, queueIndex);
     useLibraryStore.getState().addRecentTrack(track);
+    player.pause();
+
     if (isExternalTrack(track)) {
       setLocalSource(null);
-      player.pause();
+      pendingExternalPlayback.current = { requestId, shouldPlay: true };
       usePlayerStore.getState().setPlaybackStatus({
         isPlaying: false,
         isBuffering: true,
@@ -214,17 +220,35 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         playbackDuration: Math.max(0, track.durationMs / 1000),
         playbackError: null
       });
-      const stream = await resolveYouTubeMusicPlayback(track);
-      player.replace({
-        uri: stream.url,
-        ...(stream.headers ? { headers: stream.headers } : {})
-      });
-      player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
-      player.play();
+      try {
+        const stream = await resolveYouTubeMusicPlayback(track);
+        if (requestId !== playbackRequestId.current || usePlayerStore.getState().currentTrack?.id !== track.id) return;
+        player.replace({
+          uri: stream.url,
+          ...(stream.headers ? { headers: stream.headers } : {})
+        });
+        player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
+        const shouldPlay = pendingExternalPlayback.current?.requestId === requestId
+          ? pendingExternalPlayback.current.shouldPlay
+          : true;
+        pendingExternalPlayback.current = null;
+        if (shouldPlay) player.play();
+        else usePlayerStore.getState().setPlaybackStatus({
+          isPlaying: false,
+          isBuffering: false,
+          playbackPosition: 0,
+          playbackDuration: Math.max(0, stream.expiresAt ? track.durationMs / 1000 : track.durationMs / 1000),
+          playbackError: null
+        });
+      } catch (error) {
+        if (requestId === playbackRequestId.current && usePlayerStore.getState().currentTrack?.id === track.id) {
+          pendingExternalPlayback.current = null;
+        }
+        throw error;
+      }
       return;
     }
     if (isLocalTrack(track)) {
-      player.pause();
       setLocalSource({ uri: track.localUri, instance: ++localSourceSequence.current });
       usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
       return;
@@ -234,12 +258,20 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number) => {
     try { await playTrack(track, queue, queueIndex); }
-    catch (error) { setPlaybackError(error instanceof Error ? error.message : "Unable to open this track."); }
+    catch (error) {
+      if (usePlayerStore.getState().currentTrack?.id === track.id) {
+        setPlaybackError(error instanceof Error ? error.message : "Unable to open this track.");
+      }
+    }
   }, [playTrack, setPlaybackError]);
 
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
+      if (pendingExternalPlayback.current?.requestId === playbackRequestId.current) {
+        pendingExternalPlayback.current.shouldPlay = !pendingExternalPlayback.current.shouldPlay;
+        return;
+      }
       if (state.isPlaying || status.playing) player.pause();
       else player.play();
       return;
@@ -317,7 +349,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const setPlaybackRate = useCallback((rate: number) => {
     const safeRate = Math.max(0.5, Math.min(2, rate));
-    player.setPlaybackRate(safeRate, "high");
+    if (isExternalTrack(usePlayerStore.getState().currentTrack)) {
+      player.setPlaybackRate(safeRate, "high");
+    }
     setPlaybackRateState(safeRate);
   }, [player, setPlaybackRateState]);
 
@@ -336,8 +370,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const seekTo = useCallback(async (seconds: number) => {
     const track = usePlayerStore.getState().currentTrack;
-    if (isLocalTrack(track)) { audioRef.current?.seekToTime(Math.max(0, seconds)); return; }
-    await player.seekTo(Math.max(0, seconds));
+    const safeSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+    if (isLocalTrack(track)) { audioRef.current?.seekToTime(safeSeconds); return; }
+    if (isExternalTrack(track) && pendingExternalPlayback.current?.requestId === playbackRequestId.current) return;
+    if (isExternalTrack(track) || track?.source === "mock" || track?.source === "audius") {
+      await player.seekTo(safeSeconds);
+    }
   }, [player]);
 
   const onLocalAudioEnded = useCallback(() => {
