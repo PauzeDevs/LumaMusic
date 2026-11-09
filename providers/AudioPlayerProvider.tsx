@@ -124,7 +124,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
 
   useEffect(() => {
-    if (Platform.OS !== "android" || !media3Native || !media3RemoteActive.current) return;
+    if (Platform.OS !== "android" || !media3Native || !isExternalTrack(currentTrack)) return;
     const timer = setInterval(() => {
       void media3Native.getStatus().then((nativeStatus) => {
         if (!media3RemoteActive.current) return;
