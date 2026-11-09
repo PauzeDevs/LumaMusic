@@ -1,7 +1,7 @@
 import { Audio, AudioContext, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
-import { NativeModules, Platform, View } from "react-native";
+import { View } from "react-native";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -23,19 +23,7 @@ const AudioEngineContext = createContext<AudioEngineValue | null>(null);
 type ExternalMusicTrack = MusicTrack & { source: "youtube_music"; youtubeVideoId: string };
 type LocalMusicTrack = MusicTrack & { source: "local"; localUri: string };
 type AudioGraph = { source: MediaElementAudioSourceNode; panner: StereoPannerNode; convolver: ConvolverNode; dry: GainNode; wet: GainNode };
-type Media3Status = { isPlaying: boolean; isBuffering: boolean; position: number; duration: number; error: string | null };
-type Media3NativeModule = {
-  connect: () => Promise<boolean>;
-  play: (url: string, title: string, artist: string) => Promise<boolean>;
-  pause: () => Promise<boolean>;
-  resume: () => Promise<boolean>;
-  seekTo: (seconds: number) => Promise<boolean>;
-  setSpeed: (rate: number) => Promise<boolean>;
-  getStatus: () => Promise<Media3Status>;
-};
-const media3Native = NativeModules.LumaMedia3 as Media3NativeModule | undefined;
-
-function isExternalTrack(track: MusicTrack | null | undefined): track is ExternalMusicTrack {
+ function isExternalTrack(track: MusicTrack | null | undefined): track is ExternalMusicTrack {
   return Boolean(track?.source === "youtube_music" && typeof track.youtubeVideoId === "string" && track.youtubeVideoId.length > 0);
 }
 function isLocalTrack(track: MusicTrack | null | undefined): track is LocalMusicTrack {
@@ -72,8 +60,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const status = useAudioPlayerStatus(player);
   const [localSource, setLocalSource] = useState<{ uri: string; instance: number } | null>(null);
   const localSourceSequence = useRef(0);
-  const media3RemoteActive = useRef(false);
-  const playbackRequestId = useRef(0);
+   const playbackRequestId = useRef(0);
   const pendingExternalPlayback = useRef<{ requestId: number; shouldPlay: boolean } | null>(null);
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -115,7 +102,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
-    if (isLocalTrack(currentTrack) || media3RemoteActive.current || pendingExternalPlayback.current) return;
+    if (isLocalTrack(currentTrack) || pendingExternalPlayback.current) return;
     setPlaybackStatus({
       isPlaying: status.playing, isBuffering: status.isBuffering,
       playbackPosition: status.currentTime, playbackDuration: status.duration,
@@ -124,25 +111,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus, currentTrack?.id]);
 
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
-
-  useEffect(() => {
-    if (Platform.OS !== "android" || !media3Native || !isExternalTrack(currentTrack)) return;
-    const timer = setInterval(() => {
-      void media3Native.getStatus().then((nativeStatus) => {
-        if (!media3RemoteActive.current) return;
-        setPlaybackStatus({
-          isPlaying: nativeStatus.isPlaying,
-          isBuffering: nativeStatus.isBuffering,
-          playbackPosition: nativeStatus.position,
-          playbackDuration: nativeStatus.duration,
-          playbackError: nativeStatus.error
-        });
-      }).catch((error: unknown) => {
-        setPlaybackError(error instanceof Error ? error.message : "Could not read native playback status.");
-      });
-    }, 500);
-    return () => clearInterval(timer);
-  }, [currentTrack?.id, setPlaybackStatus, setPlaybackError]);
 
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
@@ -203,8 +171,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const queue = nextQueue?.length ? nextQueue : [track];
     pendingExternalPlayback.current = null;
     if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
-    if (media3RemoteActive.current && media3Native) void media3Native.pause();
-    media3RemoteActive.current = false;
     disconnectGraph();
     usePlayerStore.getState().setTrack(track, queue, queueIndex);
     useLibraryStore.getState().addRecentTrack(track);
@@ -290,7 +256,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.queue.length === 0 || !state.currentTrack) return;
     const currentIndex = state.currentQueueIndex;
     if (state.repeatMode === "one") {
-      if (isExternalTrack(state.currentTrack)) { if (media3RemoteActive.current && media3Native) { await media3Native.seekTo(0); await media3Native.resume(); } else { await player.seekTo(0); player.play(); } }
+      if (isExternalTrack(state.currentTrack)) { await player.seekTo(0); player.play(); }
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else { await player.seekTo(0); player.play(); }
       return;
@@ -327,7 +293,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
     if (state.repeatMode === "one" || (!isExternalTrack(state.currentTrack) && state.playbackPosition > 3)) {
-      if (isExternalTrack(state.currentTrack)) { if (media3RemoteActive.current && media3Native) await media3Native.seekTo(0); else await player.seekTo(0); }
+      if (isExternalTrack(state.currentTrack)) await player.seekTo(0);
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else await player.seekTo(0);
       return;
