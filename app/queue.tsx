@@ -9,7 +9,6 @@ import { colors } from "../theme/colors";
 
 export default function QueueScreen() {
   const queue = usePlayerStore((s) => s.queue);
-  const currentTrack = usePlayerStore((s) => s.currentTrack);
   const removeQueueItemAt = usePlayerStore((s) => s.removeQueueItemAt);
   const moveQueueTrack = usePlayerStore((s) => s.moveQueueTrack);
   const clearQueue = usePlayerStore((s) => s.clearQueue);
