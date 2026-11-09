@@ -1,4 +1,4 @@
-const { withAndroidManifest, withAppBuildGradle, withDangerousMod } = require("@expo/config-plugins");
+const { withAndroidManifest, withAppBuildGradle, withDangerousMod, withMainApplication } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 
@@ -63,6 +63,24 @@ function withAndroidAutoMedia(config) {
     return mod;
   });
 
+
+  config = withMainApplication(config, (mod) => {
+    let contents = mod.modResults.contents;
+    const packageImport = "import dev.pauze.lumamusic.car.LumaMedia3Package";
+    if (!contents.includes(packageImport)) {
+      contents = contents.replace(/^(package [^\\n]+\\n)/m, "$1\\n" + packageImport + "\\n");
+    }
+    if (!contents.includes("add(LumaMedia3Package())")) {
+      const packageList = "PackageList(this).packages";
+      if (!contents.includes(packageList)) {
+        throw new Error("Could not locate PackageList(this).packages in MainApplication.");
+      }
+      contents = contents.replace(packageList, packageList + ".apply { add(LumaMedia3Package()) }");
+    }
+    mod.modResults.contents = contents;
+    return mod;
+  });
+
   config = withDangerousMod(config, ["android", async (mod) => {
     const root = mod.modRequest.platformProjectRoot;
     const packagePath = PACKAGE.split(".").join(path.sep);
@@ -74,6 +92,12 @@ function withAndroidAutoMedia(config) {
       '<?xml version="1.0" encoding="utf-8"?>\n<automotiveApp xmlns:android="http://schemas.android.com/apk/res/android"><uses name="media" /></automotiveApp>\n'
     );
     fs.writeFileSync(path.join(sourceDir, "LumaMediaLibraryService.kt"), KOTLIN_SERVICE);
+    const nativeSourceDir = path.join(mod.modRequest.projectRoot, "native", "android");
+    for (const sourceFile of ["LumaMedia3Module.kt", "LumaMedia3Package.kt"]) {
+      const sourcePath = path.join(nativeSourceDir, sourceFile);
+      if (!fs.existsSync(sourcePath)) throw new Error("Missing LumaMusic native source: " + sourceFile);
+      fs.copyFileSync(sourcePath, path.join(sourceDir, sourceFile));
+    }
     return mod;
   }]);
 
