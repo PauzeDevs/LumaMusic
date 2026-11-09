@@ -22,6 +22,16 @@ function withAndroidAutoMedia(config) {
       }
     }
 
+    app["meta-data"] = app["meta-data"] || [];
+    if (!app["meta-data"].some((item) => item.$["android:name"] === "com.google.android.gms.car.application")) {
+      app["meta-data"].push({
+        $: {
+          "android:name": "com.google.android.gms.car.application",
+          "android:resource": "@xml/automotive_app_desc"
+        }
+      });
+    }
+
     app.service = app.service || [];
     if (!app.service.some((item) => item.$["android:name"] === SERVICE)) {
       app.service.push({
@@ -43,10 +53,10 @@ function withAndroidAutoMedia(config) {
   config = withAppBuildGradle(config, (mod) => {
     let contents = mod.modResults.contents;
     if (!contents.includes("androidx.media3:media3-session")) {
-      const dependencyBlock = /dependencies\\s*\\{/;
+      const dependencyBlock = /dependencies\s*\{/;
       if (!dependencyBlock.test(contents)) throw new Error("Could not locate the Android app dependencies block.");
       contents = contents.replace(dependencyBlock, (match) =>
-        match + '\\n    implementation("androidx.media3:media3-exoplayer:1.7.1")\\n    implementation("androidx.media3:media3-session:1.7.1")'
+        match + '\n    implementation("androidx.media3:media3-exoplayer:1.7.1")\\n    implementation("androidx.media3:media3-session:1.7.1")'
       );
     }
     mod.modResults.contents = contents;
@@ -61,7 +71,7 @@ function withAndroidAutoMedia(config) {
     fs.mkdirSync(sourceDir, { recursive: true });
     fs.mkdirSync(xmlDir, { recursive: true });
     fs.writeFileSync(path.join(xmlDir, "automotive_app_desc.xml"),
-      '<?xml version="1.0" encoding="utf-8"?>\\n<automotiveApp xmlns:android="http://schemas.android.com/apk/res/android"><uses name="media" /></automotiveApp>\\n'
+      '<?xml version="1.0" encoding="utf-8"?>\n<automotiveApp xmlns:android="http://schemas.android.com/apk/res/android"><uses name="media" /></automotiveApp>\n'
     );
     fs.writeFileSync(path.join(sourceDir, "LumaMediaLibraryService.kt"), KOTLIN_SERVICE);
     return mod;
@@ -73,24 +83,20 @@ function withAndroidAutoMedia(config) {
 const KOTLIN_SERVICE = `package dev.pauze.lumamusic.car
 
 import android.net.Uri
-import android.os.Bundle
-import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibrarySession
+import androidx.media3.session.MediaSession
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import java.io.File
-import java.util.concurrent.Executors
 
 class LumaMediaLibraryService : MediaLibraryService() {
     private lateinit var player: ExoPlayer
     private lateinit var librarySession: MediaLibrarySession
-    private val ioExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate() {
         super.onCreate()
@@ -116,7 +122,6 @@ class LumaMediaLibraryService : MediaLibraryService() {
     override fun onDestroy() {
         if (::librarySession.isInitialized) librarySession.release()
         if (::player.isInitialized) player.release()
-        ioExecutor.shutdown()
         super.onDestroy()
     }
 
@@ -140,7 +145,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
                 .setSubtitle("Audio stored in LumaMusic")
                 .setIsBrowsable(true)
                 .setIsPlayable(false)
-                .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MUSIC)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
                 .build()
         ).build()
 
@@ -209,7 +214,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
                 else if (mediaId == LOCAL_ID) localFolder()
                 else importedAudio().firstOrNull { it.mediaId == mediaId }
             return Futures.immediateFuture(
-                if (item == null) LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+                if (item == null) LibraryResult.ofItem(rootItem(), null)
                 else LibraryResult.ofItem(item, null)
             )
         }
