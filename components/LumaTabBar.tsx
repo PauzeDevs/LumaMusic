@@ -35,7 +35,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
             <Artwork uri={track.artwork} size={42} radius={10} />
             <View style={styles.miniCopy}>
               <Text numberOfLines={1} style={styles.miniTitle}>{track.title}</Text>
-              <Text numberOfLines={1} style={styles.miniArtist}>{isExternalTrack ? track.artist + " · External" : track.artist}</Text>
+              <Text numberOfLines={1} style={styles.miniArtist}>{isExternalTrack ? track.artist + " · YouTube Music" : track.artist}</Text>
             </View>
           </Pressable>
           <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}>
