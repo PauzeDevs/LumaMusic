@@ -115,7 +115,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
-    if (isLocalTrack(currentTrack) || media3RemoteActive.current) return;
+    if (isLocalTrack(currentTrack) || media3RemoteActive.current || pendingExternalPlayback.current) return;
     setPlaybackStatus({
       isPlaying: status.playing, isBuffering: status.isBuffering,
       playbackPosition: status.currentTime, playbackDuration: status.duration,
@@ -237,7 +237,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           isPlaying: false,
           isBuffering: false,
           playbackPosition: 0,
-          playbackDuration: Math.max(0, stream.expiresAt ? track.durationMs / 1000 : track.durationMs / 1000),
+          playbackDuration: Math.max(0, track.durationMs / 1000),
           playbackError: null
         });
       } catch (error) {
