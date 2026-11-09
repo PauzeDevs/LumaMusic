@@ -21,6 +21,7 @@ type PlayerState = {
   setPlaybackRate: (rate: number) => void;
   setSleepTimerMinutes: (minutes: number | null) => void;
   removeFromQueue: (trackId: string) => void;
+  removeQueueItemAt: (index: number) => void;
   moveQueueTrack: (from: number, to: number) => void;
   clearQueue: () => void;
   toggleShuffle: () => void;
@@ -54,6 +55,10 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
   setSleepTimerMinutes: (sleepTimerMinutes) => set({ sleepTimerMinutes }),
   removeFromQueue: (trackId) => set((state) => ({ queue: state.queue.filter((track) => track.id !== trackId || track.id === state.currentTrack?.id) })),
+  removeQueueItemAt: (index) => set((state) => {
+    if (index < 0 || index >= state.queue.length || state.queue[index]?.id === state.currentTrack?.id) return state;
+    return { queue: state.queue.filter((_, itemIndex) => itemIndex !== index) };
+  }),
   moveQueueTrack: (from, to) => set((state) => {
     if (from < 0 || to < 0 || from >= state.queue.length || to >= state.queue.length || from === to) return state;
     const queue = [...state.queue];
