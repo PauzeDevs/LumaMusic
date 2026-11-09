@@ -8,7 +8,7 @@ import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { MusicTrack } from "../types/music";
 
 type AudioEngineValue = {
-  playTrack: (track: MusicTrack, queue?: MusicTrack[]) => Promise<void>;
+  playTrack: (track: MusicTrack, queue?: MusicTrack[], queueIndex?: number) => Promise<void>;
   togglePlayback: () => void;
   playNext: () => Promise<void>;
   playPrevious: () => Promise<void>;
@@ -163,12 +163,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     graphRef.current = null;
   }, []);
 
-  const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[]) => {
+  const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number) => {
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
     const queue = nextQueue?.length ? nextQueue : [track];
     if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
     disconnectGraph();
-    usePlayerStore.getState().setTrack(track, queue);
+    usePlayerStore.getState().setTrack(track, queue, queueIndex);
     useLibraryStore.getState().addRecentTrack(track);
     if (isExternalTrack(track)) {
       setLocalSource(null);
@@ -185,8 +185,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     throw new Error("This track has no supported playback source.");
   }, [disconnectGraph, player]);
 
-  const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[]) => {
-    try { await playTrack(track, queue); }
+  const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number) => {
+    try { await playTrack(track, queue, queueIndex); }
     catch (error) { setPlaybackError(error instanceof Error ? error.message : "Unable to open this track."); }
   }, [playTrack, setPlaybackError]);
 
@@ -209,17 +209,22 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
     if (state.repeatMode === "one") {
-      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue);
+      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else { await player.seekTo(0); player.play(); }
       return;
     }
-    const currentIndex = state.queue.findIndex((item) => item.id === state.currentTrack?.id);
+    const currentIndex = state.currentQueueIndex;
     let nextTrack: MusicTrack | undefined;
     if (state.isShuffled) {
-      const candidates = state.queue.filter((item) => item.id !== state.currentTrack?.id && isPlayable(item));
-      if (candidates.length > 0) nextTrack = candidates[Math.floor(Math.random() * candidates.length)];
-      else if (state.repeatMode === "all") nextTrack = state.queue.find(isPlayable);
+      const candidates = state.queue.map((item, index) => ({ item, index })).filter(({ index, item }) => index !== currentIndex && isPlayable(item));
+      if (candidates.length > 0) {
+        const selected = candidates[Math.floor(Math.random() * candidates.length)];
+        nextTrack = selected.item;
+      } else if (state.repeatMode === "all") {
+        const firstPlayableIndex = state.queue.findIndex(isPlayable);
+        if (firstPlayableIndex >= 0) nextTrack = state.queue[firstPlayableIndex];
+      }
     } else {
       for (let offset = 1; offset <= state.queue.length; offset += 1) {
         let index = currentIndex + offset;
@@ -231,7 +236,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (isPlayable(candidate)) { nextTrack = candidate; break; }
       }
     }
-    if (nextTrack) await playTrackSafely(nextTrack, state.queue);
+    if (nextTrack) await playTrackSafely(nextTrack, state.queue, state.isShuffled ? state.queue.findIndex((item, index) => index !== currentIndex && item === nextTrack) : state.queue.findIndex((item, index) => index !== currentIndex && item === nextTrack));
     else if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
     else if (!isExternalTrack(state.currentTrack)) player.pause();
   }, [playTrackSafely, player]);
@@ -240,12 +245,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
     if (state.repeatMode === "one" || (!isExternalTrack(state.currentTrack) && state.playbackPosition > 3)) {
-      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue);
+      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else await player.seekTo(0);
       return;
     }
-    const currentIndex = state.queue.findIndex((item) => item.id === state.currentTrack?.id);
+    const currentIndex = state.currentQueueIndex;
     for (let offset = 1; offset <= state.queue.length; offset += 1) {
       let index = currentIndex - offset;
       if (index < 0) {
@@ -253,7 +258,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         index = (index % state.queue.length + state.queue.length) % state.queue.length;
       }
       const candidate = state.queue[index];
-      if (isPlayable(candidate)) { await playTrackSafely(candidate, state.queue); return; }
+      if (isPlayable(candidate)) { await playTrackSafely(candidate, state.queue, index); return; }
     }
     if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue);
     else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
