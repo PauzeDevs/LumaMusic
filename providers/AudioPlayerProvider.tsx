@@ -6,6 +6,7 @@ import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { MusicTrack } from "../types/music";
+import { resolveYouTubeMusicPlayback } from "../services/authorizedPlayback";
 
 type AudioEngineValue = {
   playTrack: (track: MusicTrack, queue?: MusicTrack[], queueIndex?: number) => Promise<void>;
@@ -19,12 +20,12 @@ type AudioEngineValue = {
   cycleRepeat: () => void;
 };
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
-type ExternalMusicTrack = MusicTrack & { source: "youtube_music"; youtubeUrl: string };
+type ExternalMusicTrack = MusicTrack & { source: "youtube_music"; youtubeVideoId: string };
 type LocalMusicTrack = MusicTrack & { source: "local"; localUri: string };
 type AudioGraph = { source: MediaElementAudioSourceNode; panner: StereoPannerNode; convolver: ConvolverNode; dry: GainNode; wet: GainNode };
 
 function isExternalTrack(track: MusicTrack | null | undefined): track is ExternalMusicTrack {
-  return Boolean(track?.source === "youtube_music" && typeof track.youtubeUrl === "string" && track.youtubeUrl.length > 0);
+  return Boolean(track?.source === "youtube_music" && typeof track.youtubeVideoId === "string" && track.youtubeVideoId.length > 0);
 }
 function isLocalTrack(track: MusicTrack | null | undefined): track is LocalMusicTrack {
   return Boolean(track?.source === "local" && typeof track.localUri === "string" && track.localUri.length > 0);
@@ -100,7 +101,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
-    if (isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
+    if (isLocalTrack(currentTrack)) return;
     setPlaybackStatus({
       isPlaying: status.playing, isBuffering: status.isBuffering,
       playbackPosition: status.currentTime, playbackDuration: status.duration,
@@ -175,12 +176,18 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       player.pause();
       usePlayerStore.getState().setPlaybackStatus({
         isPlaying: false,
-        isBuffering: false,
+        isBuffering: true,
         playbackPosition: 0,
         playbackDuration: Math.max(0, track.durationMs / 1000),
         playbackError: null
       });
-      await Linking.openURL(track.youtubeUrl);
+      const stream = await resolveYouTubeMusicPlayback(track);
+      player.replace({
+        uri: stream.url,
+        ...(stream.headers ? { headers: stream.headers } : {})
+      });
+      player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
+      player.play();
       return;
     }
     if (isLocalTrack(track)) {
@@ -200,9 +207,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
-      void Linking.openURL(state.currentTrack.youtubeUrl).catch((error: unknown) => {
-        setPlaybackError(error instanceof Error ? error.message : "Could not open YouTube Music.");
-      });
+      if (state.isPlaying || status.playing) player.pause();
+      else player.play();
       return;
     }
     if (isLocalTrack(state.currentTrack)) {
@@ -212,14 +218,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
     if (status.playing) player.pause();
     else if (state.currentTrack) player.play();
-  }, [player, setPlaybackError]);
+  }, [player, setPlaybackError, status.playing]);
 
   const playNext = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
     const currentIndex = state.currentQueueIndex;
     if (state.repeatMode === "one") {
-      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
+      if (isExternalTrack(state.currentTrack)) await player.seekTo(0);
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else { await player.seekTo(0); player.play(); }
       return;
@@ -256,7 +262,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
     if (state.repeatMode === "one" || (!isExternalTrack(state.currentTrack) && state.playbackPosition > 3)) {
-      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
+      if (isExternalTrack(state.currentTrack)) await player.seekTo(0);
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else await player.seekTo(0);
       return;
@@ -271,13 +277,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const candidate = state.queue[index];
       if (isPlayable(candidate)) { await playTrackSafely(candidate, state.queue, index); return; }
     }
-    if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
+    if (isExternalTrack(state.currentTrack)) await player.seekTo(0);
     else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
     else await player.seekTo(0);
   }, [playTrackSafely, player]);
 
   const setPlaybackRate = useCallback((rate: number) => {
-    if (isExternalTrack(usePlayerStore.getState().currentTrack)) return;
     const safeRate = Math.max(0.5, Math.min(2, rate));
     player.setPlaybackRate(safeRate, "high");
     setPlaybackRateState(safeRate);
@@ -312,7 +317,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [playNext, setSleepTimerMinutesState]);
 
   useEffect(() => {
-    if (!status.didJustFinish || isExternalTrack(currentTrack) || isLocalTrack(currentTrack)) return;
+    if (!status.didJustFinish || isLocalTrack(currentTrack)) return;
     if (usePlayerStore.getState().sleepTimerMinutes === -1) { player.pause(); setSleepTimerMinutesState(null); return; }
     void playNext();
   }, [status.didJustFinish, currentTrack?.id, playNext, player, setSleepTimerMinutesState]);
