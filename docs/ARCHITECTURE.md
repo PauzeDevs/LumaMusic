@@ -1,55 +1,46 @@
 # LumaMusic Technical Architecture
 
-**Status:** YouTube Music discovery migration in progress. Native streaming remains a separate milestone.
+**Status:** YouTube Music catalogue discovery with official-app handoff; native playback for imported local audio.
 
 ## Architecture overview
+- TypeScript React Native client built with Expo.
+- Expo Router for screens.
+- TanStack Query for remote discovery and caching.
+- Zustand for player and library state.
+- AsyncStorage for favourites, recent selections and local playlists.
+- `services/youtubeMusic.ts` isolates public catalogue discovery.
+- `AudioPlayerProvider` owns local playback and player state.
 
-LumaMusic uses a TypeScript React Native client built with Expo.
+## Provider boundaries
+YouTube Music is currently a discovery source. Search results are normalized into app-owned models and opened using canonical YouTube Music URLs. The integration uses an undocumented web endpoint and can change without notice. It is not an official Google API.
 
-- Expo Router renders the app screens.
-- TanStack Query owns remote discovery data and caching.
-- Zustand owns player and library state.
-- AsyncStorage persists favourites, local playlists and recent selections.
-- `services/youtubeMusic.ts` isolates YouTube Music catalogue discovery.
-- `AudioPlayerProvider` remains the app-level audio-engine boundary.
+LumaMusic does not extract or redistribute YouTube audio. A future native streaming provider must use an authorized playback interface for its intended use and respect access controls and provider terms.
 
-## Current source integration
+Local files imported by the user are copied into the app's private documents directory and played through the native audio engine. The library and playlists are local-first.
 
-The current provider sends public search requests to YouTube Music's undocumented InnerTube web endpoint. It normalizes track title, artist, artwork, duration and video ID into app-owned models. Search results are opened using their canonical YouTube Music URL.
+## Track model
+- `id`: stable source-namespaced identifier.
+- `source`: provider identifier.
+- `sourceTrackId` / `youtubeVideoId`: source identifiers.
+- `title`, `artist`, `artwork`, `durationMs`.
+- `youtubeUrl`: canonical YouTube Music page.
+- `localUri`: private app-storage URI for imported local audio.
+- `isStreamable`: describes native playback capability, not catalogue availability.
 
-This is an unofficial integration. YouTube Music does not publish this endpoint as a supported third-party API. LumaMusic is not affiliated with or endorsed by Google or YouTube and does not claim official authorization.
+## Playback behavior
+- Local audio uses the native audio engine, audio graph effects and local progress.
+- YouTube Music results are handed off to the official app or browser.
+- External playback is never represented as if LumaMusic controls its transport or progress.
+- Queue navigation can open the next selected YouTube Music result, but external completion cannot automatically advance the LumaMusic queue because the external app owns that session.
 
-## Playback boundary
-
-The app's Expo Audio engine remains available as the native playback abstraction. YouTube Music search results currently have no native stream URL in LumaMusic, so selecting one hands playback to the official YouTube Music app or website. In-app stream extraction, playback synchronization, background streaming and lock-screen control for these tracks are not implemented or claimed.
-
-Any future native playback provider must use a playback method authorized for the intended use, respect access controls and provider terms, and avoid unauthorized downloading, caching, re-hosting or redistribution.
-
-## Domain models
-
-### Track
-- `id`: stable source-namespaced ID, e.g. `youtube:<videoId>`
-- `source`: provider identifier
-- `sourceTrackId` / `youtubeVideoId`
-- `title`, `artist`, `artwork`, `durationMs`
-- `youtubeUrl`: canonical YouTube Music page
-- `isStreamable`: false until a supported native playback route exists
-
-### Library
-- Liked tracks, recently opened tracks and user-created playlists are stored locally.
-- The legacy Audius source literal is retained temporarily for compatibility with previously persisted library entries. No active Audius service calls remain.
-
-## Network and failure handling
-
-- Debounce search input.
-- Cache search results with bounded stale times.
+## Reliability and privacy
+- Debounce search and cache results with bounded stale times.
 - Handle HTTP errors and empty responses without fabricated catalogue data.
-- Treat the web endpoint as changeable and undocumented.
 - Do not embed account cookies, passwords, bearer tokens or private credentials.
+- Do not download, cache, re-host or redistribute provider audio without authorization.
 
 ## Validation gates
-
-1. **Discovery:** verify track parsing and search on Android/iOS.
-2. **Playback:** select an authorized native playback method before wiring stream URLs into Expo Audio.
-3. **Audio QA:** validate background, lock-screen, interruption, Bluetooth and queue behavior on physical devices.
-4. **Release:** update privacy/attribution disclosures and complete rights review before release.
+1. Discovery parsing and rate-limit handling on Android/iOS.
+2. Local playback, queue transitions, sleep timer and audio effects.
+3. Physical-device QA for audio focus, interruptions, Bluetooth and background behavior.
+4. Release privacy/attribution review and authorized-provider decision before adding streaming.
