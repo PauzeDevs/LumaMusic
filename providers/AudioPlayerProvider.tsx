@@ -1,8 +1,7 @@
 import { Audio, AudioContext, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
-import { View } from "react-native";
-import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
+import { Linking, View } from "react-native";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -173,12 +172,15 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     useLibraryStore.getState().addRecentTrack(track);
     if (isExternalTrack(track)) {
       setLocalSource(null);
-      usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
-      const stream = await resolveYouTubeMusicAudio(track);
-      await player.replace({ uri: stream.url, headers: { Referer: "https://www.youtube.com/" } });
-      player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
-      player.play();
-      usePlayerStore.getState().setPlaybackStatus({ isPlaying: true, isBuffering: false, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
+      player.pause();
+      usePlayerStore.getState().setPlaybackStatus({
+        isPlaying: false,
+        isBuffering: false,
+        playbackPosition: 0,
+        playbackDuration: Math.max(0, track.durationMs / 1000),
+        playbackError: null
+      });
+      await Linking.openURL(track.youtubeUrl);
       return;
     }
     if (isLocalTrack(track)) {
@@ -198,8 +200,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
-      if (status.playing) player.pause();
-      else player.play();
+      void Linking.openURL(state.currentTrack.youtubeUrl).catch((error: unknown) => {
+        setPlaybackError(error instanceof Error ? error.message : "Could not open YouTube Music.");
+      });
       return;
     }
     if (isLocalTrack(state.currentTrack)) {
@@ -209,7 +212,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
     if (status.playing) player.pause();
     else if (state.currentTrack) player.play();
-  }, [playTrack, player, setPlaybackError, status.playing]);
+  }, [player, setPlaybackError]);
 
   const playNext = useCallback(async () => {
     const state = usePlayerStore.getState();
