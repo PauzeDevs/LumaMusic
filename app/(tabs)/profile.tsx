@@ -12,7 +12,7 @@ const settings = [
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
   { icon: "notifications-outline", title: "Notifications", subtitle: "New music and updates" },
   { icon: "color-palette-outline", title: "Appearance", subtitle: "Dark matte · Glass-inspired surfaces" },
-  { icon: "musical-notes-outline", title: "Playback", subtitle: "External player handoff" },
+  { icon: "musical-notes-outline", title: "Playback", subtitle: "Playback, progress and sound controls" },
   { icon: "shield-checkmark-outline", title: "Privacy", subtitle: "Your data and listening activity" },
   { icon: "information-circle-outline", title: "About LumaMusic", subtitle: "Version 0.1.0 · PauzeDevs" }
 ] as const;
