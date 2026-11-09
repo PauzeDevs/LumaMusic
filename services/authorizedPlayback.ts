@@ -49,15 +49,28 @@ export async function resolveYouTubeMusicPlayback(
     throw new Error("The playback resolver must use HTTPS.");
   }
 
-  const response = await fetch(endpoint.toString(), {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({
-      provider: "youtube_music",
-      videoId: track.youtubeVideoId,
-      client: "lumamusic-android"
-    })
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  let response: Response;
+  try {
+    response = await fetch(endpoint.toString(), {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "youtube_music",
+        videoId: track.youtubeVideoId,
+        client: "lumamusic-android"
+      }),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("The playback resolver timed out. Please try again.");
+    }
+    throw new Error(error instanceof Error ? error.message : "Could not reach the playback resolver.");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new Error(
@@ -67,9 +80,17 @@ export async function resolveYouTubeMusicPlayback(
     );
   }
 
-  const payload = (await response.json()) as Partial<ResolvedPlaybackStream>;
-  if (!isSecureStreamUrl(payload.url)) {
+  let payload: Partial<ResolvedPlaybackStream>;
+  try {
+    payload = await response.json() as Partial<ResolvedPlaybackStream>;
+  } catch {
+    throw new Error("The playback resolver returned an invalid response.");
+  }
+  if (!payload || typeof payload !== "object" || !isSecureStreamUrl(payload.url)) {
     throw new Error("The playback resolver did not return a valid HTTPS audio stream.");
+  }
+  if (payload.mimeType !== undefined && (typeof payload.mimeType !== "string" || !payload.mimeType.startsWith("audio/"))) {
+    throw new Error("The playback resolver returned an unsupported media type.");
   }
   if (payload.expiresAt) {
     const expiry = Date.parse(payload.expiresAt);
@@ -82,6 +103,8 @@ export async function resolveYouTubeMusicPlayback(
     url: payload.url,
     ...(typeof payload.mimeType === "string" ? { mimeType: payload.mimeType } : {}),
     ...(typeof payload.expiresAt === "string" ? { expiresAt: payload.expiresAt } : {}),
-    ...(payload.headers && typeof payload.headers === "object" ? { headers: payload.headers } : {})
+    ...(payload.headers && typeof payload.headers === "object" && !Array.isArray(payload.headers)
+      ? { headers: Object.fromEntries(Object.entries(payload.headers).filter((entry): entry is [string, string] => typeof entry[1] === "string")) }
+      : {})
   };
 }
