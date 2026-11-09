@@ -1,42 +1,62 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b070a">
-<meta name="description" content="LumaMusic is a mobile music discovery app with YouTube Music handoff, a personal queue and a local music library. Built by PauzeDevs.">
-<title>LumaMusic | PauzeDevs</title><link rel="icon" href="./assets/lumamusic-logo.svg" type="image/svg+xml">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080708">
+<meta name="description" content="Luma Music is an independent music discovery and library app by PauzeDevs. Discover tracks, build your queue and keep your music organised.">
+<title>Luma Music — Find your next favourite</title>
+<link rel="icon" href="./assets/lumamusic-logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="./styles.css?v=5">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css?v=6">
 </head>
 <body>
-<header class="site-header"><a class="wordmark" href="#top" aria-label="LumaMusic home"><img class="wordmark-image" src="./assets/lumamusic-logo.svg" alt="LumaMusic"></a>
-<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Open navigation"><span></span><span></span></button><nav class="main-nav" id="main-nav" aria-label="Main navigation"><a href="#features">Features</a><a href="#catalogue">Catalogue</a><a href="#legal">Legal</a></nav>
-<a class="source-link" href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">Source code <span>↗</span></a></header>
+<header class="site-header">
+ <a class="brand" href="#top" aria-label="Luma Music home"><img src="./assets/lumamusic-logo.svg" alt="Luma Music"></a>
+ <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Open navigation"><span></span><span></span></button>
+ <nav class="main-nav" id="main-nav" aria-label="Main navigation"><a href="#experience">Experience</a><a href="#features">Features</a><a href="#catalogue">Catalogue</a><a href="#legal">Legal</a></nav>
+ <a class="header-cta" href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">Explore the project <span>↗</span></a>
+</header>
 <main id="top">
-<section class="hero"><div class="hero-copy"><p class="eyebrow">PAUZEDEVS <span>/</span> MOBILE MUSIC PLAYER</p><h1>Luma<span>Music</span></h1>
-<p class="hero-description">Discover YouTube Music tracks, open them in the official player, manage your queue and keep a personal library on your device.</p>
-<div class="hero-actions"><a class="button button-primary" href="#features">Explore app features <span>↓</span></a><a class="button button-secondary" href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">View repository ↗</a></div>
-<div class="hero-facts"><div><span class="fact-label">MUSIC SOURCE</span><strong>YouTube Music</strong></div><div><span class="fact-label">APP STACK</span><strong>Expo · React Native</strong></div><div><span class="fact-label">DEVELOPER</span><strong>PauzeDevs</strong></div></div></div>
-<figure class="hero-art"><img src="./assets/lumamusic-soundstage.svg" alt="Original LumaMusic soundstage artwork"><figcaption><span>LUMAMUSIC</span><span>PAUZEDEVS / 001</span></figcaption></figure></section>
-<section class="section features-section" id="features"><div class="section-heading"><p class="eyebrow">01 / IMPLEMENTED FEATURES</p><h2>What the app<br><span>actually does.</span></h2><p class="section-intro">A feature list based on the current application code. No concept screens or sample data.</p></div>
-<div class="feature-list">
-<article class="feature-row"><span class="feature-number">01</span><div><p class="feature-label">DISCOVERY</p><h3>Browse and search YouTube Music</h3></div><p class="feature-description">Home displays discovery tracks and featured playlists. Search supports tracks, artists and playlists through an unofficial YouTube Music web interface.</p></article>
-<article class="feature-row"><span class="feature-number">02</span><div><p class="feature-label">PLAYBACK</p><h3>Open the official player</h3></div><p class="feature-description">Selecting a result opens its canonical YouTube Music page. Playback, live progress and audio controls are handled by YouTube Music, not by LumaMusic.</p></article>
-<article class="feature-row"><span class="feature-number">03</span><div><p class="feature-label">QUEUE</p><h3>Manage your queue</h3></div><p class="feature-description">Open Up Next, reorder or remove queued tracks, and choose which track to open next in YouTube Music.</p></article>
-<article class="feature-row"><span class="feature-number">04</span><div><p class="feature-label">PERSONAL LIBRARY</p><h3>Keep your saved music local</h3></div><p class="feature-description">Like tracks, create personal playlists and revisit recently played tracks. Library data is persisted on the device.</p></article>
-<article class="feature-row"><span class="feature-number">05</span><div><p class="feature-label">PLAYBACK OPTIONS</p><h3>Shape your queue</h3></div><p class="feature-description">Use shuffle and repeat preferences when moving through the LumaMusic queue. Playback speed and sleep-timer controls are not available for external YouTube Music playback.</p></article>
-<article class="feature-row"><span class="feature-number">06</span><div><p class="feature-label">ARTISTS & PLAYLISTS</p><h3>Explore artists and playlists</h3></div><p class="feature-description">Open artist channels and playlists directly in YouTube Music for their full details and tracklists.</p></article>
-</div><p class="feature-footnote">YouTube Music handles playback after handoff. LumaMusic does not currently synchronize external playback progress, background controls or lock-screen state.</p></section>
-<section class="catalogue-section" id="catalogue"><div class="catalogue-copy"><p class="eyebrow">02 / MUSIC CATALOGUE</p><h2>Powered by<br><span>YouTube Music.</span></h2>
-<p>LumaMusic currently uses an unofficial YouTube Music web search interface for track discovery and metadata. Selecting a result opens the official YouTube Music client or website. Native in-app playback is not yet enabled.</p>
-<p>LumaMusic is independent and unofficial, and is not affiliated with Google or YouTube. The web search interface is undocumented and may change. LumaMusic does not extract, download or re-host YouTube Music audio.</p>
-<a class="text-link" href="https://music.youtube.com" target="_blank" rel="noopener noreferrer">YouTube Music official website ↗</a></div>
-<div class="catalogue-facts"><div><span>DISCOVERY</span><strong>Unofficial web search</strong></div><div><span>PLAYBACK</span><strong>Official app handoff</strong></div><div><span>OTHER CATALOGUES</span><strong>Not mirrored</strong></div></div></section>
-<section class="section legal-section" id="legal"><div class="section-heading"><p class="eyebrow">03 / PROJECT DOCUMENTS</p><h2>Policies &<br><span>legal notices.</span></h2><p class="section-intro">Each document opens separately so this page stays available.</p></div>
-<div class="legal-links"><a href="./privacy.html" target="_blank" rel="noopener noreferrer"><span>01</span><strong>Privacy policy</strong><small>Local data, YouTube Music requests and third-party services</small><b>↗</b></a>
-<a href="./terms.html" target="_blank" rel="noopener noreferrer"><span>02</span><strong>Terms of use</strong><small>Using the app, third-party content and limitations</small><b>↗</b></a>
-<a href="./attribution.html" target="_blank" rel="noopener noreferrer"><span>03</span><strong>Attribution & licences</strong><small>YouTube Music, project technology and trademarks</small><b>↗</b></a>
-<a href="https://github.com/PauzeDevs/LumaMusic/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"><span>04</span><strong>Software licence</strong><small>Eclipse Public License 2.0</small><b>↗</b></a></div>
-<p class="legal-note">These documents describe the current project and are not legal advice. They should be reviewed as the app's data practices and features change.</p></section>
+ <section class="hero">
+  <div class="marquee" aria-hidden="true"><div class="marquee-track"><span>LUMA MUSIC&nbsp; · &nbsp;LUMA MUSIC&nbsp; · &nbsp;LUMA MUSIC&nbsp; · &nbsp;LUMA MUSIC&nbsp; · &nbsp;</span><span>LUMA MUSIC&nbsp; · &nbsp;LUMA MUSIC&nbsp; · &nbsp;LUMA MUSIC&nbsp; · &nbsp;LUMA MUSIC&nbsp; · &nbsp;</span></div></div>
+  <div class="hero-inner">
+   <p class="eyebrow"><span class="status-dot"></span> AN INDEPENDENT MUSIC SPACE <i> / </i> BY PAUZEDEVS</p>
+   <h1>Find your<br><em>next favourite.</em></h1>
+   <p class="hero-copy">A calmer place to discover music, shape your queue and keep the tracks you love close. Made for the moments between play and replay.</p>
+   <div class="hero-actions"><a class="button button-primary" href="#experience">Explore Luma <span>↓</span></a><a class="button button-quiet" href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">View source <span>↗</span></a></div>
+   <div class="hero-meta"><span>01 — DISCOVER</span><span>02 — COLLECT</span><span>03 — LISTEN</span></div>
+  </div>
+  <div class="hero-visual"><div class="visual-frame"><img src="./assets/lumamusic-soundstage.svg" alt="Luma Music soundstage artwork"><div class="visual-caption"><span>LUMA MUSIC / SOUND IN MOTION</span><span>PAUZEDEVS&nbsp; © 2026</span></div></div><div class="visual-orbit orbit-one"></div><div class="visual-orbit orbit-two"></div></div>
+  <a class="scroll-cue" href="#experience"><span></span> SCROLL TO EXPLORE</a>
+ </section>
+ <section class="intro-section" id="experience">
+  <p class="eyebrow">A LITTLE MORE ROOM FOR MUSIC</p>
+  <h2>Your music.<br><em>Your own rhythm.</em></h2>
+  <div class="intro-bottom"><p>Luma Music brings discovery, a personal queue and a local library into one focused experience. No noisy dashboards. Just the parts that help you find and keep good music.</p><span class="section-index">[ 01 / THE EXPERIENCE ]</span></div>
+ </section>
+ <section class="feature-section" id="features">
+  <div class="section-top"><div><p class="eyebrow">MADE TO MOVE WITH YOU</p><h2>Small details.<br><em>Big replay energy.</em></h2></div><span class="section-index">[ 02 / FEATURES ]</span></div>
+  <div class="feature-grid">
+   <article class="feature-card feature-card-large"><div class="card-top"><span>01 / DISCOVERY</span><span>↗</span></div><div class="card-graphic search-graphic"><span class="search-pill">⌕ &nbsp; Search songs, artists, playlists</span><div class="wave-line"></div><div class="graphic-orb"></div></div><div><h3>Find the feeling.</h3><p>Explore tracks, artists and playlists through YouTube Music discovery.</p></div></article>
+   <article class="feature-card"><div class="card-top"><span>02 / YOUR LIBRARY</span><span>↗</span></div><div class="card-graphic library-graphic"><div class="stack stack-back"></div><div class="stack stack-mid"></div><div class="stack stack-front"><b>YOUR<br>FAVOURITES</b><small>COLLECTED HERE</small></div></div><div><h3>Keep what clicks.</h3><p>Like tracks, build personal playlists and revisit your listening history.</p></div></article>
+   <article class="feature-card"><div class="card-top"><span>03 / UP NEXT</span><span>↗</span></div><div class="card-graphic queue-graphic"><div class="queue-row"><i>01</i><b></b><span></span></div><div class="queue-row active"><i>02</i><b></b><span></span></div><div class="queue-row"><i>03</i><b></b><span></span></div><div class="queue-row"><i>04</i><b></b><span></span></div></div><div><h3>Set the sequence.</h3><p>Reorder your queue, remove tracks and choose what opens next.</p></div></article>
+   <article class="feature-card"><div class="card-top"><span>04 / THE HANDOFF</span><span>↗</span></div><div class="card-graphic handoff-graphic"><div class="handoff-disc">♪</div><span class="handoff-arrow">↗</span><div class="handoff-label">YOUTUBE MUSIC</div></div><div><h3>Play your way.</h3><p>Open the selected track in the official YouTube Music app or website.</p></div></article>
+  </div>
+  <p class="feature-disclaimer">A note on playback: Luma Music currently handles discovery and queue organisation, then hands playback to YouTube Music. Native in-app streaming and live external playback synchronisation are not implemented.</p>
+ </section>
+ <section class="catalogue-section" id="catalogue">
+  <div class="catalogue-copy"><p class="eyebrow">03 / THE MUSIC CATALOGUE</p><h2>Discovery starts<br><em>with YouTube Music.</em></h2><p>Luma Music uses an unofficial YouTube Music web search interface for track discovery and metadata. When you choose a result, the official YouTube Music app or website handles playback.</p><p>It does not mirror Spotify or Apple Music catalogues, extract audio, or host music. Availability and service behaviour depend on third-party platforms.</p><a class="text-link" href="https://music.youtube.com" target="_blank" rel="noopener noreferrer">Visit YouTube Music ↗</a></div>
+  <div class="catalogue-panel"><div class="panel-head"><span>HOW IT WORKS</span><span>03 STEPS</span></div><div class="catalogue-step"><b>01</b><div><strong>Discover</strong><small>Search tracks, artists and playlists.</small></div><span>⌕</span></div><div class="catalogue-step"><b>02</b><div><strong>Choose</strong><small>Add tracks to your queue or library.</small></div><span>＋</span></div><div class="catalogue-step"><b>03</b><div><strong>Open & listen</strong><small>Continue in the official player.</small></div><span>↗</span></div></div>
+ </section>
+ <section class="closing-section"><p class="eyebrow">A PROJECT BY PAUZEDEVS</p><h2>Let the music<br><em>take the space.</em></h2><a class="button button-primary" href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">Explore the source <span>↗</span></a><p class="closing-note">Independent. Open source. Built with care.</p></section>
+ <section class="legal-section" id="legal"><div class="section-top"><div><p class="eyebrow">THE IMPORTANT DETAILS</p><h2>Good music.<br><em>Clear terms.</em></h2></div><span class="section-index">[ 04 / PROJECT INFO ]</span></div><div class="legal-links">
+  <a href="./privacy.html" target="_blank" rel="noopener noreferrer"><span>01</span><strong>Privacy policy</strong><small>Local data and third-party services</small><b>↗</b></a>
+  <a href="./terms.html" target="_blank" rel="noopener noreferrer"><span>02</span><strong>Terms of use</strong><small>Use, limitations and responsibilities</small><b>↗</b></a>
+  <a href="./attribution.html" target="_blank" rel="noopener noreferrer"><span>03</span><strong>Attribution & licences</strong><small>Technology, acknowledgements and trademarks</small><b>↗</b></a>
+  <a href="https://github.com/PauzeDevs/LumaMusic/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"><span>04</span><strong>Software licence</strong><small>Eclipse Public License 2.0</small><b>↗</b></a>
+ </div></section>
 </main>
-<footer class="site-footer"><a class="wordmark" href="#top"><img class="wordmark-image" src="./assets/lumamusic-logo.svg" alt="LumaMusic"></a><p>Built by <a href="https://github.com/PauzeDevs" target="_blank" rel="noopener noreferrer">PauzeDevs</a> · <span id="year"></span></p><div class="footer-links"><a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy ↗</a><a href="./terms.html" target="_blank" rel="noopener noreferrer">Terms ↗</a><a href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div></footer>
-<script src="./script.js" defer></script></body></html>
+<footer class="site-footer"><a class="brand" href="#top"><img src="./assets/lumamusic-logo.svg" alt="Luma Music"></a><p>Made with care by <a href="https://github.com/PauzeDevs" target="_blank" rel="noopener noreferrer">PauzeDevs</a> · <span id="year"></span></p><div class="footer-links"><a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy ↗</a><a href="./terms.html" target="_blank" rel="noopener noreferrer">Terms ↗</a><a href="https://github.com/PauzeDevs/LumaMusic" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div></footer>
+<script src="./script.js" defer></script>
+</body></html>
