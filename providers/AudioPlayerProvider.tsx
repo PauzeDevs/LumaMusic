@@ -208,22 +208,24 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const playNext = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
+    const currentIndex = state.currentQueueIndex;
     if (state.repeatMode === "one") {
       if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else { await player.seekTo(0); player.play(); }
       return;
     }
-    const currentIndex = state.currentQueueIndex;
     let nextTrack: MusicTrack | undefined;
+    let nextQueueIndex = -1;
     if (state.isShuffled) {
       const candidates = state.queue.map((item, index) => ({ item, index })).filter(({ index, item }) => index !== currentIndex && isPlayable(item));
       if (candidates.length > 0) {
         const selected = candidates[Math.floor(Math.random() * candidates.length)];
         nextTrack = selected.item;
+        nextQueueIndex = selected.index;
       } else if (state.repeatMode === "all") {
         const firstPlayableIndex = state.queue.findIndex(isPlayable);
-        if (firstPlayableIndex >= 0) nextTrack = state.queue[firstPlayableIndex];
+        if (firstPlayableIndex >= 0) { nextTrack = state.queue[firstPlayableIndex]; nextQueueIndex = firstPlayableIndex; }
       }
     } else {
       for (let offset = 1; offset <= state.queue.length; offset += 1) {
@@ -233,10 +235,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           index %= state.queue.length;
         }
         const candidate = state.queue[index];
-        if (isPlayable(candidate)) { nextTrack = candidate; break; }
+        if (isPlayable(candidate)) { nextTrack = candidate; nextQueueIndex = index; break; }
       }
     }
-    if (nextTrack) await playTrackSafely(nextTrack, state.queue, state.isShuffled ? state.queue.findIndex((item, index) => index !== currentIndex && item === nextTrack) : state.queue.findIndex((item, index) => index !== currentIndex && item === nextTrack));
+    if (nextTrack) await playTrackSafely(nextTrack, state.queue, nextQueueIndex);
     else if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
     else if (!isExternalTrack(state.currentTrack)) player.pause();
   }, [playTrackSafely, player]);
@@ -260,7 +262,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const candidate = state.queue[index];
       if (isPlayable(candidate)) { await playTrackSafely(candidate, state.queue, index); return; }
     }
-    if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue);
+    if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
     else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
     else await player.seekTo(0);
   }, [playTrackSafely, player]);
