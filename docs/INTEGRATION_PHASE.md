@@ -1,48 +1,42 @@
 # LumaMusic Integration Phase
 
-**Status:** YouTube Music catalogue discovery and external playback handoff are implemented on `feat/youtube-music-provider`. Native in-app audio streaming is not implemented in this phase.
+**Status:** YouTube Music catalogue discovery and official-app handoff are implemented. Native in-app playback is supported for user-imported local audio.
 
 ## Discovery
+- Search and discovery use the YouTube Music web client's undocumented InnerTube endpoint.
+- The app maps title, artist, artwork, duration and video ID into the app-owned MusicTrack type.
+- This is an unofficial, changeable discovery integration, not a public Google API. LumaMusic is not affiliated with or endorsed by Google or YouTube.
 
-- Search uses the YouTube Music web client's InnerTube `search` endpoint.
-- The app maps track title, artist text, artwork, duration and video ID into the app-owned `MusicTrack` type.
-- Home discovery currently runs a curated `new music` query.
-- Featured playlist discovery uses a playlist-filtered search query.
-- Search results are cached by TanStack Query.
-- The integration is unofficial and undocumented. It is not a Google/YouTube public API and LumaMusic does not claim Google authorization or affiliation.
+## Playback
+- YouTube Music results open their canonical YouTube Music URL in the official app or browser.
+- LumaMusic does not extract, proxy, cache, download or redistribute YouTube audio.
+- Local audio imported by the user is played inside LumaMusic through the native audio engine.
+- Queue, seek, playback rate, sleep timer and audio effects apply to local playback. External playback controls and progress remain owned by YouTube Music.
 
-## Playback handoff
+## Product direction inspired by Mochy Music
+LumaMusic takes high-level inspiration from Mochy's focused Android listening experience, feature depth and user-respecting approach. It retains its own visual identity, code, architecture and interaction design:
+- Velvet-red, dark-matte visual language with restrained glass surfaces.
+- A focused now-playing screen with large artwork and clear transport controls.
+- Local-first library, favourites, playlists and queue.
+- Honest source labels and no fabricated playback progress.
+- No account requirement for local listening.
 
-1. The user selects a search or discovery result.
-2. LumaMusic opens the canonical `music.youtube.com/watch?v=<videoId>` URL.
-3. YouTube Music or the browser handles playback.
-4. LumaMusic records the selection in its local recently played list.
-
-The Expo Audio player remains in the project for the native playback layer, but YouTube Music tracks do not currently supply a native audio URL to it. In-app playback, seek synchronization, lock-screen controls for YouTube Music streams, background streaming and queue continuity are therefore not claimed as complete.
-
-## Data model
-
-YouTube Music tracks use namespaced IDs (`youtube:<videoId>`) and retain a canonical YouTube Music URL. The legacy `audius` source literal remains in the type temporarily so previously persisted library entries can be read safely; the Audius service and API requests have been removed from the active app code.
+No Mochy source code, assets, branding or layouts are copied.
 
 ## Not yet integrated
-
-- Native audio stream resolution through a permitted playback interface.
-- In-app play/pause, seek, next/previous and queue synchronization for YouTube Music audio.
-- Background audio and lock-screen controls for YouTube Music tracks.
-- Google account sign-in, library sync, likes, subscriptions or write actions.
-- Full artist/album/playlist detail parsing and pagination.
-- Local-device music scanning and offline downloads.
+- Authorized native streaming provider.
+- Android media notification, lock-screen controls and media-session integration for LumaMusic local audio.
+- Audio focus, Bluetooth and headset-button QA on physical devices.
+- Lyrics provider and optional scrobbling integration.
+- Artist/album/playlist detail parsing and pagination.
+- Cross-device library sync and account sign-in.
 
 ## Privacy and rights
-
-The current discovery adapter does not collect Google passwords, cookies or account session tokens. It makes public web requests to YouTube Music and opens canonical track pages for playback. Google/YouTube may receive normal network metadata such as IP address and request information.
-
-Do not describe this unofficial integration as officially approved by Google. Any future native playback implementation must use a method that is authorized for the intended use, respect access controls and applicable terms, and avoid storing or redistributing audio without permission.
+The discovery adapter makes public catalogue requests and opens canonical provider links. It does not collect Google passwords, cookies or account session tokens. Local audio remains on the device unless the user shares it through an OS share action. Users remain responsible for having rights to audio they import.
 
 ## QA still required
-
-- Validate live search response parsing on Android and iOS.
+- Validate live search parsing on Android and iOS.
 - Verify empty, rate-limited, unavailable and changed-response cases.
-- Test opening YouTube Music links when the app is installed and when it is not.
-- Run Expo dependency checks, TypeScript and Android/iOS development builds.
-- Validate local library migration for older persisted Audius entries.
+- Test official-app handoff with and without YouTube Music installed.
+- Test local playback, seeking, queue transitions, interruptions and background behavior on physical Android devices.
+- Run Expo dependency checks, TypeScript and Android/iOS development builds before release.
