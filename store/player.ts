@@ -56,7 +56,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setSleepTimerMinutes: (sleepTimerMinutes) => set({ sleepTimerMinutes }),
   removeFromQueue: (trackId) => set((state) => ({ queue: state.queue.filter((track) => track.id !== trackId || track.id === state.currentTrack?.id) })),
   removeQueueItemAt: (index) => set((state) => {
-    if (index < 0 || index >= state.queue.length || state.queue[index]?.id === state.currentTrack?.id) return state;
+    if (index < 0 || index >= state.queue.length || index === state.queue.findIndex((track) => track.id === state.currentTrack?.id)) return state;
     return { queue: state.queue.filter((_, itemIndex) => itemIndex !== index) };
   }),
   moveQueueTrack: (from, to) => set((state) => {
