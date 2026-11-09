@@ -5,6 +5,7 @@ export type RepeatMode = "off" | "all" | "one";
 
 type PlayerState = {
   currentTrack: MusicTrack | null;
+  currentQueueIndex: number;
   isPlaying: boolean;
   isBuffering: boolean;
   playbackPosition: number;
@@ -15,7 +16,7 @@ type PlayerState = {
   queue: MusicTrack[];
   isShuffled: boolean;
   repeatMode: RepeatMode;
-  setTrack: (track: MusicTrack, queue?: MusicTrack[]) => void;
+  setTrack: (track: MusicTrack, queue?: MusicTrack[], queueIndex?: number) => void;
   setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
   setPlaybackError: (error: string | null) => void;
   setPlaybackRate: (rate: number) => void;
@@ -30,6 +31,7 @@ type PlayerState = {
 
 export const usePlayerStore = create<PlayerState>((set) => ({
   currentTrack: null,
+  currentQueueIndex: 0,
   isPlaying: false,
   isBuffering: false,
   playbackPosition: 0,
@@ -40,33 +42,46 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   queue: [],
   isShuffled: false,
   repeatMode: "off",
-  setTrack: (track, queue) =>
-    set({
+  setTrack: (track, queue, queueIndex) => {
+    const nextQueue = queue && queue.length > 0 ? queue : [track];
+    const resolvedIndex = queueIndex !== undefined && queueIndex >= 0 && queueIndex < nextQueue.length
+      ? queueIndex
+      : Math.max(0, nextQueue.findIndex((item) => item === track));
+    return set({
       currentTrack: track,
-      queue: queue && queue.length > 0 ? queue : [track],
+      currentQueueIndex: resolvedIndex,
+      queue: nextQueue,
       isPlaying: false,
       isBuffering: true,
       playbackPosition: 0,
       playbackDuration: track.durationMs / 1000,
       playbackError: null
-    }),
+    });
+  },
   setPlaybackStatus: (status) => set(status),
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
   setSleepTimerMinutes: (sleepTimerMinutes) => set({ sleepTimerMinutes }),
   removeFromQueue: (trackId) => set((state) => ({ queue: state.queue.filter((track) => track.id !== trackId || track.id === state.currentTrack?.id) })),
   removeQueueItemAt: (index) => set((state) => {
-    if (index < 0 || index >= state.queue.length || index === state.queue.findIndex((track) => track.id === state.currentTrack?.id)) return state;
-    return { queue: state.queue.filter((_, itemIndex) => itemIndex !== index) };
+    if (index < 0 || index >= state.queue.length || index === state.currentQueueIndex) return state;
+    return {
+      queue: state.queue.filter((_, itemIndex) => itemIndex !== index),
+      currentQueueIndex: index < state.currentQueueIndex ? state.currentQueueIndex - 1 : state.currentQueueIndex
+    };
   }),
   moveQueueTrack: (from, to) => set((state) => {
     if (from < 0 || to < 0 || from >= state.queue.length || to >= state.queue.length || from === to) return state;
     const queue = [...state.queue];
     const [moved] = queue.splice(from, 1);
     queue.splice(to, 0, moved);
-    return { queue };
+    let currentQueueIndex = state.currentQueueIndex;
+    if (currentQueueIndex === from) currentQueueIndex = to;
+    else if (from < currentQueueIndex && to >= currentQueueIndex) currentQueueIndex -= 1;
+    else if (from > currentQueueIndex && to <= currentQueueIndex) currentQueueIndex += 1;
+    return { queue, currentQueueIndex };
   }),
-  clearQueue: () => set((state) => ({ queue: state.currentTrack ? [state.currentTrack] : [] })),
+  clearQueue: () => set((state) => ({ queue: state.currentTrack ? [state.currentTrack] : [], currentQueueIndex: 0 })),
   toggleShuffle: () => set((state) => ({ isShuffled: !state.isShuffled })),
   cycleRepeat: () => set((state) => ({
     repeatMode: state.repeatMode === "off" ? "all" : state.repeatMode === "all" ? "one" : "off"
