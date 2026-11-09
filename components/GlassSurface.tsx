@@ -24,12 +24,12 @@ const styles = StyleSheet.create({
   shell: {
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.13)",
-    backgroundColor: "rgba(25,27,34,0.58)"
+    borderColor: "rgba(255,255,255,0.075)",
+    backgroundColor: "rgba(22,23,25,0.72)"
   },
   tint: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(255,255,255,0.025)"
+    backgroundColor: "rgba(255,255,255,0.012)"
   },
   topSheen: {
     position: "absolute",
@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.22)"
+    backgroundColor: "rgba(255,255,255,0.11)"
   },
   content: { flex: 1 }
 });
