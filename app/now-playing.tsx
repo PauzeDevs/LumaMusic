@@ -32,7 +32,6 @@ export default function NowPlayingScreen() {
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
-  const isExternalPlayback = track?.source === "youtube_music";
   const isLocalPlayback = track?.source === "local";
   const [artworkFailed, setArtworkFailed] = useState(false);
   useEffect(() => setArtworkFailed(false), [track?.id, track?.artwork]);
@@ -63,10 +62,6 @@ export default function NowPlayingScreen() {
     setPlaybackRate(speeds[(index + 1) % speeds.length]);
   };
   const chooseSleepTimer = () => {
-    if (isExternalPlayback) {
-      Alert.alert("Sleep timer unavailable", "Playback is handled by the external player. Use its playback controls or your device settings for a sleep timer.");
-      return;
-    }
     Alert.alert("Sleep timer", "Pause playback after", [
     { text: "15 minutes", onPress: () => setSleepTimer(15) },
     { text: "30 minutes", onPress: () => setSleepTimer(30) },
@@ -83,7 +78,7 @@ export default function NowPlayingScreen() {
       <BlurView tint="dark" intensity={32} style={styles.ambientBlur} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>{isExternalPlayback ? "OPENED IN" : "NOW PLAYING"}</Text><Text style={styles.headerTitle}>{isExternalPlayback ? "External player" : isLocalPlayback ? "Local audio" : "Your library"}</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text style={styles.headerTitle}>{isLocalPlayback ? "Local audio" : "Luma Music"}</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -99,42 +94,26 @@ export default function NowPlayingScreen() {
             <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={colors.accent} />
           </Pressable>
         </View>
-        {isExternalPlayback ? (
-          <View style={styles.externalPlayback}>
-            <View style={styles.externalPlaybackHeader}>
-              <Ionicons name="open-outline" size={15} color={colors.accent} />
-              <Text style={styles.externalPlaybackText}>Playback is controlled externally</Text>
-            </View>
-            <View style={styles.externalDurationPanel}>
-              <Text style={styles.externalDurationLabel}>TRACK LENGTH</Text>
-              <Text style={styles.externalDuration}>{duration > 0 ? formatTime(duration) : "Unavailable"}</Text>
-            </View>
-            <Text style={styles.externalPlaybackHint}>Live progress is available when audio plays inside LumaMusic.</Text>
-          </View>
-        ) : (
-          <View style={styles.progressArea}>
+        <View style={styles.progressArea}>
             <View ref={progressRef} style={[styles.progressTrack, progressBarStyle === "classic" && styles.progressTrackClassic]} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
               <View style={[styles.progressFill, progressBarStyle === "classic" && styles.progressFillClassic, { width: `${progress}%` }]} />
               <View style={[styles.progressThumb, progressBarStyle === "classic" && styles.progressThumbClassic, { left: `${progress}%` }]} />
             </View>
             <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
-          </View>
-        )}
+        </View>
         {isBuffering ? <Text style={styles.status}>Buffering audio…</Text> : null}
         {playbackError ? <Text style={styles.error}>{playbackError}</Text> : null}
         <View style={styles.controls}>
           <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
           <Pressable onPress={() => { void playPrevious(); }}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
-          <Pressable style={styles.play} onPress={togglePlayback} accessibilityRole="button" accessibilityLabel="Open track in external player"><Ionicons name={isExternalPlayback ? "open-outline" : isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
+          <Pressable style={styles.play} onPress={togglePlayback} accessibilityRole="button" accessibilityLabel={isPlaying ? "Pause playback" : "Start playback"}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
           <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
           <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
-        {!isExternalPlayback ? (
-          <View style={styles.extraControls}>
+        <View style={styles.extraControls}>
             <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
             <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
-          </View>
-        ) : null}
+        </View>
       </View>
       <View style={styles.bottomGlass}><BlurView tint="dark" intensity={60} style={StyleSheet.absoluteFill} /><View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
@@ -148,7 +127,7 @@ export default function NowPlayingScreen() {
           <Ionicons name="options-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Audio</Text>
         </Pressable>
       </View></View>
-      <Text style={styles.disclaimer}>{isExternalPlayback ? "LumaMusic · External playback" : isLocalPlayback ? "LumaMusic · Native audio engine" : "LumaMusic"}</Text>
+      <Text style={styles.disclaimer}>{isLocalPlayback ? "LumaMusic · Local audio" : "LumaMusic"}</Text>
     </SafeAreaView>
   );
 }
