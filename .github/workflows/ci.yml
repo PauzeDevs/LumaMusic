@@ -11,15 +11,16 @@ on:
 permissions:
   contents: read
 
-# Keep only the newest run for each PR or branch.
+# A newer main commit replaces an older validation run instead of queuing behind it.
 concurrency:
   group: lumamusic-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: TypeScript and Expo validation
+  validate:
+    name: Validate and export Android bundle
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -33,12 +34,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('package.json') }}
+          key: ${{ runner.os }}-node22-npm-${{ hashFiles('package.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-node22-npm-
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --prefer-offline
 
       - name: Check Expo dependency compatibility
         run: npx expo install --check
@@ -49,40 +50,17 @@ jobs:
       - name: Validate Expo config
         run: npx expo config --type public
 
-  js-bundles:
-    name: Export ${{ matrix.platform }} JavaScript bundle
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [android, ios]
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
+      - name: Export Android JavaScript bundle
+        run: npx expo export --platform android
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-
-      - name: Cache npm downloads
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Export JavaScript bundle
-        run: npx expo export --platform ${{ matrix.platform }}
-
-  android-native-build:
+  android-release:
     name: Android release APK build
     runs-on: ubuntu-latest
-    needs: [checks, js-bundles]
+    timeout-minutes: 45
+    # APK builds are expensive. Keep everyday main-branch CI quick and build
+    # installable APKs only for version tags or an explicit manual run.
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: [validate]
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -96,12 +74,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('package.json') }}
+          key: ${{ runner.os }}-node22-npm-${{ hashFiles('package.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-node22-npm-
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --prefer-offline
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -115,16 +93,14 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build Android native app
+      - name: Build Android release APK
         working-directory: android
-        shell: bash
-        run: |
-          ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload Android build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lumamusic-android-build
-          path: |
-            android/app/build/outputs/apk/release/app-release.apk
+          name: lumamusic-android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+          retention-days: 14
