@@ -1,7 +1,8 @@
 import { Audio, AudioContext, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
+import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -100,7 +101,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
-    if (isExternalTrack(currentTrack) || isLocalTrack(currentTrack)) return;
+    if (isLocalTrack(currentTrack)) return;
     setPlaybackStatus({
       isPlaying: status.playing, isBuffering: status.isBuffering,
       playbackPosition: status.currentTime, playbackDuration: status.duration,
@@ -172,8 +173,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     useLibraryStore.getState().addRecentTrack(track);
     if (isExternalTrack(track)) {
       setLocalSource(null);
-      usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: false, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
-      await Linking.openURL(track.youtubeUrl);
+      usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
+      const stream = await resolveYouTubeMusicAudio(track);
+      await player.replace({ uri: stream.url, headers: { Referer: "https://www.youtube.com/" } });
+      player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
+      player.play();
+      usePlayerStore.getState().setPlaybackStatus({ isPlaying: true, isBuffering: false, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
       return;
     }
     if (isLocalTrack(track)) {
@@ -193,7 +198,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
-      void playTrack(state.currentTrack, state.queue).catch((error: unknown) => setPlaybackError(error instanceof Error ? error.message : "Could not open the selected track."));
+      if (status.playing) player.pause();
+      else player.play();
       return;
     }
     if (isLocalTrack(state.currentTrack)) {
@@ -270,12 +276,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const setPlaybackRate = useCallback((rate: number) => {
     if (isExternalTrack(usePlayerStore.getState().currentTrack)) return;
     const safeRate = Math.max(0.5, Math.min(2, rate));
-    if (!isLocalTrack(usePlayerStore.getState().currentTrack)) player.setPlaybackRate(safeRate, "high");
+    player.setPlaybackRate(safeRate, "high");
     setPlaybackRateState(safeRate);
   }, [player, setPlaybackRateState]);
 
   const setSleepTimer = useCallback((minutes: number | null) => {
-    if (isExternalTrack(usePlayerStore.getState().currentTrack)) { setSleepTimerMinutesState(null); return; }
     if (sleepTimerRef.current) { clearTimeout(sleepTimerRef.current); sleepTimerRef.current = null; }
     setSleepTimerMinutesState(minutes);
     if (minutes !== null && minutes > 0) {
@@ -290,7 +295,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const seekTo = useCallback(async (seconds: number) => {
     const track = usePlayerStore.getState().currentTrack;
-    if (isExternalTrack(track)) return;
     if (isLocalTrack(track)) { audioRef.current?.seekToTime(Math.max(0, seconds)); return; }
     await player.seekTo(Math.max(0, seconds));
   }, [player]);
