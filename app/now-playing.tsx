@@ -101,9 +101,15 @@ export default function NowPlayingScreen() {
         </View>
         {isExternalPlayback ? (
           <View style={styles.externalPlayback}>
-            <Ionicons name="open-outline" size={15} color={colors.accent} />
-            <Text style={styles.externalPlaybackText}>Playback is controlled externally</Text>
-            <Text style={styles.externalDuration}>{duration > 0 ? formatTime(duration) + " total" : "Duration unavailable"}</Text>
+            <View style={styles.externalPlaybackHeader}>
+              <Ionicons name="open-outline" size={15} color={colors.accent} />
+              <Text style={styles.externalPlaybackText}>Playback is controlled externally</Text>
+            </View>
+            <View style={styles.externalDurationPanel}>
+              <Text style={styles.externalDurationLabel}>TRACK LENGTH</Text>
+              <Text style={styles.externalDuration}>{duration > 0 ? formatTime(duration) : "Unavailable"}</Text>
+            </View>
+            <Text style={styles.externalPlaybackHint}>Live progress is available when audio plays inside LumaMusic.</Text>
           </View>
         ) : (
           <View style={styles.progressArea}>
@@ -164,9 +170,13 @@ const styles = StyleSheet.create({
   artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
   like: { padding: 8 },
   progressArea: { marginTop: 28 },
-  externalPlayback: { marginTop: 28, minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, flexWrap: "wrap" },
+  externalPlayback: { marginTop: 24, minHeight: 92, alignItems: "center", justifyContent: "center", gap: 10 },
+  externalPlaybackHeader: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
   externalPlaybackText: { color: colors.muted, fontSize: 10 },
-  externalDuration: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
+  externalDurationPanel: { alignItems: "center", gap: 3, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  externalDurationLabel: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
+  externalDuration: { color: colors.text, fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  externalPlaybackHint: { color: colors.subtle, fontSize: 9, textAlign: "center" },
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
   progressTrackClassic: { height: 8, borderRadius: 8 },
   progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
