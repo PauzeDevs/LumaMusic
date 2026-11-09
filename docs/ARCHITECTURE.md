@@ -1,6 +1,6 @@
 # LumaMusic Technical Architecture
 
-**Status:** YouTube Music catalogue discovery with official-app handoff; native playback for imported local audio.
+**Status:** YouTube Music catalogue discovery, an authorized stream-resolver adapter, in-app remote playback through Expo Audio, and native playback for imported local audio.
 
 ## Architecture overview
 - TypeScript React Native client built with Expo.
@@ -9,7 +9,7 @@
 - Zustand for player and library state.
 - AsyncStorage for favourites, recent selections and local playlists.
 - `services/youtubeMusic.ts` isolates public catalogue discovery.
-- `AudioPlayerProvider` owns local playback and player state.
+- `AudioPlayerProvider` owns local and resolved remote playback, transport controls and player state.\n- `services/authorizedPlayback.ts` defines the HTTPS contract for an independently operated, authorized stream resolver.
 
 ## Provider boundaries
 YouTube Music is currently a discovery source. Search results are normalized into app-owned models and opened using canonical YouTube Music URLs. The integration uses an undocumented web endpoint and can change without notice. It is not an official Google API.
@@ -43,4 +43,4 @@ Local files imported by the user are copied into the app's private documents dir
 1. Discovery parsing and rate-limit handling on Android/iOS.
 2. Local playback, queue transitions, sleep timer and audio effects.
 3. Physical-device QA for audio focus, interruptions, Bluetooth and background behavior.
-4. Release privacy/attribution review and authorized-provider decision before adding streaming.
+4. Validate the authorized resolver contract and provider authorization before production streaming.\n5. Add a dedicated Android Media3 MediaLibraryService bridge for native notification, lock-screen, headset and Android Auto session parity.
