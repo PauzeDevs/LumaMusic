@@ -1,7 +1,7 @@
 import { Audio, AudioContext, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -225,7 +225,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.queue.length === 0 || !state.currentTrack) return;
     const currentIndex = state.currentQueueIndex;
     if (state.repeatMode === "one") {
-      if (isExternalTrack(state.currentTrack)) await player.seekTo(0);
+      if (isExternalTrack(state.currentTrack)) { await player.seekTo(0); player.play(); }
       else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else { await player.seekTo(0); player.play(); }
       return;
