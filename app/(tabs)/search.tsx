@@ -90,7 +90,7 @@ export default function SearchScreen() {
             <Text style={styles.emptyTitle}>Nothing found yet</Text>
             <Text style={styles.emptyCopy}>Try another title, artist or playlist name.</Text>
           </View> : null}
-          <Text style={styles.note}>Selecting a track opens it in the external player. In-app streaming is planned separately.</Text>
+          <Text style={styles.note}>Search stays inside LumaMusic. In-app playback starts when an authorized stream provider is configured.</Text>
         </ScrollReveal>
       </Animated.ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
