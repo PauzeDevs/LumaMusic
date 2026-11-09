@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
   heroTagText: { color: "#E7DDF9", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
-  heroTitle: { color: "#FFFFFF", fontSize: 36, lineHeight: 39, fontWeight: "750", letterSpacing: -1.45 },
+  heroTitle: { color: "#FFFFFF", fontSize: 36, lineHeight: 39, fontWeight: "700", letterSpacing: -1.45 },
   heroSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 8 },
   heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#F5F5F7", paddingHorizontal: 18, paddingVertical: 13, borderRadius: 24, marginTop: 18 },
   heroButtonText: { color: "#17171A", fontSize: 13, fontWeight: "700" },
