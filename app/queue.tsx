@@ -14,7 +14,7 @@ export default function QueueScreen() {
   const moveQueueTrack = usePlayerStore((s) => s.moveQueueTrack);
   const clearQueue = usePlayerStore((s) => s.clearQueue);
   const { playTrack } = useAudioEngine();
-  const currentIndex = queue.findIndex((track) => track.id === currentTrack?.id);
+  const currentIndex = usePlayerStore((s) => s.currentQueueIndex);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -30,7 +30,7 @@ export default function QueueScreen() {
           return (
             <View key={`${track.id}-${index}`} style={[styles.row, isCurrent && styles.current]}>
               <Artwork uri={track.artwork} size={48} radius={11} />
-              <Pressable style={{ flex: 1 }} onPress={() => { void playTrack(track, queue).then(() => router.back()).catch((error: unknown) => Alert.alert("Playback failed", error instanceof Error ? error.message : "Try again.")); }}>
+              <Pressable style={{ flex: 1 }} onPress={() => { void playTrack(track, queue, index).then(() => router.back()).catch((error: unknown) => Alert.alert("Playback failed", error instanceof Error ? error.message : "Try again.")); }}>
                 <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
                 <Text numberOfLines={1} style={styles.artist}>{isCurrent ? "CURRENT TRACK · " : ""}{track.artist}</Text>
               </Pressable>
