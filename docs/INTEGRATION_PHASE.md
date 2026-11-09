@@ -1,6 +1,6 @@
 # LumaMusic Integration Phase
 
-**Status:** YouTube Music catalogue discovery and official-app handoff are implemented. Native in-app playback is supported for user-imported local audio.
+**Status:** YouTube Music catalogue discovery, an authorized stream-resolver client contract, in-app remote playback plumbing and local audio playback are implemented. A provider-authorized resolver backend and full Android Media3 bridge are not included yet.
 
 ## Discovery
 - Search and discovery use the YouTube Music web client's undocumented InnerTube endpoint.
