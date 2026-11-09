@@ -1,42 +1,53 @@
 # LumaMusic Integration Phase
 
-**Status:** YouTube Music catalogue discovery, an authorized stream-resolver client contract, in-app remote playback plumbing and local audio playback are implemented. A provider-authorized resolver backend and full Android Media3 bridge are not included yet.
+**Status:** YouTube Music catalogue discovery, the authorized stream-resolver client contract, in-app remote playback plumbing and local audio playback are implemented. The provider-authorized resolver backend and dedicated Android Media3 bridge are not included yet.
 
 ## Discovery
+
 - Search and discovery use the YouTube Music web client's undocumented InnerTube endpoint.
-- The app maps title, artist, artwork, duration and video ID into the app-owned MusicTrack type.
-- This is an unofficial, changeable discovery integration, not a public Google API. LumaMusic is not affiliated with or endorsed by Google or YouTube.
+- Results are normalized into app-owned track, playlist and artist models.
+- This is an unofficial, changeable catalogue integration, not a public Google API. LumaMusic is not affiliated with or endorsed by Google or YouTube.
 
 ## Playback
-- YouTube Music results open their canonical YouTube Music URL in the official app or browser.
-- LumaMusic does not extract, proxy, cache, download or redistribute YouTube audio.
-- Local audio imported by the user is played inside LumaMusic through the native audio engine.
-- Queue, seek, playback rate, sleep timer and audio effects apply to local playback. External playback controls and progress remain owned by YouTube Music.
 
-## Product direction inspired by Mochy Music
-LumaMusic takes high-level inspiration from Mochy's focused Android listening experience, feature depth and user-respecting approach. It retains its own visual identity, code, architecture and interaction design:
-- Velvet-red, dark-matte visual language with restrained glass surfaces.
-- A focused now-playing screen with large artwork and clear transport controls.
-- Local-first library, favourites, playlists and queue.
-- Honest source labels and no fabricated playback progress.
-- No account requirement for local listening.
+- YouTube Music tracks now enter LumaMusic's in-app audio player through `services/authorizedPlayback.ts`.
+- Set `EXPO_PUBLIC_YOUTUBE_PLAYBACK_RESOLVER_URL` to an HTTPS resolver that is explicitly authorized to provide playback streams to this app.
+- The resolver accepts a POST body containing `provider: "youtube_music"`, `videoId` and `client: "lumamusic-android"`.
+- Expected JSON response: `{ "url": "https://...", "mimeType": "audio/*", "expiresAt": "ISO-8601", "headers": {} }`. Only `url` is required; other fields are optional.
+- The client validates HTTPS and expiry, loads the returned stream into Expo Audio, and exposes in-app play/pause, live progress, seeking, playback rate, repeat and queue controls.
+- The resolver backend is not part of this repository. It must only return streams the operator is authorized and contractually permitted to provide. No undocumented signature-deciphering or access-control bypass is implemented in the app.
+- Without a configured resolver, the app reports a clear playback configuration error. It does not fall back to external-app handoff.
+- Local audio continues to use the local audio graph and effects.
 
-No Mochy source code, assets, branding or layouts are copied.
+## Mochy-inspired engineering direction
+
+LumaMusic uses the high-level playback architecture as a reference while retaining its own code, design and identity:
+
+- A dedicated stream-resolution boundary, separate from catalogue search.
+- A single in-app player state for progress, transport, queue and repeat.
+- Native Android Media3 playback service and MediaSession.
+- Background playback, media notification, lock-screen and headset controls.
+- Stream expiry recovery and resolver retry handling.
+
+The first two are represented in the current client implementation. The dedicated Media3 service/bridge and expiry recovery are follow-up engineering work. Current remote audio is played through Expo Audio, not yet through a full Media3 service.
 
 ## Not yet integrated
-- Authorized native streaming provider.
-- Android media notification, lock-screen controls and media-session integration for LumaMusic local audio.
-- Audio focus, Bluetooth and headset-button QA on physical devices.
+
+- Provider-authorized stream resolver backend and verified authorization for the intended playback use.
+- Dedicated Android Media3 playback service and React Native bridge.
+- Remote stream expiry recovery and retry policy.
+- Physical-device validation for media notification, lock-screen controls, audio focus, Bluetooth and headset buttons.
 - Lyrics provider and optional scrobbling integration.
-- Artist/album/playlist detail parsing and pagination.
 - Cross-device library sync and account sign-in.
 
 ## Privacy and rights
-The discovery adapter makes public catalogue requests and opens canonical provider links. It does not collect Google passwords, cookies or account session tokens. Local audio remains on the device unless the user shares it through an OS share action. Users remain responsible for having rights to audio they import.
+
+The catalogue adapter makes public catalogue requests. The app does not collect Google passwords, cookies or account session tokens. The resolver must not require private account credentials embedded in the mobile client. Local audio remains on-device unless the user shares it through an OS share action.
 
 ## QA still required
-- Validate live search parsing on Android and iOS.
-- Verify empty, rate-limited, unavailable and changed-response cases.
-- Test official-app handoff with and without YouTube Music installed.
-- Test local playback, seeking, queue transitions, interruptions and background behavior on physical Android devices.
-- Run Expo dependency checks, TypeScript and Android/iOS development builds before release.
+
+- Run Expo dependency checks and TypeScript validation.
+- Validate resolver success, authorization failure, expired URL, malformed response and network failure.
+- Test remote playback, seeking, queue transitions and background playback on a physical Android device.
+- Test local playback, interruptions, Bluetooth and headset controls.
+- Build and inspect a release APK before marking the integration stable.
