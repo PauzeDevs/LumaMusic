@@ -23,7 +23,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const { togglePlayback } = useAudioEngine();
   const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
-  const isExternalTrack = track?.source === "youtube_music";
+  
 
   return (
     <View style={styles.shell}>
@@ -35,13 +35,13 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
             <Artwork uri={track.artwork} size={42} radius={10} />
             <View style={styles.miniCopy}>
               <Text numberOfLines={1} style={styles.miniTitle}>{track.title}</Text>
-              <Text numberOfLines={1} style={styles.miniArtist}>{isExternalTrack ? track.artist + " · YouTube Music" : track.artist}</Text>
+              <Text numberOfLines={1} style={styles.miniArtist}>{track.artist}</Text>
             </View>
           </Pressable>
           <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}>
-            <Ionicons name={isExternalTrack ? "open-outline" : isPlaying ? "pause" : "play"} size={21} color={colors.text} />
+            <Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} />
           </Pressable>
-          {!isExternalTrack ? <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View> : null}
+          <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
         </View>
       ) : null}
       <View style={styles.tabs}>
@@ -61,9 +61,9 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  shell: { marginHorizontal: 12, marginBottom: 8, borderRadius: 25, overflow: "hidden", backgroundColor: "rgba(18,20,25,0.72)", borderWidth: 1, borderColor: "rgba(255,255,255,0.16)", paddingTop: 9, paddingBottom: 10, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
-  shellSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: "rgba(255,255,255,0.24)" },
-  mini: { height: 60, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  shell: { marginHorizontal: 12, marginBottom: 8, borderRadius: 25, overflow: "hidden", backgroundColor: "rgba(19,20,22,0.94)", borderWidth: 1, borderColor: "rgba(255,255,255,0.075)", paddingTop: 9, paddingBottom: 10, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
+  shellSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: "rgba(255,255,255,0.10)" },
+  mini: { height: 60, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: "rgba(255,255,255,0.065)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
   miniTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
