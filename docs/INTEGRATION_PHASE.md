@@ -1,6 +1,6 @@
 # LumaMusic Integration Phase
 
-**Status:** YouTube Music catalogue discovery, the authorized stream-resolver client contract, in-app remote playback plumbing and local audio playback are implemented. The provider-authorized resolver backend and dedicated Android Media3 bridge are not included yet.
+**Status:** YouTube Music catalogue discovery, the authorized stream-resolver client contract, in-app remote playback plumbing, local audio playback, and an Android Media3 MediaLibraryService for imported local audio are present. The provider-authorized resolver backend and React Native-to-Media3 playback bridge are not included yet.
 
 ## Discovery
 
@@ -25,16 +25,16 @@ LumaMusic uses the high-level playback architecture as a reference while retaini
 
 - A dedicated stream-resolution boundary, separate from catalogue search.
 - A single in-app player state for progress, transport, queue and repeat.
-- Native Android Media3 playback service and MediaSession.
-- Background playback, media notification, lock-screen and headset controls.
+- Native Android Media3 MediaLibraryService and MediaSession are now registered through the `withAndroidAuto` config plugin for imported local audio.
+- Background playback, media notification, lock-screen and headset controls through the Media3 service for its current local-audio catalogue.
 - Stream expiry recovery and resolver retry handling.
 
-The first two are represented in the current client implementation. The dedicated Media3 service/bridge and expiry recovery are follow-up engineering work. Current remote audio is played through Expo Audio, not yet through a full Media3 service.
+The first two are represented in the current client implementation. The native Media3 service is now included for imported local audio, but it is not yet connected to the React Native player state or remote resolver. Current remote audio is played through Expo Audio, not through Media3. A native bridge and remote queue handoff remain follow-up engineering work.
 
 ## Not yet integrated
 
 - Provider-authorized stream resolver backend and verified authorization for the intended playback use.
-- Dedicated Android Media3 playback service and React Native bridge.
+- React Native bridge and shared queue handoff into the Android Media3 playback service.
 - Remote stream expiry recovery and retry policy.
 - Physical-device validation for media notification, lock-screen controls, audio focus, Bluetooth and headset buttons.
 - Lyrics provider and optional scrobbling integration.
