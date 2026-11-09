@@ -19,7 +19,7 @@ export function Artwork({ uri, size, radius = 16 }: ArtworkProps) {
     <View style={[styles.frame, { width: size, height: size, borderRadius: radius }]}>
       {failed || !uri ? (
         <View style={styles.fallback}>
-          <Ionicons name="musical-notes" size={Math.max(18, size * 0.28)} color="#C6A7FF" />
+          <Ionicons name="musical-notes" size={Math.max(18, size * 0.28)} color=" #D66B78" />
         </View>
       ) : (
         <Image
@@ -34,13 +34,13 @@ export function Artwork({ uri, size, radius = 16 }: ArtworkProps) {
 
 const styles = StyleSheet.create({
   frame: {
-    backgroundColor: "#202432",
+    backgroundColor: "#1B1C1F",
     overflow: "hidden"
   },
   fallback: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#242033"
+    backgroundColor: "#202124"
   }
 });
