@@ -1,4 +1,3 @@
-
 import type { MusicTrack } from "../types/music";
 
 export type ResolvedYtdlpAudio = {
@@ -6,25 +5,16 @@ export type ResolvedYtdlpAudio = {
   durationSeconds?: number;
 };
 
-/**
- * Compatibility shim for legacy yt-dlp resolver.
- * Always returns null since yt-dlp is deprecated in favor of InnerTube.
- */
 export async function resolveWithYtdlpService(
   _track: MusicTrack
 ): Promise<ResolvedYtdlpAudio | null> {
   return null;
 }
-```[EOF]
+```eof
 
----
+### 2. `providers/AudioPlayerProvider.tsx`
 
-### 2. Update `providers/AudioPlayerProvider.tsx`
-*(Path: `providers/AudioPlayerProvider.tsx`)*
-
-Copy this code to ensure that if stream resolution ever fails, the player's buffering spinner stops immediately and records the error state cleanly:
-
-```typescript:Audio Player Provider with Safe Error Handling:providers/AudioPlayerProvider.tsx
+```typescript:providers/AudioPlayerProvider.tsx
 import { Audio, AudioContext, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
