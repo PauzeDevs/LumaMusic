@@ -1,4 +1,3 @@
-```typescript
 import type { MusicTrack } from "../types/music";
 import { resolveWithYtdlpService } from "./ytdlpResolver";
 
@@ -221,4 +220,3 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
     `Could not stream "${track.title}". (${errors.join(" | ") || "No playable stream"})`
   );
 }
-```
