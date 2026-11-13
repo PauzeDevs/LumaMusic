@@ -84,7 +84,7 @@ export default function ListenScreen() {
             title: playlist.title,
             subtitle: playlist.subtitle,
             artwork: playlist.artwork,
-            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : undefined
+            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } }) : undefined
           }))} emptyText="No featured playlists right now." />
         </View></ScrollReveal>
 
