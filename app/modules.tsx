@@ -43,6 +43,9 @@ export default function ModulesScreen() {
   const customLooks = useCustomizationStore((s) => s.customLooks);
   const saveLook = useCustomizationStore((s) => s.saveLook);
   const deleteLook = useCustomizationStore((s) => s.deleteLook);
+  const userModules = useCustomizationStore((s) => s.userModules);
+  const createUserModule = useCustomizationStore((s) => s.createUserModule);
+  const deleteUserModule = useCustomizationStore((s) => s.deleteUserModule);
   const setAccent = usePreferencesStore((s) => s.setAccentTheme);
   const setSurface = usePreferencesStore((s) => s.setSurfaceStyle);
   const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
@@ -51,6 +54,9 @@ export default function ModulesScreen() {
   const activePlayerStyle = usePreferencesStore((s) => s.playerStyle);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [moduleBuilderOpen, setModuleBuilderOpen] = useState(false);
+  const [moduleName, setModuleName] = useState("");
+  const [moduleDetail, setModuleDetail] = useState("");
   const [lookName, setLookName] = useState("");
   const [lookAccent, setLookAccent] = useState<AccentTheme>("red");
   const [lookSurface, setLookSurface] = useState<SurfaceStyle>("liquid");
@@ -58,6 +64,13 @@ export default function ModulesScreen() {
 
   const applyLook = (accent: AccentTheme, surface: SurfaceStyle, playerStyle: PlayerStyle = "standard") => {
     setAccent(accent); setSurface(surface); setPlayerStyle(playerStyle);
+  };
+  const createModule = () => {
+    const name = moduleName.trim();
+    if (!name) { Alert.alert("Name your module", "Add a name before creating your module."); return; }
+    const id = "user-" + Date.now().toString(36);
+    createUserModule({ id, name, detail: moduleDetail.trim() || "Personal module", createdAt: Date.now() });
+    setModuleName(""); setModuleDetail(""); setModuleBuilderOpen(false);
   };
   const createLook = () => {
     const name = lookName.trim();
@@ -98,12 +111,13 @@ export default function ModulesScreen() {
           </GlassSurface>;
         })}
         <Text style={styles.comingSoon}>More source modules will appear here as integrations become available.</Text>
+        <Pressable onPress={() => setModuleBuilderOpen(true)} style={styles.createModuleButton}><Ionicons name="add-circle-outline" size={17} color={colors.accent} /><Text style={styles.createModuleText}>Create your own module</Text></Pressable>
       </> : null}
 
       <Text style={styles.sectionTitle}>JS & SOURCE MODULES</Text>
       
       {installed.map((id, index) => {
-        const item = sourceNames[id] ?? catalog.find((entry) => entry.id === id);
+        const item = sourceNames[id] ?? catalog.find((entry) => entry.id === id) ?? userModules.find((entry) => entry.id === id);
         if (!item) return null;
         return <GlassSurface key={id} style={styles.moduleCard} contentStyle={styles.moduleContent}>
           <View style={[styles.moduleIcon, { backgroundColor: id === "youtube-music" ? "#F13B45" : id === "local-library" ? "#34343A" : "#25252A" }]}>
@@ -111,14 +125,14 @@ export default function ModulesScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.moduleName}>{item.name}</Text>
-            <Text style={styles.moduleMeta}>{id in sourceNames ? sourceNames[id].status : "On · Installed locally"}</Text>
-            <Text style={styles.moduleFoot}>{id in sourceNames ? sourceNames[id].detail : "Interface"}  |  {id in sourceNames ? sourceNames[id].version : "v1.0"}</Text>
+            <Text style={styles.moduleMeta}>{id in sourceNames ? sourceNames[id].status : id.startsWith("user-") ? "On · Your custom module" : "On · Installed locally"}</Text>
+            <Text style={styles.moduleFoot}>{id in sourceNames ? sourceNames[id].detail : "detail" in item ? item.detail : "Interface"}  |  {id in sourceNames ? sourceNames[id].version : "v1.0"}</Text>
           </View>
           <View style={styles.orderControls}>
             <Pressable onPress={() => move(id, -1)} disabled={index === 0} style={styles.orderButton} accessibilityRole="button" accessibilityLabel={`Move ${item.name} up`}><Ionicons name="chevron-up" size={17} color={index === 0 ? colors.subtle : colors.muted} /></Pressable>
             <Pressable onPress={() => move(id, 1)} disabled={index === installed.length - 1} style={styles.orderButton} accessibilityRole="button" accessibilityLabel={`Move ${item.name} down`}><Ionicons name="chevron-down" size={17} color={index === installed.length - 1 ? colors.subtle : colors.muted} /></Pressable>
           </View>
-          {id === "youtube-music" || id === "local-library" ? null : <Pressable onPress={() => remove(id)} style={styles.removeButton}><Ionicons name="close" size={17} color={colors.muted} /></Pressable>}
+          {id === "youtube-music" || id === "local-library" ? null : <Pressable onPress={() => id.startsWith("user-") ? deleteUserModule(id) : remove(id)} style={styles.removeButton} accessibilityRole="button" accessibilityLabel={`Remove ${item.name}`}><Ionicons name="close" size={17} color={colors.muted} /></Pressable>}
         </GlassSurface>;
       })}
 
@@ -138,6 +152,18 @@ export default function ModulesScreen() {
       <Text style={styles.footer}>Modules are managed locally. This build does not execute arbitrary third-party JavaScript or install unverified code.</Text>
     </ScrollView>
 
+    <Modal visible={moduleBuilderOpen} transparent animationType="slide" onRequestClose={() => setModuleBuilderOpen(false)}>
+      <View style={styles.modalBackdrop}><View style={styles.sheet}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.sheetHeader}><View style={{ flex: 1 }}><Text style={styles.sheetEyebrow}>PERSONAL EXTENSION</Text><Text style={styles.sheetTitle}>Create a module</Text></View><Pressable onPress={() => setModuleBuilderOpen(false)} style={styles.closeSheet}><Ionicons name="close" size={20} color={colors.text} /></Pressable></View>
+        <Text style={styles.fieldLabel}>MODULE NAME</Text>
+        <TextInput value={moduleName} onChangeText={setModuleName} placeholder="e.g. Study mix" placeholderTextColor={colors.subtle} style={styles.nameInput} maxLength={28} />
+        <Text style={styles.fieldLabel}>DESCRIPTION</Text>
+        <TextInput value={moduleDetail} onChangeText={setModuleDetail} placeholder="What is this module for?" placeholderTextColor={colors.subtle} style={[styles.nameInput, { height: 76, textAlignVertical: "top", paddingTop: 12 }]} maxLength={72} multiline />
+        <Text style={styles.moduleBuilderNote}>This creates a personal module card in your setup. It does not execute external code or add an unsupported music source.</Text>
+        <Pressable onPress={createModule} style={styles.saveButton}><Text style={styles.saveText}>Create module</Text></Pressable>
+      </View></View>
+    </Modal>
     <Modal visible={builderOpen} transparent animationType="slide" onRequestClose={() => setBuilderOpen(false)}>
       <View style={styles.modalBackdrop}><View style={styles.sheet}>
         <View style={styles.sheetHandle} />
@@ -178,7 +204,10 @@ function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
   dragHandle: { width: 30, height: 42, alignItems: "center", justifyContent: "center" }, orderControls: { gap: 2, paddingLeft: 3 }, orderButton: { width: 28, height: 22, borderRadius: 7, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.055)" : "rgba(0,0,0,0.035)" },
   corePill: { paddingHorizontal: 7, paddingVertical: 5, borderRadius: 8, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }, coreText: { color: c.subtle, fontSize: 8, fontWeight: "900", letterSpacing: 1 },
   removeButton: { width: 28, height: 30, alignItems: "center", justifyContent: "center" },
-  comingSoon: { color: c.subtle, fontSize: 10, lineHeight: 16, marginBottom: 23, marginTop: 2 },
+  comingSoon: { color: c.subtle, fontSize: 10, lineHeight: 16, marginBottom: 12, marginTop: 2 },
+  createModuleButton: { minHeight: 44, borderRadius: 13, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 18 },
+  createModuleText: { color: c.accent, fontSize: 11, fontWeight: "800" },
+  moduleBuilderNote: { color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 13 },
   sectionTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 18, marginBottom: 8 },
   link: { color: c.accent, fontSize: 11, fontWeight: "700" },
   emptyCard: { borderRadius: 19 }, emptyContent: { padding: 18, alignItems: "flex-start", gap: 9 },
