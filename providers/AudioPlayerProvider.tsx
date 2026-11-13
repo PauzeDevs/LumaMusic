@@ -240,7 +240,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         const stream = await resolveYouTubeMusicAudio(track);
         // A slower, older resolver must never replace the song the user selected most recently.
         if (requestId !== playbackRequestSequence.current) return;
-        if (requestId !== playbackRequestSequence.current) return;
         // Feed the resolved YouTube URL into the native Audio API element so its
         // samples pass through the same AudioContext graph as imported local audio.
         setLocalSource({
@@ -267,7 +266,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (nextTrack) {
           void resolveYouTubeMusicAudio(nextTrack).catch(() => undefined);
         }
-        // Keep the loading state until Expo Audio reports actual playback/buffering status.
+        // Keep the loading state until the native Audio API reports playback/buffering status.
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
         return;
       } catch (error) {
@@ -464,7 +463,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const playListener = PlaybackNotificationManager.addEventListener("playbackNotificationPlay", () => {
-      void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+      const state = usePlayerStore.getState();
+      if (state.currentTrack && (state.playbackError || !audioRef.current)) {
+        void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
+      } else {
+        void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+      }
     });
     const pauseListener = PlaybackNotificationManager.addEventListener("playbackNotificationPause", () => audioRef.current?.pause());
     const nextListener = PlaybackNotificationManager.addEventListener("playbackNotificationNextTrack", () => { void playNext(); });
@@ -486,7 +490,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       backwardListener.remove();
       void PlaybackNotificationManager.hide().catch(() => undefined);
     };
-  }, [playNext, playPrevious]);
+  }, [playNext, playPrevious, playTrackSafely]);
 
   useEffect(() => {
     if (!currentTrack) {
