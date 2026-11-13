@@ -66,6 +66,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const status = useAudioPlayerStatus(player);
   const [localSource, setLocalSource] = useState<{ uri: string; instance: number } | null>(null);
   const localSourceSequence = useRef(0);
+  const playbackRequestSequence = useRef(0);
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const graphRef = useRef<AudioGraph | null>(null);
@@ -171,8 +172,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number) => {
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
+    const requestId = ++playbackRequestSequence.current;
     const queue = nextQueue?.length ? nextQueue : [track];
     if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
+    // Stop the previous stream immediately; don't let it play underneath a new selection.
+    player.pause();
     disconnectGraph();
     usePlayerStore.getState().setTrack(track, queue, queueIndex);
     useLibraryStore.getState().addRecentTrack(track);
@@ -182,6 +186,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
       try {
         const stream = await resolveYouTubeMusicAudio(track);
+        // A slower, older resolver must never replace the song the user selected most recently.
+        if (requestId !== playbackRequestSequence.current) return;
         await player.replace({
           uri: stream.url,
           headers: {
@@ -192,9 +198,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         });
         player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
         player.play();
-        usePlayerStore.getState().setPlaybackStatus({ isPlaying: true, isBuffering: false, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
+        // Keep the loading state until Expo Audio reports actual playback/buffering status.
+        usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
         return;
       } catch (error) {
+        if (requestId !== playbackRequestSequence.current) return;
         const errorMessage = error instanceof Error ? error.message : "Could not stream this track.";
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: false, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: errorMessage });
         setPlaybackError(errorMessage);
