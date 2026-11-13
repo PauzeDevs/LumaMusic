@@ -80,8 +80,9 @@ export default function ListenScreen() {
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
             <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
-            <Text style={styles.heroTitle}>Find your{ "\n" }next frequency.</Text>
-            <Text style={styles.heroSub}>A softer place to land.</Text>
+            <Text style={styles.heroKicker}>BECAUSE YOU LISTEN</Text>
+            <Text numberOfLines={2} style={styles.heroTitle}>{recentTracks[0]?.artist || tracks[0]?.artist || "Your next favourite"}</Text>
+            <Text numberOfLines={1} style={styles.heroSub}>{recentTracks[0]?.title || tracks[0]?.title || "A new discovery is waiting"}</Text>
             <Pressable style={styles.heroButton} onPress={startListening}>
               <Ionicons name="play" size={15} color="#101018" />
               <Text style={styles.heroButtonText}>Start listening</Text>
@@ -128,7 +129,7 @@ export default function ListenScreen() {
 
         {mostPlayed.length > 0 ? <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Most played" action="Your stats" onPress={() => router.push("/stats")} />
-          {mostPlayed.slice(0, 5).map((track, index) => <Pressable key={track.id} style={styles.mostPlayedRow} onPress={() => { const match = recentTracks.find((item) => item.id === track.id); if (match) void playTrack(match, recentTracks); }}>
+          {mostPlayed.slice(0, 5).map((track, index) => <Pressable key={track.id} style={styles.mostPlayedRow} onPress={() => router.push("/stats")}>
             <Text style={styles.mostPlayedRank}>{String(index + 1).padStart(2, "0")}</Text>
             {track.artwork ? <Image source={{ uri: track.artwork }} style={styles.mostPlayedArt} /> : <View style={styles.mostPlayedArtFallback}><Ionicons name="musical-notes" size={16} color={colors.muted} /></View>}
             <View style={{ flex: 1 }}><Text numberOfLines={1} style={styles.mostPlayedTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.mostPlayedArtist}>{track.artist}</Text></View>
