@@ -11,7 +11,7 @@ import { router } from "expo-router";
 const settings = [
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
   { icon: "notifications-outline", title: "Notifications", subtitle: "New music and updates" },
-  { icon: "color-palette-outline", title: "Appearance", subtitle: "Dark matte · Glass-inspired surfaces" },
+  { icon: "color-palette-outline", title: "Appearance", subtitle: "Colours, motion and listening layout" },
   { icon: "musical-notes-outline", title: "Playback", subtitle: "Playback, progress and sound controls" },
   { icon: "shield-checkmark-outline", title: "Privacy", subtitle: "Your data and listening activity" },
   { icon: "information-circle-outline", title: "About LumaMusic", subtitle: "Version 0.1.0 · PauzeDevs" }
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
               } else {
                 void Linking.openURL("https://github.com/PauzeDevs/LumaMusic");
               }
-            }} style={[styles.setting, index === settings.length - 1 && styles.last]} android_ripple={{ color: "rgba(198,167,255,0.08)" }}>
+            }} style={[styles.setting, index === settings.length - 1 && styles.last]} android_ripple={{ color: "rgba(240,90,104,0.08)" }}>
               <View style={styles.settingIcon}><Ionicons name={item.icon} size={19} color={colors.accent} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.settingTitle}>{item.title}</Text>
@@ -93,11 +93,11 @@ const styles = StyleSheet.create({
   intro: { color: colors.muted, fontSize: 12, marginTop: 5, marginBottom: 22 },
   profileCard: { borderRadius: 22, marginBottom: 27 },
   profileCardContent: { padding: 17, flexDirection: "row", alignItems: "center", gap: 13 },
-  avatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: "rgba(198,167,255,0.16)", borderWidth: 1, borderColor: "rgba(198,167,255,0.24)", alignItems: "center", justifyContent: "center" },
+  avatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: "rgba(240,90,104,0.16)", borderWidth: 1, borderColor: "rgba(240,90,104,0.24)", alignItems: "center", justifyContent: "center" },
   avatarText: { color: colors.accent, fontSize: 19, fontWeight: "800" },
   name: { color: colors.text, fontSize: 14, fontWeight: "700" },
   handle: { color: colors.muted, fontSize: 11, marginTop: 4 },
-  profileBadge: { width: 30, height: 30, borderRadius: 11, backgroundColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
+  profileBadge: { width: 30, height: 30, borderRadius: 11, backgroundColor: "rgba(240,90,104,0.1)", alignItems: "center", justifyContent: "center" },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 11, marginTop: 4 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
   sectionMeta: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
