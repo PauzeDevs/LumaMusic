@@ -66,7 +66,7 @@ export default function ProfileScreen() {
                   { text: "Clear library", style: "destructive", onPress: () => useLibraryStore.getState().clearLibrary() }
                 ]);
               } else if (item.title === "Account") {
-                Alert.alert("LumaMusic account", "Cloud accounts and cross-device sync are not configured. Your collection currently stays on this device.");
+                router.push("/account");
               } else if (item.title === "Notifications") {
                 Alert.alert("Notifications", "Push notifications are not enabled in this build. No notification permission has been requested.");
               } else if (item.title === "Appearance") {
