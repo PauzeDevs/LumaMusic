@@ -48,7 +48,7 @@ export default function ListeningStatsScreen() {
         tracks.set(track.id, previous ? { ...previous, seconds: previous.seconds + track.seconds, plays: previous.plays + track.plays } : { ...track });
         artists.add(track.artist);
         if (track.album) albums.add(track.album);
-        genres.set(track.genre, (genres.get(track.genre) ?? 0) + track.seconds);
+        if (track.genre) genres.set(track.genre, (genres.get(track.genre) ?? 0) + track.seconds);
       }
     }
     const topTracks = [...tracks.values()].sort((a, b) => b.seconds - a.seconds);
@@ -103,7 +103,7 @@ export default function ListeningStatsScreen() {
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Dominant Genre</Text><Text style={styles.sectionMeta}>BY LISTENING TIME</Text></View>
         <View style={styles.genreCard}>
           <Text style={styles.genreName}>{summary.genres[0]?.[0] ?? "No genre data yet"}</Text>
-          <View style={styles.genreBody}>
+          {summary.genres.length ? <View style={styles.genreBody}>
             <View style={styles.donut}>
               {Array.from({ length: 28 }, (_, index) => {
                 const angle = (index / 28) * Math.PI * 2 - Math.PI / 2;
@@ -120,7 +120,7 @@ export default function ListeningStatsScreen() {
             <View style={styles.genreList}>{topGenres.map(([name, value], index) => <View key={name} style={styles.genreRow}><View style={[styles.legendDot, { backgroundColor: COLORS[index % COLORS.length] }]} /><View style={{ flex: 1 }}><Text style={styles.genreRowName} numberOfLines={1}>{name}</Text><Text style={styles.genreRowTime}>{formatTime(value)}</Text></View><Text style={styles.genrePercent}>{totalGenreSeconds ? Math.round(value / totalGenreSeconds * 100) : 0}%</Text></View>)}
               {summary.genres.length > 4 ? <Pressable onPress={() => setExpandedGenre(!expandedGenre)}><Text style={styles.expand}>{expandedGenre ? "Show less" : "Show all genres"} <Ionicons name={expandedGenre ? "chevron-up" : "chevron-down"} size={12} /></Text></Pressable> : null}
             </View>
-          </View>
+          </View> : <Text style={styles.empty}>Genre details are not provided by the current music source yet. Listening time and track stats are still recorded.</Text>}
         </View>
 
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Most Played</Text><Text style={styles.sectionMeta}>{summary.tracks.length} TRACKS</Text></View>
