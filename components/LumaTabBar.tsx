@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import { colors } from "../theme/colors";
+import { useAccentColor } from "../theme/useAccentColor";
 import { Artwork } from "./Artwork";
 import { usePlayerStore } from "../store/player";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
@@ -17,6 +18,7 @@ const tabs = [
 type TabBarProps = { state: { index: number; routes: Array<{ name: string }> }; navigation: { navigate: (...args: any[]) => void } };
 
 export function LumaTabBar({ state, navigation }: TabBarProps) {
+  const accent = useAccentColor();
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const playbackPosition = usePlayerStore((s) => s.playbackPosition);
@@ -49,8 +51,8 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
           const focused = state.index === routeIndex;
           return (
             <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={styles.tab}>
-              <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.accent : colors.subtle} />
-              <Text style={[styles.label, focused && styles.labelActive]}>{tab.label}</Text>
+              <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? accent : colors.subtle} />
+              <Text style={[styles.label, focused && { color: accent }]}>{tab.label}</Text>
             </Pressable>
           );
         })}
@@ -69,7 +71,7 @@ const styles = StyleSheet.create({
   miniArtist: { color: colors.muted, fontSize: 10 },
   playButton: { padding: 8 },
   progressTrack: { position: "absolute", bottom: 0, left: 0, right: 0, height: 2, backgroundColor: "rgba(255,255,255,0.12)" },
-  progressFill: { width: "28%", height: 2, backgroundColor: colors.accent },
+  progressFill: { width: "28%", height: 2, backgroundColor: accent },
   tabs: { flexDirection: "row", justifyContent: "space-around", paddingTop: 4 },
   tab: { alignItems: "center", gap: 4, minWidth: 58 },
   label: { color: colors.subtle, fontSize: 10, fontWeight: "600" },
