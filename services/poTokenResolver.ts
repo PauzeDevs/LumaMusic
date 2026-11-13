@@ -16,6 +16,7 @@ type TokenMessage = {
 let requestSequence = 0;
 let sendToWebView: ((requestId: string, videoId: string) => void) | null = null;
 const pending = new Map<string, (value: YouTubePoTokens | null) => void>();
+const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const waiting: Array<{ requestId: string; videoId: string }> = [];
 const tokenCache = new Map<string, YouTubePoTokens>();
 
@@ -42,6 +43,9 @@ export function handlePoTokenWebViewMessage(message: TokenMessage) {
   const resolve = pending.get(message.requestId);
   if (!resolve) return;
   pending.delete(message.requestId);
+  const timer = pendingTimers.get(message.requestId);
+  if (timer) clearTimeout(timer);
+  pendingTimers.delete(message.requestId);
 
   if (
     !message.error &&
@@ -78,12 +82,16 @@ export async function resolveYouTubePoTokens(
 
     // Best-effort: if the challenge runtime is unavailable, playback continues
     // through the normal InnerTube and NewPipe routes without a PoToken.
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       const finish = pending.get(requestId);
-      if (finish) {
-        pending.delete(requestId);
-        finish(null);
-      }
+      pending.delete(requestId);
+      pendingTimers.delete(requestId);
+      // Remove timed-out work before a WebView becomes available, otherwise
+      // stale requests accumulate and are needlessly dispatched later.
+      const queuedIndex = waiting.findIndex((item) => item.requestId === requestId);
+      if (queuedIndex >= 0) waiting.splice(queuedIndex, 1);
+      finish?.(null);
     }, 12_000);
+    pendingTimers.set(requestId, timer);
   });
 }
