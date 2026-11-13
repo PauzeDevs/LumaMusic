@@ -21,7 +21,7 @@ const dateKey = (date = new Date()) => {
 };
 function trackMeta(track: MusicTrack): ListeningTrackStat {
   const extended = track as MusicTrack & { album?: string; albumTitle?: string };
-  return { id: track.id, title: track.title, artist: track.artist, artwork: track.artwork, genre: track.genre?.trim() || "Unclassified", album: extended.albumTitle || extended.album || "", seconds: 0, plays: 0 };
+  return { id: track.id, title: track.title, artist: track.artist, artwork: track.artwork, genre: track.genre?.trim() || "", album: extended.albumTitle || extended.album || "", seconds: 0, plays: 0 };
 }
 function flushPending(set: (fn: (state: StatsState) => Partial<StatsState>) => void) {
   if (!pendingTrack || pendingSeconds <= 0) return;
