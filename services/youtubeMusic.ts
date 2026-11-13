@@ -18,6 +18,7 @@ const CONTEXT = {
 const FILTER_SONGS = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D";
 const FILTER_PLAYLISTS = "EgWKAQIoAWoKEAkQBRAKEAMQBA%3D%3D";
 const FILTER_ARTISTS = "EgWKAQIgAWoKEAkQBRAKEAMQBA%3D%3D";
+const FILTER_ALBUMS = "EgWKAQIYAWoKEAkQBRAKEAMQBA%3D%3D";
 
 type Obj = Record<string, any>;
 
@@ -275,6 +276,18 @@ export async function searchYouTubeMusicArtists(query: string, limit = 20): Prom
   if (!normalized) return [];
   const payload = await searchRequest(normalized, FILTER_ARTISTS);
   return uniqueById(searchItems(payload).map(mapArtist).filter((item): item is MusicArtist => Boolean(item))).slice(0, limit);
+}
+
+/** Search YouTube Music album and EP shelves. */
+export async function searchYouTubeMusicAlbums(query: string, limit = 20): Promise<MusicRelease[]> {
+  const normalized = query.trim();
+  if (!normalized) return [];
+  const payload = await searchRequest(normalized, FILTER_ALBUMS);
+  return uniqueById(searchItems(payload)
+    .map(mapRelease)
+    .filter((item): item is MusicRelease => Boolean(item))
+    .filter((item) => /^(MPRE|OLAK|M)/.test(item.browseId)))
+    .slice(0, limit);
 }
 
 /**
