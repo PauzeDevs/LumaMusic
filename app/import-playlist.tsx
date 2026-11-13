@@ -100,7 +100,7 @@ export default function ImportPlaylistScreen() {
       return;
     }
 
-    const host = parsed.hostname.toLowerCase().replace(/^www\\./, "");
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
     const isYouTubeMusic = host === "music.youtube.com" || host === "youtube.com" || host === "m.youtube.com";
     const playlistId = parsed.searchParams.get("list");
     if (isYouTubeMusic && playlistId) {
@@ -133,7 +133,7 @@ export default function ImportPlaylistScreen() {
       return;
     }
 
-    if (/spotify\\.com$/.test(host) || /music\\.apple\\.com$/.test(host)) {
+    if (/spotify\.com$/.test(host) || /music\.apple\.com$/.test(host)) {
       Alert.alert(
         "Account connection needed",
         "Spotify and Apple Music playlist links need their official account/API connection before LumaMusic can read the track list. YouTube Music public playlist links can be imported directly right now."
