@@ -7,7 +7,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassSurface } from "../../components/GlassSurface";
 
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
-import { colors } from "../../theme/colors";
+import type { ThemePalette } from "../../theme/colors";
+import { useTheme } from "../../theme/useTheme";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { PlaylistStack } from "../../components/PlaylistStack";
 import { SectionHeading } from "../../components/SectionHeading";
@@ -16,6 +17,8 @@ import { ScrollReveal } from "../../components/ScrollReveal";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function ListenScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -111,7 +114,7 @@ export default function ListenScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20, paddingBottom: 28 },
   topline: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, marginBottom: 22 },
@@ -142,4 +145,4 @@ const styles = StyleSheet.create({
   retry: { color: colors.accent, fontSize: 12, fontWeight: "700" },
   sourceNote: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.border },
   sourceText: { color: colors.subtle, fontSize: 11 }
-});
+}); }
