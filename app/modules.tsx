@@ -23,9 +23,9 @@ const catalog = [
   { id: "liquid-glass", name: "Liquid Glass", kind: "Interface", detail: "Translucent layers and soft reflections", icon: "water-outline", accent: "red" as AccentTheme, surface: "liquid" as SurfaceStyle },
   { id: "frosted-ui", name: "Frosted UI", kind: "Interface", detail: "Blurred panels with a softer finish", icon: "layers-outline", accent: "arctic" as AccentTheme, surface: "frosted" as SurfaceStyle }
 ];
-const sourceNames: Record<string, { name: string; detail: string; icon: string }> = {
-  "youtube-music": { name: "YouTube Music", detail: "Music discovery and streaming source", icon: "play-circle-outline" },
-  "local-library": { name: "Local Library", detail: "Your imported and saved audio", icon: "folder-open-outline" }
+const sourceNames: Record<string, { name: string; detail: string; icon: string; version: string; status: string }> = {
+  "youtube-music": { name: "YouTube Music", detail: "Songs", icon: "logo-youtube", version: "v1.0", status: "On · Available" },
+  "local-library": { name: "Local Library", detail: "Songs", icon: "albums-outline", version: "v1.0", status: "On · No account needed" }
 };
 
 export default function ModulesScreen() {
@@ -61,17 +61,20 @@ export default function ModulesScreen() {
   return <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
     <View style={styles.header}>
       <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={22} color={colors.text} /></Pressable>
-      <View style={{ flex: 1 }}><Text style={styles.eyebrow}>MAKE IT YOURS</Text><Text style={styles.title}>Modules</Text></View>
-      <Pressable onPress={() => setBuilderOpen(true)} style={styles.createButton}><Ionicons name="add" size={22} color={colors.text} /></Pressable>
+      <Text style={styles.title}>Modules</Text>
+      <View style={{ flex: 1 }} />
+      <Pressable onPress={() => setBuilderOpen(true)} style={styles.createButton}><Ionicons name="color-palette-outline" size={20} color={colors.text} /></Pressable>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.heroTitle}>Your music app.{"\n"}Your rules.</Text>
       <Text style={styles.intro}>Add features, change the look, and arrange your LumaMusic setup. Your choices stay on this device.</Text>
 
       <Pressable onPress={() => setCatalogOpen((value) => !value)} style={styles.addPanel}>
-        <View style={styles.addIcon}><Ionicons name={catalogOpen ? "close" : "add"} size={27} color={colors.text} /></View>
-        <View style={{ flex: 1 }}><Text style={styles.addTitle}>{catalogOpen ? "Close module library" : "Add a module"}</Text><Text style={styles.addSub}>Browse interface packs and music sources</Text></View>
-        <Ionicons name={catalogOpen ? "chevron-up" : "chevron-forward"} size={18} color={colors.muted} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.addTitle}>{catalogOpen ? "Close module library" : "Nothing here yet, add one"}</Text>
+          <Text style={styles.addSub}>Personal modules and extensions</Text>
+        </View>
+        <View style={styles.addIcon}><Ionicons name={catalogOpen ? "close" : "add"} size={30} color={colors.text} /></View>
       </Pressable>
 
       {catalogOpen ? <>
@@ -90,7 +93,7 @@ export default function ModulesScreen() {
       </> : null}
 
       <Text style={styles.sectionTitle}>JS & SOURCE MODULES</Text>
-      <Text style={styles.sectionCopy}>Installed modules on this device. Move them to change their order or remove optional modules.</Text>
+      
       {installed.map((id, index) => {
         const item = sourceNames[id] ?? catalog.find((entry) => entry.id === id);
         if (!item) return null;
@@ -143,20 +146,20 @@ function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
   back: { width: 39, height: 39, borderRadius: 20, backgroundColor: c.surfaceElevated, alignItems: "center", justifyContent: "center" },
   eyebrow: { color: c.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.7 }, title: { color: c.text, fontSize: 25, fontWeight: "800", marginTop: 2 },
   createButton: { width: 40, height: 40, borderRadius: 15, backgroundColor: c.surfaceElevated, alignItems: "center", justifyContent: "center" },
-  content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 38 },
+  content: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 38 },
   heroTitle: { color: c.text, fontSize: 35, lineHeight: 38, fontWeight: "900", letterSpacing: -1.5 },
-  intro: { color: c.muted, fontSize: 13, lineHeight: 20, marginTop: 10, marginBottom: 24, maxWidth: 340 },
-  addPanel: { minHeight: 90, borderRadius: 22, borderWidth: 1, borderStyle: "dashed", borderColor: c.subtle, backgroundColor: isDark ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.025)", padding: 16, flexDirection: "row", alignItems: "center", gap: 13, marginBottom: 27 },
-  addIcon: { width: 47, height: 47, borderRadius: 15, backgroundColor: c.surfaceElevated, alignItems: "center", justifyContent: "center" },
-  addTitle: { color: c.text, fontSize: 15, fontWeight: "800" }, addSub: { color: c.muted, fontSize: 10, marginTop: 5 },
-  sectionTitle: { color: c.text, fontSize: 11, fontWeight: "900", letterSpacing: 1.5, marginBottom: 8, marginTop: 6 },
+  intro: { color: c.muted, fontSize: 11, lineHeight: 17, marginTop: 2, marginBottom: 17 },
+  addPanel: { minHeight: 112, borderRadius: 17, borderWidth: 1.5, borderStyle: "dashed", borderColor: isDark ? "rgba(255,255,255,0.35)" : c.subtle, backgroundColor: isDark ? "#111113" : "rgba(0,0,0,0.025)", paddingHorizontal: 17, paddingVertical: 15, flexDirection: "row", alignItems: "center", gap: 13, marginBottom: 22 },
+  addIcon: { width: 48, height: 48, borderRadius: 11, borderWidth: 1, borderColor: c.subtle, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
+  addTitle: { color: c.text, fontSize: 14, fontWeight: "700" }, addSub: { color: c.muted, fontSize: 10, marginTop: 5 },
+  sectionTitle: { color: c.text, fontSize: 13, fontWeight: "900", letterSpacing: 0.1, marginBottom: 12, marginTop: 20 },
   sectionCopy: { color: c.muted, fontSize: 11, lineHeight: 17, marginBottom: 12 },
-  moduleCard: { borderRadius: 17, marginBottom: 10 }, moduleContent: { minHeight: 76, paddingHorizontal: 12, paddingVertical: 11, flexDirection: "row", alignItems: "center", gap: 10 },
-  moduleIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.045)", alignItems: "center", justifyContent: "center" },
-  moduleName: { color: c.text, fontSize: 13, fontWeight: "800" }, moduleMeta: { color: c.muted, fontSize: 9, lineHeight: 14, marginTop: 4 },
+  moduleCard: { borderRadius: 17, marginBottom: 10, backgroundColor: isDark ? "#171719" : c.surface }, moduleContent: { minHeight: 78, paddingHorizontal: 13, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 11 },
+  moduleIcon: { width: 47, height: 47, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  moduleName: { color: c.text, fontSize: 14, fontWeight: "800" }, moduleMeta: { color: c.muted, fontSize: 10, lineHeight: 14, marginTop: 3 }, moduleFoot: { color: c.subtle, fontSize: 9, marginTop: 4 },
   action: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 18, backgroundColor: c.accent }, actionInstalled: { backgroundColor: isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.06)" },
   actionText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800" }, actionTextInstalled: { color: c.text },
-  orderControls: { gap: 3 }, orderButton: { width: 27, height: 24, alignItems: "center", justifyContent: "center" },
+  dragHandle: { width: 30, height: 42, alignItems: "center", justifyContent: "center" }, orderControls: { gap: 3 }, orderButton: { width: 27, height: 24, alignItems: "center", justifyContent: "center" },
   corePill: { paddingHorizontal: 7, paddingVertical: 5, borderRadius: 8, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }, coreText: { color: c.subtle, fontSize: 8, fontWeight: "900", letterSpacing: 1 },
   removeButton: { width: 28, height: 30, alignItems: "center", justifyContent: "center" },
   comingSoon: { color: c.subtle, fontSize: 10, lineHeight: 16, marginBottom: 23, marginTop: 2 },
