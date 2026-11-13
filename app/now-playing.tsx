@@ -175,9 +175,9 @@ const styles = StyleSheet.create({
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
   bottomGlass: { borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", backgroundColor: "rgba(20,22,27,0.65)", marginBottom: 6 },
-  bottom: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 16, paddingHorizontal: 8, flexWrap: "wrap" },
-  bottomAction: { flexDirection: "row", alignItems: "center", gap: 7 },
-  bottomText: { color: colors.muted, fontSize: 11 },
+  bottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, paddingHorizontal: 5 },
+  bottomAction: { flex: 1, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 3 },
+  bottomText: { color: colors.muted, fontSize: 10, lineHeight: 14, textAlign: "center", includeFontPadding: false },
   disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, paddingBottom: 10 },
   empty: { color: colors.text, textAlign: "center", marginTop: 80 }
 });
