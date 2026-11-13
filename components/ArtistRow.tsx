@@ -18,7 +18,7 @@ export function ArtistRow({ artist }: { artist: MusicArtist }) {
         <Text numberOfLines={1} style={styles.name}>{artist.name}</Text>
         <Text numberOfLines={1} style={styles.handle}>{artist.handle ? "@" + artist.handle : "YouTube Music artist"}{artist.trackCount > 0 ? " · " + artist.trackCount + " tracks" : ""}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={17} color={c.subtle} />
+      <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
     </Pressable>
   );
 }
