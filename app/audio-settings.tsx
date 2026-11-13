@@ -6,7 +6,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassSurface } from "../components/GlassSurface";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
-import { colors } from "../theme/colors";
+import type { ThemePalette } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 
 const REVERB_OPTIONS: { value: ReverbPreset; label: string; detail: string }[] = [
   { value: "off", label: "Off", detail: "Original sound" },
@@ -16,6 +17,8 @@ const REVERB_OPTIONS: { value: ReverbPreset; label: string; detail: string }[] =
 ];
 
 export default function AudioSettingsScreen() {
+  const { colors, blurTint } = useTheme();
+  const styles = createStyles(colors);
   const progressBarStyle = usePreferencesStore((state) => state.progressBarStyle);
   const setProgressBarStyle = usePreferencesStore((state) => state.setProgressBarStyle);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
@@ -124,7 +127,7 @@ export default function AudioSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 15 },
   back: { width: 36, height: 38, alignItems: "center", justifyContent: "center" },
@@ -173,4 +176,4 @@ const styles = StyleSheet.create({
   noteCard: { borderRadius: 14, marginTop: 18 },
   noteContent: { flexDirection: "row", gap: 9, padding: 13 },
   noteText: { flex: 1, color: colors.muted, fontSize: 9, lineHeight: 15 }
-});
+}); }
