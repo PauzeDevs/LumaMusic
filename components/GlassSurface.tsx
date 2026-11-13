@@ -9,7 +9,7 @@ type Props = {
   intensity?: number;
 };
 
-export function GlassSurface({ children, style, contentStyle, intensity = 48 }: Props) {
+export function GlassSurface({ children, style, contentStyle, intensity = 72 }: Props) {
   return (
     <View style={[styles.shell, style]}>
       <BlurView tint="dark" intensity={intensity} style={StyleSheet.absoluteFill} />
@@ -24,12 +24,12 @@ const styles = StyleSheet.create({
   shell: {
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.13)",
-    backgroundColor: "rgba(25,27,34,0.58)"
+    borderColor: "rgba(255,255,255,0.23)",
+    backgroundColor: "rgba(47,27,43,0.38)"
   },
   tint: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(255,255,255,0.025)"
+    backgroundColor: "rgba(255,190,214,0.045)"
   },
   topSheen: {
     position: "absolute",
@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.22)"
+    backgroundColor: "rgba(255,255,255,0.34)"
   },
   content: { flex: 1 }
 });
