@@ -106,3 +106,42 @@
  .site-header .brand img{width:82px!important}
  .site-header .header-cta{padding:0 9px!important}
 }
+
+
+/* Creamy sprinkle identity: soft vanilla, pistachio green and candy accents */
+:root{color-scheme:light;--bg:#f8e7bf;--panel:#fff4d9;--line:rgba(76,75,42,.18);--text:#173e28;--muted:#64745a;--dim:#8e896b;--red:#287b43;--red-soft:#185b35}
+html,body{background:#f8e7bf!important;color:#173e28!important}
+body:before{z-index:0;background:radial-gradient(ellipse at 18% 8%,rgba(255,255,255,.72),transparent 38%),radial-gradient(ellipse at 82% 42%,rgba(255,255,255,.42),transparent 45%),radial-gradient(ellipse at 50% 100%,rgba(225,190,122,.22),transparent 50%);pointer-events:none}
+body>*{position:relative;z-index:1}
+.site-header,.nav.wrap{background:rgba(255,244,217,.88)!important;border-color:rgba(91,78,42,.18)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important}
+.brand img,.nav .brand-logo{width:58px!important;height:58px!important;object-fit:contain!important;border-radius:16px;box-shadow:0 5px 16px rgba(83,63,25,.12)}
+.main-nav,.footer-links,.site-footer p,.hero-copy,.intro-bottom p,.feature-item p:not(.feature-label),.catalogue-copy p:not(.eyebrow),.catalogue-step small,.legal-page p,.legal-page li{color:#65745b!important}
+.main-nav a:hover,.footer-links a:hover{color:#1b5b35!important}
+.eyebrow,.feature-label,.feature-number,.catalogue-step>b,.legal-page .back-link{color:#39834a!important}
+.status-dot{background:#4c9b57!important;box-shadow:0 0 12px rgba(76,155,87,.5)!important}
+.hero h1,.intro-section h2,.section-top h2,.catalogue-copy h2,.closing-section h2{color:#155b35!important;text-shadow:0 3px 0 rgba(255,255,255,.42)}
+.hero h1 em,.intro-section h2 em,.section-top h2 em,.catalogue-copy h2 em,.closing-section h2 em{color:#6b9160!important}
+.hero-meta,.section-index,.feature-status,.panel-head{color:#78805f!important}
+.button-primary{background:linear-gradient(145deg,#32864b,#17613a)!important;color:#fff8e6!important;box-shadow:0 8px 24px rgba(31,105,57,.2)!important}
+.button-quiet,.header-cta,.nav .nav-cta{border-color:rgba(45,91,53,.25)!important;color:#245c37!important;background:rgba(255,250,232,.6)}
+.intro-section,.feature-section,.legal-section{border-color:rgba(76,75,42,.18)!important}
+.feature-list,.feature-item,.legal-links,.legal-links a{border-color:rgba(76,75,42,.18)!important}
+.feature-item:hover{background:rgba(255,255,255,.34)!important}
+.feature-status{border-color:rgba(54,111,59,.2)!important}
+.catalogue-section{background:linear-gradient(130deg,#f2dba9,#fff0cf 55%,#e8d19d)!important;border-color:rgba(76,75,42,.18)!important}
+.catalogue-panel{background:rgba(255,250,232,.62)!important;border-color:rgba(76,75,42,.18)!important}
+.catalogue-step{border-color:rgba(76,75,42,.14)!important}
+.closing-section{background:radial-gradient(ellipse at center,rgba(116,166,94,.18),transparent 62%)!important}
+.legal-page .notice{background:rgba(255,255,255,.38)!important;border-color:rgba(65,119,65,.22)!important;color:#426044!important}
+.legal-page a:not(.back-link){color:#287b43!important}
+.site-footer{border-color:rgba(76,75,42,.18)!important}
+.menu-toggle{background:#fff2d3!important;border-color:rgba(76,75,42,.2)!important}
+.menu-toggle span{background:#1c5d37!important}
+@media(max-width:680px){.main-nav{background:#fff2d3!important;border-color:rgba(76,75,42,.2)!important}.site-header{background:rgba(255,244,217,.96)!important}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+/* Subtle candy sprinkles across the warm paper backdrop */
+body:after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.22;background-image:radial-gradient(circle at 8% 17%,#4b9655 0 3px,transparent 4px),radial-gradient(circle at 84% 22%,#e5a6b9 0 3px,transparent 4px),radial-gradient(circle at 72% 76%,#e8c65d 0 3px,transparent 4px),radial-gradient(circle at 24% 84%,#5d9a55 0 3px,transparent 4px),linear-gradient(55deg,transparent 48%,#e7a4b6 49% 54%,transparent 55%);background-size:210px 190px,260px 230px,300px 250px,240px 220px,170px 160px}
+.site-header .brand img,.site-footer .brand img{border-radius:14px}
+.catalogue-panel,.feature-item,.legal-links a{transition:background .2s,border-color .2s,transform .2s}
+.legal-links a:hover{color:#1c6037!important;background:rgba(255,255,255,.25)}

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "LumaMusic",
-    "icon": "./assets/lumamusic-icon.jpg",
+    "icon": "./assets/1794577967081.png",
     "slug": "luma-music",
     "scheme": "lumamusic",
     "version": "0.1.0",
@@ -42,13 +42,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "dev.pauze.lumamusic",
-      "icon": "./assets/lumamusic-icon.jpg"
+      "icon": "./assets/1794577967081.png"
     },
     "android": {
       "package": "dev.pauze.lumamusic",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/lumamusic-icon.jpg",
-        "backgroundColor": "#180006"
+        "foregroundImage": "./assets/1794577967081.png",
+        "backgroundColor": "#F8E7BF"
       }
     },
     "experiments": {
