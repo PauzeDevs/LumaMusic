@@ -241,7 +241,7 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   moodArtwork: { position: "absolute", width: 102, height: 102, right: 5, bottom: -8, borderRadius: 15, transform: [{ rotate: "-10deg" }] },
   moodArtworkSmall: { position: "absolute", width: 66, height: 66, right: 58, bottom: 0, borderRadius: 11, transform: [{ rotate: "9deg" }] },
   moodArtworkTiny: { position: "absolute", width: 42, height: 42, right: 12, bottom: 5, borderRadius: 8, transform: [{ rotate: "12deg" }] },
-  moodShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.24)" },
+  moodShade: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.24)" },
   moodCardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   moodLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 5 },
   resultsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 27, marginBottom: 17 },
