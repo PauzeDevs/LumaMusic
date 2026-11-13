@@ -1,27 +1,25 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
-import { useEffect, useRef, useState } from "react";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
+import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GlassSurface } from "../../components/GlassSurface";
-
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
-import { PlaylistStack } from "../../components/PlaylistStack";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
-import { ScrollReveal } from "../../components/ScrollReveal";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
+import { useLibraryStore } from "../../store/library";
+import type { MusicTrack } from "../../types/music";
 
 export default function ListenScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const recentTracks = useLibraryStore((state) => state.recentTracks);
   const [heroArtworkFailed, setHeroArtworkFailed] = useState(false);
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
     queryKey: ["youtubeMusic", "trending", 20],
@@ -34,81 +32,98 @@ export default function ListenScreen() {
 
   useEffect(() => setHeroArtworkFailed(false), [tracks[0]?.artwork]);
 
-  const startListening = () => {
-    if (!tracks.length) {
-      Alert.alert("Music is loading", error instanceof Error ? error.message : "Try again when discovery has loaded.");
-      return;
-    }
-    void playTrack(tracks[0], tracks).catch((err: unknown) => {
+  const play = (track: MusicTrack, queue: MusicTrack[]) => {
+    void playTrack(track, queue).catch((err: unknown) => {
       Alert.alert("Couldn't start playback", err instanceof Error ? err.message : "Please try another track.");
     });
   };
+  const featured = tracks[0];
+  const featuredPlaylist = playlists[0];
+  const heroTitle = featuredPlaylist?.title ?? featured?.title ?? "Find your next favourite";
+  const heroSubtitle = featuredPlaylist?.subtitle ?? featured?.artist ?? "A fresh mix, picked for your next listening session";
+  const heroArtwork = featuredPlaylist?.artwork ?? featured?.artwork;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={8} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
-        <ScrollReveal scrollY={scrollY}><View style={styles.topline}>
-          <View>
-            <Text style={styles.eyebrow}>YOUR SOUND, YOUR SPACE</Text>
-            <Text style={styles.greeting}>{new Date().getHours() < 12 ? "Good morning." : new Date().getHours() < 18 ? "Good afternoon." : "Good evening."}</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}>
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <View style={styles.brandMark}><Ionicons name="play" size={20} color="#09090A" /></View>
+            <Text style={styles.brandName}>LumaMusic</Text>
           </View>
-          <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profile")}>
-            <Text style={styles.avatarText}>P</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open your profile and settings" style={styles.menuButton} onPress={() => router.push("/(tabs)/profile")}>
+            <Ionicons name="menu" size={27} color={colors.text} />
           </Pressable>
-        </View></ScrollReveal>
+        </View>
 
-        <ScrollReveal scrollY={scrollY} delay={25}><GlassSurface style={styles.searchPrompt} contentStyle={styles.searchPromptContent}><Pressable style={styles.searchPromptInner} onPress={() => router.push("/(tabs)/search")}>
-          <Ionicons name="search" size={19} color={colors.muted} />
-          <Text style={styles.searchText}>Songs, artists, moods...</Text>
-          <Ionicons name="options-outline" size={18} color={colors.subtle} />
-        </Pressable></GlassSurface></ScrollReveal>
-
-        <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
-          {tracks[0]?.artwork && !heroArtworkFailed ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} onError={() => setHeroArtworkFailed(true)} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
+        <View style={styles.hero}>
+          {heroArtwork && !heroArtworkFailed
+            ? <Image source={{ uri: heroArtwork }} style={styles.heroImage} onError={() => setHeroArtworkFailed(true)} />
+            : <View style={styles.heroFallback}><Ionicons name="musical-notes" size={58} color="rgba(255,255,255,0.35)" /></View>}
           <View style={styles.heroShade} />
-          <View style={styles.heroContent}>
-            <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
-            <Text style={styles.heroTitle}>Find your{ "\n" }next frequency.</Text>
-            <Text style={styles.heroSub}>A softer place to land.</Text>
-            <Pressable style={styles.heroButton} onPress={startListening}>
-              <Ionicons name="play" size={15} color="#101018" />
-              <Text style={styles.heroButtonText}>Start listening</Text>
+          <View style={styles.heroTopline}>
+            <Text style={styles.heroEyebrow}>MADE FOR YOUR ROTATION</Text>
+            <Ionicons name="sparkles" size={17} color="rgba(255,255,255,0.88)" />
+          </View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.because}>Because you listen to</Text>
+            <Text numberOfLines={2} style={styles.heroTitle}>{heroTitle}</Text>
+            <Text numberOfLines={1} style={styles.heroSubtitle}>{heroSubtitle}</Text>
+            <Pressable style={styles.viewButton} onPress={() => {
+              if (featuredPlaylist?.sourcePlaylistId) router.push({ pathname: "/playlist/[id]", params: { id: featuredPlaylist.sourcePlaylistId, title: featuredPlaylist.title, artwork: featuredPlaylist.artwork ?? "" } });
+              else if (featured) play(featured, tracks);
+              else router.push("/(tabs)/search");
+            }}>
+              <Text style={styles.viewButtonText}>{featuredPlaylist ? "View" : "Play"} </Text>
+              <Ionicons name="arrow-forward" size={15} color="#111113" />
             </Pressable>
           </View>
-        </View></ScrollReveal>
+        </View>
 
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Featured playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
-          {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
-          {playlistsError ? <Text style={styles.errorText}>Could not load playlists right now.</Text> : null}
-          {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.message}>No public playlists are available right now.</Text> : null}
-          <PlaylistStack items={playlists.map((playlist) => ({
-            id: playlist.id,
-            title: playlist.title,
-            subtitle: playlist.subtitle,
-            artwork: playlist.artwork,
-            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } }) : undefined
-          }))} emptyText="No featured playlists right now." />
-        </View></ScrollReveal>
-
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Fresh discoveries" action="Refresh" onPress={() => { void loadTrending(); }} />
-          {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
-          {error ? (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load music discovery."}</Text>
-              <Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable>
+        <View style={styles.section}>
+          <SectionHeading title="Recently played" action="See all" onPress={() => router.push("/(tabs)/library")} />
+          {recentTracks.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+              {recentTracks.slice(0, 12).map((track) => (
+                <Pressable key={track.id} style={styles.recentCard} onPress={() => play(track, recentTracks)}>
+                  <Image source={track.artwork ? { uri: track.artwork } : undefined} style={styles.recentArtwork} />
+                  <Text numberOfLines={1} style={styles.recentTitle}>{track.title}</Text>
+                  <Text numberOfLines={1} style={styles.recentArtist}>{track.artist}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyRecent}>
+              <Ionicons name="time-outline" size={20} color={colors.subtle} />
+              <Text style={styles.emptyRecentText}>Your recently played tracks will show up here.</Text>
             </View>
-          ) : null}
-          {!loading && !error && tracks.length === 0 ? <Text style={styles.message}>No tracks are available right now.</Text> : null}
-          {!loading && !error ? tracks.slice(0, 6).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
-        </View></ScrollReveal>
+          )}
+        </View>
 
-        <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
-          <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
-          <Text style={styles.sourceText}>Music discovery for your next favourite.</Text>
-        </View></ScrollReveal>
-      </Animated.ScrollView>
+        <View style={styles.section}>
+          <SectionHeading title="Made for the moment" action="Explore" onPress={() => router.push("/(tabs)/search")} />
+          {playlistsLoading ? <Text style={styles.message}>Finding your next mix…</Text> : null}
+          {playlistsError ? <Text style={styles.message}>Could not load mixes right now.</Text> : null}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+            {playlists.slice(1, 7).map((playlist) => (
+              <Pressable key={playlist.id} style={styles.mixCard} onPress={() => playlist.sourcePlaylistId && router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork ?? "" } })}>
+                {playlist.artwork ? <Image source={{ uri: playlist.artwork }} style={styles.mixArtwork} /> : <View style={styles.mixFallback}><Ionicons name="musical-notes" size={28} color={colors.muted} /></View>}
+                <Text numberOfLines={1} style={styles.mixTitle}>{playlist.title}</Text>
+                <Text numberOfLines={1} style={styles.mixSubtitle}>{playlist.subtitle ?? "A LumaMusic mix"}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeading title="Most played right now" action="Refresh" onPress={() => { void loadTrending(); }} />
+          {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
+          {error ? <View style={styles.errorCard}><Text style={styles.message}>{error instanceof Error ? error.message : "Could not load music discovery."}</Text><Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable></View> : null}
+          {!loading && !error ? tracks.slice(0, 8).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
+        </View>
+        <Text style={styles.footer}>LumaMusic</Text>
+      </ScrollView>
       <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
     </SafeAreaView>
   );
@@ -116,33 +131,39 @@ export default function ListenScreen() {
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
-  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 34 },
-  topline: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, marginBottom: 22 },
-  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 2 },
-  greeting: { color: colors.text, fontSize: 36, lineHeight: 40, fontWeight: "900", letterSpacing: -1.7, marginTop: 7 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(116,55,83,0.32)", borderWidth: 1, borderColor: "rgba(255,105,135,0.42)", alignItems: "center", justifyContent: "center" },
-  avatarText: { color: colors.accent, fontWeight: "800", fontSize: 15 },
-  searchPrompt: { height: 56, borderRadius: 18, marginBottom: 22, borderColor: "rgba(255,255,255,0.11)", backgroundColor: "rgba(28,28,30,0.88)" },
-  searchPromptContent: { flex: 1 },
-  searchPromptInner: { flex: 1, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 10 },
-  searchText: { color: colors.muted, fontSize: 13, flex: 1 },
-  hero: { height: 310, borderRadius: 25, overflow: "hidden", marginBottom: 30, backgroundColor: "#171719", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)" },
-  heroImage: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%", opacity: 0.78 },
-  heroPlaceholder: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
-  heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(10,5,12,0.52)" },
-  heroContent: { flex: 1, padding: 22, justifyContent: "flex-end" },
-  heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
-  heroTagText: { color: "#FFE2E9", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
-  heroTitle: { color: "#FFFFFF", fontSize: 35, lineHeight: 37, fontWeight: "900", letterSpacing: -1.5 },
-  heroSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 8 },
-  heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "rgba(255,245,248,0.94)", paddingHorizontal: 16, paddingVertical: 11, borderRadius: 22, marginTop: 17, borderWidth: 1, borderColor: "rgba(255,255,255,0.65)" },
-  heroButtonText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
-  section: { marginBottom: 32 },
-  message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
-  errorCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, gap: 10 },
-  errorText: { color: colors.muted, fontSize: 12, paddingVertical: 12 },
-  retry: { color: colors.accent, fontSize: 12, fontWeight: "700" },
-  sourceNote: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.border },
-  sourceText: { color: colors.subtle, fontSize: 11 }
+  content: { paddingHorizontal: 18, paddingTop: 5, paddingBottom: 28 },
+  header: { height: 68, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15 },
+  brand: { flexDirection: "row", alignItems: "center", gap: 11 },
+  brandMark: { width: 39, height: 39, borderRadius: 12, backgroundColor: "#F3F3F4", alignItems: "center", justifyContent: "center" },
+  brandName: { color: colors.text, fontSize: 23, fontWeight: "900", letterSpacing: -0.9 },
+  menuButton: { width: 54, height: 54, borderRadius: 18, backgroundColor: "rgba(31,31,34,0.94)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
+  hero: { height: 430, borderRadius: 27, overflow: "hidden", marginBottom: 31, backgroundColor: "#171719", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)" },
+  heroImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  heroFallback: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "#202024" },
+  heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.48)" },
+  heroTopline: { position: "absolute", top: 20, left: 20, right: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  heroEyebrow: { color: "rgba(255,255,255,0.84)", fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+  heroCopy: { position: "absolute", left: 20, right: 20, bottom: 22 },
+  because: { color: "rgba(255,255,255,0.82)", fontSize: 13, fontWeight: "700", marginBottom: 6 },
+  heroTitle: { color: "#FFFFFF", fontSize: 28, lineHeight: 31, fontWeight: "900", letterSpacing: -0.8 },
+  heroSubtitle: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 7 },
+  viewButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", backgroundColor: "#F1F1F2", paddingHorizontal: 17, paddingVertical: 11, borderRadius: 24, marginTop: 17, gap: 5 },
+  viewButtonText: { color: "#111113", fontSize: 12, fontWeight: "800" },
+  section: { marginBottom: 30 },
+  horizontalList: { gap: 14, paddingRight: 5 },
+  recentCard: { width: 142 },
+  recentArtwork: { width: 142, height: 142, borderRadius: 18, backgroundColor: colors.surfaceElevated },
+  recentTitle: { color: colors.text, fontSize: 13, fontWeight: "800", marginTop: 9 },
+  recentArtist: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  emptyRecent: { minHeight: 90, borderRadius: 18, backgroundColor: "rgba(24,24,27,0.86)", borderWidth: 1, borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 16 },
+  emptyRecentText: { color: colors.muted, fontSize: 12, flex: 1 },
+  mixCard: { width: 142 },
+  mixArtwork: { width: 142, height: 142, borderRadius: 18, backgroundColor: colors.surfaceElevated },
+  mixFallback: { width: 142, height: 142, borderRadius: 18, backgroundColor: colors.surfaceElevated, alignItems: "center", justifyContent: "center" },
+  mixTitle: { color: colors.text, fontSize: 13, fontWeight: "800", marginTop: 9 },
+  mixSubtitle: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  message: { color: colors.muted, fontSize: 12, paddingVertical: 14 },
+  errorCard: { backgroundColor: colors.surface, borderRadius: 15, padding: 14 },
+  retry: { color: colors.accent, fontSize: 12, fontWeight: "800", paddingVertical: 8 },
+  footer: { color: colors.subtle, fontSize: 11, textAlign: "center", paddingVertical: 12 }
 }); }
