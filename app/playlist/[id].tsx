@@ -118,7 +118,7 @@ export default function PlaylistScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: "transparent" },
   header: { minHeight: 52, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   back: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 10 },
   backText: { color: colors.muted, fontSize: 12 },
