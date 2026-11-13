@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useListeningStatsStore, type ListeningTrackStat } from "../store/listeningStats";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -127,7 +127,7 @@ export default function ListeningStatsScreen() {
         <View style={styles.tracksCard}>
           {topTracks.length ? topTracks.map((track, index) => <View key={track.id} style={styles.trackRow}>
             <Text style={styles.trackRank}>{String(index + 1).padStart(2, "0")}</Text>
-            <View style={styles.artwork}><Ionicons name="musical-note" size={18} color="#8D8D96" /></View>
+            <View style={styles.artwork}>{track.artwork ? <Image source={{ uri: track.artwork }} style={styles.artworkImage} /> : <Ionicons name="musical-note" size={18} color="#8D8D96" />}</View>
             <View style={{ flex: 1 }}><Text style={styles.trackTitle} numberOfLines={1}>{track.title}</Text><Text style={styles.trackArtist} numberOfLines={1}>{track.artist}</Text></View>
             <Text style={styles.trackTime}>{formatTime(track.seconds)}</Text>
           </View>) : <Text style={styles.empty}>Start playing music and your top tracks will show up here.</Text>}
@@ -205,7 +205,8 @@ const styles = StyleSheet.create({
   tracksCard: { backgroundColor: "#17171B", borderRadius: 20, borderWidth: 1, borderColor: "#29292F", paddingHorizontal: 13, paddingVertical: 4 },
   trackRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#28282D" },
   trackRank: { color: "#777780", width: 18, fontSize: 10, fontWeight: "700" },
-  artwork: { width: 38, height: 38, borderRadius: 8, backgroundColor: "#29292F", alignItems: "center", justifyContent: "center" },
+  artwork: { width: 38, height: 38, borderRadius: 8, backgroundColor: "#29292F", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  artworkImage: { width: "100%", height: "100%" },
   trackTitle: { color: "#EEEEF0", fontSize: 11, fontWeight: "700" },
   trackArtist: { color: "#898992", fontSize: 9, marginTop: 3 },
   trackTime: { color: "#A5A5AD", fontSize: 9, fontWeight: "600" },
