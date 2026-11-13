@@ -80,7 +80,7 @@ export default function NowPlayingScreen() {
       <BlurView tint="dark" intensity={32} style={styles.ambientBlur} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>PLAYING</Text><Text style={styles.headerTitle}>LumaMusic</Text></View>
+        <View pointerEvents="none" style={styles.headerCopy}><Text style={styles.overline}>PLAYING</Text><Text style={styles.headerTitle}>LumaMusic</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -137,11 +137,11 @@ export default function NowPlayingScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
-  header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: "rgba(255,255,255,0.065)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
-  headerCopy: { alignItems: "center", gap: 3 },
+  headerCopy: { position: "absolute", left: 52, right: 52, top: 0, bottom: 0, alignItems: "center", justifyContent: "center", gap: 3 },
   overline: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
-  headerTitle: { color: colors.muted, fontSize: 11 },
+  headerTitle: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: "600", includeFontPadding: false, textAlign: "center" },
   main: { flex: 1, justifyContent: "center" },
   artFrame: { width: "100%", aspectRatio: 1, borderRadius: 28, overflow: "hidden", backgroundColor: "#15171B", marginBottom: 30, borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 26, shadowOffset: { width: 0, height: 14 }, elevation: 12 },
   artwork: { width: "100%", height: "100%" },
@@ -175,9 +175,9 @@ const styles = StyleSheet.create({
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
   bottomGlass: { borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", backgroundColor: "rgba(20,22,27,0.65)", marginBottom: 6 },
-  bottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, paddingHorizontal: 5 },
-  bottomAction: { flex: 1, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 3 },
-  bottomText: { color: colors.muted, fontSize: 10, lineHeight: 14, textAlign: "center", includeFontPadding: false },
+  bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 8 },
+  bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
+  bottomText: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "center", includeFontPadding: false, flexShrink: 0, width: "100%" },
   disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, paddingBottom: 10 },
   empty: { color: colors.text, textAlign: "center", marginTop: 80 }
 });
