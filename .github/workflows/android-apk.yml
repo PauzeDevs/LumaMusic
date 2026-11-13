@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build optimized Android release APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -45,14 +45,17 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build debug APK
+      - name: Limit native build to modern Android devices
+        run: echo "reactNativeArchitectures=arm64-v8a" >> android/gradle.properties
+
+      - name: Build optimized release APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LumaMusic-Android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: LumaMusic-Android-release-arm64
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
