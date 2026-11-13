@@ -15,7 +15,6 @@ import { getFeaturedPlaylists } from "../../services/youtubeMusic";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { useLibraryStore } from "../../store/library";
-import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 
 export default function LibraryScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
@@ -28,7 +27,6 @@ export default function LibraryScreen() {
   const createPlaylist = useLibraryStore((s) => s.createPlaylist);
   const [createVisible, setCreateVisible] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
-  const { playTrack } = useAudioEngine();
   const importLocalAudio = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
