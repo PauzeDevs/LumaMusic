@@ -178,7 +178,7 @@ export default function NowPlayingScreen() {
 }
 
 function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
+  safe: { flex: 1, backgroundColor: "transparent", paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
   headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -222,7 +222,7 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
-  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: isDark ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  play: { width: 78, height: 78, borderRadius: 39, backgroundColor: isDark ? "#F4F4F5" : "#FFFFFF", borderWidth: 1, borderColor: "rgba(255,255,255,0.98)", alignItems: "center", justifyContent: "center", shadowColor: isDark ? "#000000" : "#77727B", shadowOpacity: isDark ? 0.38 : 0.24, shadowRadius: 25, shadowOffset: { width: 0, height: 11 }, elevation: 13 },
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 18 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
