@@ -1,11 +1,13 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 import type { MusicArtist } from "../types/music";
 import { Artwork } from "./Artwork";
 
 export function ArtistRow({ artist }: { artist: MusicArtist }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <Pressable
       style={styles.row}
@@ -16,14 +18,16 @@ export function ArtistRow({ artist }: { artist: MusicArtist }) {
         <Text numberOfLines={1} style={styles.name}>{artist.name}</Text>
         <Text numberOfLines={1} style={styles.handle}>{artist.handle ? "@" + artist.handle : "YouTube Music artist"}{artist.trackCount > 0 ? " · " + artist.trackCount + " tracks" : ""}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
+      <Ionicons name="chevron-forward" size={17} color={c.subtle} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ReturnType<typeof useTheme>["colors"]) {
+return StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 },
   copy: { flex: 1, gap: 4 },
-  name: { color: colors.text, fontSize: 14, fontWeight: "700" },
-  handle: { color: colors.muted, fontSize: 11 }
+  name: { color: c.text, fontSize: 14, fontWeight: "700" },
+  handle: { color: c.muted, fontSize: 11 }
 });
+}
