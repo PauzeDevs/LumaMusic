@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,12 +15,24 @@ import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { ScrollReveal } from "../../components/ScrollReveal";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
+import { useLibraryStore } from "../../store/library";
+import { useListeningStatsStore } from "../../store/listeningStats";
 
 export default function ListenScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
+  const recentTracks = useLibraryStore((state) => state.recentTracks);
+  const listeningDays = useListeningStatsStore((state) => state.days);
+  const mostPlayed = useMemo(() => {
+    const totals = new Map<string, { id: string; title: string; artist: string; artwork: string; plays: number; seconds: number }>();
+    Object.values(listeningDays).forEach((day) => Object.values(day.tracks).forEach((track) => {
+      const previous = totals.get(track.id);
+      totals.set(track.id, { id: track.id, title: track.title, artist: track.artist, artwork: track.artwork, plays: (previous?.plays ?? 0) + track.plays, seconds: (previous?.seconds ?? 0) + track.seconds });
+    }));
+    return [...totals.values()].sort((a, b) => b.plays - a.plays || b.seconds - a.seconds).slice(0, 8);
+  }, [listeningDays]);
   const scrollY = useRef(new Animated.Value(0)).current;
   const [heroArtworkFailed, setHeroArtworkFailed] = useState(false);
   const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
@@ -77,6 +89,16 @@ export default function ListenScreen() {
           </View>
         </View></ScrollReveal>
 
+        {recentTracks.length > 0 ? <ScrollReveal scrollY={scrollY}><View style={styles.section}>
+          <SectionHeading title="Recently played" action="See all" onPress={() => router.push("/(tabs)/library")} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trackRail}>
+            {recentTracks.slice(0, 10).map((track) => <Pressable key={track.id} style={styles.recentCard} onPress={() => { void playTrack(track, recentTracks); }} accessibilityRole="button" accessibilityLabel={`Play ${track.title} by ${track.artist}`}>
+              {track.artwork ? <Image source={{ uri: track.artwork }} style={styles.recentArt} /> : <View style={styles.recentArtFallback}><Ionicons name="musical-notes" size={25} color={colors.muted} /></View>}
+              <Text numberOfLines={1} style={styles.recentTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.recentArtist}>{track.artist}</Text>
+            </Pressable>)}
+          </ScrollView>
+        </View></ScrollReveal> : null}
+
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Featured playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
@@ -103,6 +125,16 @@ export default function ListenScreen() {
           {!loading && !error && tracks.length === 0 ? <Text style={styles.message}>No tracks are available right now.</Text> : null}
           {!loading && !error ? tracks.slice(0, 6).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
         </View></ScrollReveal>
+
+        {mostPlayed.length > 0 ? <ScrollReveal scrollY={scrollY}><View style={styles.section}>
+          <SectionHeading title="Most played" action="Your stats" onPress={() => router.push("/stats")} />
+          {mostPlayed.slice(0, 5).map((track, index) => <Pressable key={track.id} style={styles.mostPlayedRow} onPress={() => { const match = recentTracks.find((item) => item.id === track.id); if (match) void playTrack(match, recentTracks); }}>
+            <Text style={styles.mostPlayedRank}>{String(index + 1).padStart(2, "0")}</Text>
+            {track.artwork ? <Image source={{ uri: track.artwork }} style={styles.mostPlayedArt} /> : <View style={styles.mostPlayedArtFallback}><Ionicons name="musical-notes" size={16} color={colors.muted} /></View>}
+            <View style={{ flex: 1 }}><Text numberOfLines={1} style={styles.mostPlayedTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.mostPlayedArtist}>{track.artist}</Text></View>
+            <Text style={styles.playCount}>{track.plays} plays</Text>
+          </Pressable>)}
+        </View></ScrollReveal> : null}
 
         <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
           <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
@@ -134,11 +166,21 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
   heroTagText: { color: "#FFE2E9", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
+  heroKicker: { color: "rgba(255,255,255,0.72)", fontSize: 9, fontWeight: "900", letterSpacing: 1.6, marginBottom: 7 },
   heroTitle: { color: "#FFFFFF", fontSize: 32, lineHeight: 35, fontWeight: "800", letterSpacing: -1.1 },
   heroSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 8 },
   heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "rgba(255,245,248,0.94)", paddingHorizontal: 16, paddingVertical: 11, borderRadius: 22, marginTop: 17, borderWidth: 1, borderColor: "rgba(255,255,255,0.65)" },
   heroButtonText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 30 },
+  trackRail: { gap: 13, paddingRight: 16 },
+  recentCard: { width: 132 }, recentArt: { width: 132, height: 132, borderRadius: 17, backgroundColor: colors.surface },
+  recentArtFallback: { width: 132, height: 132, borderRadius: 17, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  recentTitle: { color: colors.text, fontSize: 11, fontWeight: "800", marginTop: 9 }, recentArtist: { color: colors.muted, fontSize: 10, marginTop: 3 },
+  mostPlayedRow: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border },
+  mostPlayedRank: { color: colors.subtle, width: 19, fontSize: 10, fontWeight: "800" },
+  mostPlayedArt: { width: 42, height: 42, borderRadius: 9, backgroundColor: colors.surface },
+  mostPlayedArtFallback: { width: 42, height: 42, borderRadius: 9, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  mostPlayedTitle: { color: colors.text, fontSize: 11, fontWeight: "800" }, mostPlayedArtist: { color: colors.muted, fontSize: 9, marginTop: 3 }, playCount: { color: colors.subtle, fontSize: 9, fontWeight: "700" },
   message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
   errorCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, gap: 10 },
   errorText: { color: colors.muted, fontSize: 12, paddingVertical: 12 },
