@@ -3,12 +3,14 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassSurface } from "../components/GlassSurface";
-import { usePreferencesStore, type AccentTheme, type AppearanceMode, type MotionStyle } from "../store/preferences";
+import { usePreferencesStore, type AccentTheme, type AppearanceMode, type MotionStyle, type PlayerStyle, type SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
 
 const accents: { id: AccentTheme; label: string; color: string }[] = [
   { id: "red", label: "Velvet", color: "#FA2D48" }, { id: "violet", label: "Amethyst", color: "#B69BFF" },
-  { id: "blue", label: "Ocean", color: "#72B7F4" }, { id: "green", label: "Sage", color: "#8DD6B5" }
+  { id: "blue", label: "Ocean", color: "#72B7F4" }, { id: "green", label: "Emerald", color: "#35B88A" },
+  { id: "amber", label: "Amber", color: "#E7A84B" }, { id: "rose", label: "Rose", color: "#F080A8" },
+  { id: "arctic", label: "Arctic", color: "#8BD9E8" }, { id: "mono", label: "Mono", color: "#D5D5D5" }
 ];
 const appearanceModes: { id: AppearanceMode; label: string; detail: string; icon: string }[] = [
   { id: "system", label: "System", detail: "Follow your device appearance", icon: "phone-portrait-outline" },
@@ -28,9 +30,15 @@ export default function AppearanceScreen() {
   const accentTheme = usePreferencesStore((s) => s.accentTheme);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const compactRows = usePreferencesStore((s) => s.compactRows);
+  const playerStyle = usePreferencesStore((s) => s.playerStyle);
+  const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
+  const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
   const setAccentTheme = usePreferencesStore((s) => s.setAccentTheme);
   const setMotionStyle = usePreferencesStore((s) => s.setMotionStyle);
   const setCompactRows = usePreferencesStore((s) => s.setCompactRows);
+  const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
+  const setSurfaceStyle = usePreferencesStore((s) => s.setSurfaceStyle);
+  const setAnimationIntensity = usePreferencesStore((s) => s.setAnimationIntensity);
   const styles = makeStyles(colors, isDark);
 
   return <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -64,6 +72,32 @@ export default function AppearanceScreen() {
           <Ionicons name={motionStyle === item.id ? "radio-button-on" : "radio-button-off"} size={19} color={motionStyle === item.id ? colors.accent : colors.subtle} />
         </Pressable>)}
       </GlassSurface>
+
+      <Text style={styles.heading}>Player design</Text>
+      <Text style={styles.copy}>Choose the shape and personality of your Now Playing screen.</Text>
+      <GlassSurface style={styles.panel} contentStyle={styles.motionPanel}>
+        {([{ id: "standard", label: "Classic", detail: "Balanced artwork and controls" }, { id: "vinyl", label: "Vinyl", detail: "Round record-inspired artwork" }, { id: "poster", label: "Poster", detail: "Bold edge-to-edge artwork" }] as { id: PlayerStyle; label: string; detail: string }[]).map((item, index, all) => <Pressable key={item.id} onPress={() => setPlayerStyle(item.id)} style={[styles.motionOption, index === all.length - 1 && styles.last]}>
+          <View style={{ flex: 1 }}><Text style={styles.optionText}>{item.label}</Text><Text style={styles.optionDetail}>{item.detail}</Text></View>
+          <Ionicons name={playerStyle === item.id ? "radio-button-on" : "radio-button-off"} size={19} color={playerStyle === item.id ? colors.accent : colors.subtle} />
+        </Pressable>)}
+      </GlassSurface>
+      <Text style={styles.heading}>Surface finish</Text>
+      <Text style={styles.copy}>Keep the app dark and matte, then choose how its cards catch the light.</Text>
+      <GlassSurface style={styles.panel} contentStyle={styles.motionPanel}>
+        {([{ id: "liquid", label: "Liquid glass", detail: "Glossy edges, depth and soft reflections" }, { id: "frosted", label: "Frosted glass", detail: "Soft blur with a quieter finish" }, { id: "clear", label: "Clear glass", detail: "More transparent floating surfaces" }, { id: "matte", label: "Dark matte", detail: "Minimal reflection and solid surfaces" }] as { id: SurfaceStyle; label: string; detail: string }[]).map((item, index, all) => <Pressable key={item.id} onPress={() => setSurfaceStyle(item.id)} style={[styles.motionOption, index === all.length - 1 && styles.last]}>
+          <View style={{ flex: 1 }}><Text style={styles.optionText}>{item.label}</Text><Text style={styles.optionDetail}>{item.detail}</Text></View>
+          <Ionicons name={surfaceStyle === item.id ? "radio-button-on" : "radio-button-off"} size={19} color={surfaceStyle === item.id ? colors.accent : colors.subtle} />
+        </Pressable>)}
+      </GlassSurface>
+      <Text style={styles.heading}>Animation intensity</Text>
+      <Text style={styles.copy}>Set how expressive playback animations should feel.</Text>
+      <GlassSurface style={styles.panel} contentStyle={styles.motionPanel}>
+        <View style={styles.intensityRow}>
+          {([{ value: 20, label: "Quiet" }, { value: 60, label: "Balanced" }, { value: 100, label: "Expressive" }] as const).map((item) => <Pressable key={item.value} onPress={() => setAnimationIntensity(item.value)} style={[styles.intensityOption, animationIntensity === item.value && styles.selected]}>
+            <Text style={[styles.optionText, animationIntensity === item.value && { color: colors.accent }]}>{item.label}</Text>
+          </Pressable>)}
+        </View>
+      </GlassSurface>
       <Text style={styles.heading}>Listening layout</Text>
       <GlassSurface style={styles.panel} contentStyle={styles.switchRow}>
         <View style={{ flex: 1 }}><Text style={styles.optionText}>Compact track rows</Text><Text style={styles.optionDetail}>Fit more music on screen with tighter spacing.</Text></View>
@@ -88,6 +122,8 @@ function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
     last: { borderBottomWidth: 0 }, optionDetail: { color: c.muted, fontSize: 10, marginTop: 4 },
     modeIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)", alignItems: "center", justifyContent: "center" },
     switchRow: { minHeight: 72, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 12 },
+    intensityRow: { flexDirection: "row", gap: 7, paddingVertical: 12 },
+    intensityOption: { flex: 1, minHeight: 42, paddingHorizontal: 5, borderRadius: 12, borderWidth: 1, borderColor: "transparent", alignItems: "center", justifyContent: "center" },
     note: { flexDirection: "row", gap: 9, alignItems: "center", marginTop: 22, padding: 14, borderRadius: 14, backgroundColor: isDark ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.035)" },
     noteText: { color: c.muted, fontSize: 10, lineHeight: 16, flex: 1 }
   });
