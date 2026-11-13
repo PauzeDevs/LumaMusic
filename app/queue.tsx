@@ -20,7 +20,7 @@ export default function QueueScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={23} color={c.text} /></Pressable>
+        <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></Pressable>
         <View style={{ flex: 1 }}><Text style={styles.eyebrow}>YOUR SESSION</Text><Text style={styles.title}>Up next</Text></View>
         <Pressable onPress={() => Alert.alert("Clear queue?", "This keeps the current track and removes everything after it.", [{ text: "Cancel", style: "cancel" }, { text: "Clear", style: "destructive", onPress: clearQueue }])} style={styles.clear}><Text style={styles.clearText}>Clear</Text></Pressable>
       </View>
