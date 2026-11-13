@@ -82,6 +82,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const toggleShuffleState = usePlayerStore((state) => state.toggleShuffle);
   const cycleRepeatState = usePlayerStore((state) => state.cycleRepeat);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const storeIsBuffering = usePlayerStore((state) => state.isBuffering);
   const playbackRate = usePlayerStore((state) => state.playbackRate);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
@@ -240,14 +241,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (automaticRecovery.current.trackId !== (track?.id ?? null)) {
       automaticRecovery.current = { trackId: track?.id ?? null, attempts: 0 };
     }
-    if (!status.error || !isExternalTrack(track) || status.isBuffering) return;
+    if (!status.error || !isExternalTrack(track) || status.isBuffering || storeIsBuffering) return;
     if (automaticRecovery.current.attempts >= 1) return;
 
     // Retry one failed external stream automatically. The bounded attempt count
     // prevents a persistent 403/network failure from creating an infinite loop.
     automaticRecovery.current.attempts += 1;
     void playTrackSafely(track, usePlayerStore.getState().queue, usePlayerStore.getState().currentQueueIndex);
-  }, [status.error, status.isBuffering, currentTrack?.id, playTrackSafely]);
+  }, [status.error, status.isBuffering, storeIsBuffering, currentTrack?.id, playTrackSafely]);
 
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
