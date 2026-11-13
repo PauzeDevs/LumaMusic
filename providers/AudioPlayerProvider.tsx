@@ -65,7 +65,7 @@ function AudioStatusBridge({ onStatus }: { onStatus: (position: number, duration
 export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
-  const [localSource, setLocalSource] = useState<{ uri: string; instance: number } | null>(null);
+  const [localSource, setLocalSource] = useState<{ uri: string; instance: number; headers?: Record<string, string> } | null>(null);
   const localSourceSequence = useRef(0);
   const playbackRequestSequence = useRef(0);
   const handledFinishedState = useRef(false);
@@ -115,7 +115,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
-    if (isLocalTrack(currentTrack)) return;
+    if (isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
     setPlaybackStatus({
       isPlaying: status.playing, isBuffering: status.isBuffering,
       playbackPosition: status.currentTime, playbackDuration: status.duration,
@@ -217,7 +217,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       startupTimeoutRef.current = null;
     }
     const queue = nextQueue?.length ? nextQueue : [track];
-    if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
+    if (isLocalTrack(usePlayerStore.getState().currentTrack) || isExternalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
     // Stop the previous stream immediately; don't let it play underneath a new selection.
     player.pause();
     disconnectGraph();
@@ -231,28 +231,18 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         const stream = await resolveYouTubeMusicAudio(track);
         // A slower, older resolver must never replace the song the user selected most recently.
         if (requestId !== playbackRequestSequence.current) return;
-        await player.replace({
+        if (requestId !== playbackRequestSequence.current) return;
+        // Feed the resolved YouTube URL into the native Audio API element so its
+        // samples pass through the same AudioContext graph as imported local audio.
+        setLocalSource({
           uri: stream.url,
           headers: {
             "User-Agent": stream.userAgent,
             Origin: "https://www.youtube.com",
             Referer: "https://www.youtube.com/"
-          }
+          },
+          instance: ++localSourceSequence.current
         });
-        if (requestId !== playbackRequestSequence.current) return;
-        player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
-        // Android requires an active media/lock-screen session for sustained background playback.
-        // Keep it active while paused so notification and lock-screen controls remain available.
-        player.setActiveForLockScreen(true, {
-          title: track.title,
-          artist: track.artist,
-          albumTitle: "LumaMusic",
-          ...(track.artwork ? { artworkUrl: track.artwork } : {})
-        }, {
-          showSeekBackward: true,
-          showSeekForward: true
-        });
-        player.play();
         // Do not leave the UI spinning forever if the resolved stream never starts.
         startupTimeoutRef.current = setTimeout(() => {
           startupTimeoutRef.current = null;
@@ -327,7 +317,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       }
       return;
     }
-    if (isLocalTrack(state.currentTrack)) {
+    if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
       if (state.isPlaying) audioRef.current?.pause();
       else void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       return;
@@ -346,7 +336,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       if (isExternalTrack(state.currentTrack)) {
         await player.seekTo(0);
         player.play();
-      } else if (isLocalTrack(state.currentTrack)) {
+      } else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
         audioRef.current?.seekToTime(0);
         void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       } else {
@@ -406,7 +396,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       }
     }
 
-    if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
+    if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.pause();
     else player.pause();
   }, [playTrackSafely, player]);
 
@@ -415,7 +405,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.queue.length === 0 || !state.currentTrack) return;
     if (state.repeatMode === "one" || state.playbackPosition > 3) {
       if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
-      else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
+      else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else await player.seekTo(0);
       return;
     }
@@ -436,7 +426,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const setPlaybackRate = useCallback((rate: number) => {
     const safeRate = Math.max(0.5, Math.min(2, rate));
-    player.setPlaybackRate(safeRate, "high");
     setPlaybackRateState(safeRate);
   }, [player, setPlaybackRateState]);
 
@@ -445,7 +434,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     setSleepTimerMinutesState(minutes);
     if (minutes !== null && minutes > 0) {
       sleepTimerRef.current = setTimeout(() => {
-        if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
+        if (isLocalTrack(usePlayerStore.getState().currentTrack) || isExternalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
         else player.pause();
         sleepTimerRef.current = null;
         setSleepTimerMinutesState(null);
@@ -455,7 +444,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const seekTo = useCallback(async (seconds: number) => {
     const track = usePlayerStore.getState().currentTrack;
-    if (isLocalTrack(track)) { audioRef.current?.seekToTime(Math.max(0, seconds)); return; }
+    if (isLocalTrack(track) || isExternalTrack(track)) { audioRef.current?.seekToTime(Math.max(0, seconds)); return; }
     await player.seekTo(Math.max(0, seconds));
   }, [player]);
 
@@ -476,7 +465,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       handledFinishedState.current = false;
       return;
     }
-    if (handledFinishedState.current || isLocalTrack(currentTrack)) return;
+    if (handledFinishedState.current || isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
     handledFinishedState.current = true;
     if (usePlayerStore.getState().sleepTimerMinutes === -1) {
       player.pause();
@@ -499,12 +488,15 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           <Audio
             key={localSource.instance}
             ref={audioRef}
-            source={localSource.uri}
+            source={{ uri: localSource.uri, ...(localSource.headers ? { headers: localSource.headers } : {}) }}
             context={audioContextRef.current ?? undefined}
             controls={false}
             playbackRate={playbackRate}
             onLoad={onLocalAudioLoad}
-            onError={(error) => setPlaybackError(error.message)}
+            onError={(error) => {
+              setPlaybackError(error.message);
+              setPlaybackStatus({ isPlaying: false, isBuffering: false, playbackPosition: 0, playbackDuration: 0, playbackError: error.message });
+            }}
             onEnded={onLocalAudioEnded}
           >
             <AudioStatusBridge onStatus={onLocalAudioStatus} />
