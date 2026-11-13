@@ -3,6 +3,7 @@ import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-au
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
+import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -68,6 +69,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const localSourceSequence = useRef(0);
   const playbackRequestSequence = useRef(0);
   const handledFinishedState = useRef(false);
+  const fetchingAutoplayQueue = useRef(false);
   const automaticRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -339,9 +341,36 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (isPlayable(candidate)) { nextTrack = candidate; nextQueueIndex = index; break; }
       }
     }
-    if (nextTrack) await playTrackSafely(nextTrack, state.queue, nextQueueIndex);
-    else if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
-    else if (!isExternalTrack(state.currentTrack)) player.pause();
+    if (nextTrack) {
+      await playTrackSafely(nextTrack, state.queue, nextQueueIndex);
+      return;
+    }
+
+    // When the user's queue is exhausted, ask YouTube Music for its Up Next
+    // radio recommendations and append them to the queue for continuous listening.
+    if (isExternalTrack(state.currentTrack) && state.repeatMode !== "one" && !fetchingAutoplayQueue.current) {
+      fetchingAutoplayQueue.current = true;
+      try {
+        const videoId = state.currentTrack.youtubeVideoId || state.currentTrack.sourceTrackId || state.currentTrack.id.replace(/^youtube:/i, "");
+        const recommendations = await getYouTubeMusicUpNextTracks(videoId, 20);
+        const existingIds = new Set(state.queue.map((item) => item.id));
+        const freshTracks = recommendations.filter((item) => isPlayable(item) && item.id !== state.currentTrack?.id && !existingIds.has(item.id));
+        if (freshTracks.length > 0) {
+          const latest = usePlayerStore.getState();
+          const expandedQueue = [...latest.queue, ...freshTracks];
+          const firstIndex = latest.queue.length;
+          await playTrackSafely(freshTracks[0], expandedQueue, firstIndex);
+          return;
+        }
+      } catch {
+        // Recommendation lookup is best-effort. Keep playback errors quiet at track end.
+      } finally {
+        fetchingAutoplayQueue.current = false;
+      }
+    }
+
+    if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
+    else player.pause();
   }, [playTrackSafely, player]);
 
   const playPrevious = useCallback(async () => {
