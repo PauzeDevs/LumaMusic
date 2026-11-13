@@ -13,10 +13,10 @@
 
 ### THE EXPERIENCE
 
-Search tracks, open the official YouTube Music page, and keep a personal library that feels like yours.
+Discover YouTube Music catalogue entries, play supported streams in the app, and keep a personal library that feels like yours.
 
 - **Discover** tracks through YouTube Music search.
-- **Listen** by handing playback to the YouTube Music app or website.
+- **Listen** with LumaMusic’s native audio player when a compatible stream is available.
 - **Keep close** your favourites and recently opened tracks.
 - **Organise** local playlists and your listening history.
 - **Refresh** with LumaMusic's own animated pull-to-refresh treatment.
@@ -32,7 +32,7 @@ npm install
 npx expo start
 ```
 
-Use an Expo development build when testing native audio. The app includes native audio playback controls and background-audio configuration. Track availability and playback formats can vary; physical-device testing is required before describing every playback feature as production-ready.
+Use an Expo development build when testing native audio. The app resolves available audio streams and plays them through Expo Audio. Stream availability depends on YouTube’s undocumented, changeable web interface and compatible formats. Playback recovery, background audio, lock-screen controls and queue continuity must be validated on physical devices before a production release.
 
 ### PROJECT FILES
 
@@ -45,7 +45,7 @@ Use an Expo development build when testing native audio. The app includes native
 
 ### THE CATALOGUE
 
-LumaMusic is an independent, unofficial project and is not affiliated with or endorsed by Google or YouTube. Discovery uses an undocumented public YouTube Music web interface that may change. Search results open their canonical YouTube Music pages. LumaMusic does not claim official Google authorization.
+LumaMusic is an independent, unofficial project and is not affiliated with or endorsed by Google or YouTube. Discovery uses an undocumented public YouTube Music web interface that may change. The app uses an undocumented YouTube Music web interface for discovery and best-effort stream resolution. LumaMusic does not claim official Google authorization. Availability and compatibility can change without notice.
 
 ---
 
