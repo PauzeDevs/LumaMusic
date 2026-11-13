@@ -13,4 +13,4 @@ export function GlassSurface({ children, style, contentStyle, intensity = 72 }: 
     <View style={[styles.content, contentStyle]}>{children}</View>
   </View>;
 }
-const styles = StyleSheet.create({ shell: { overflow: "hidden", borderWidth: 1 }, tint: { ...StyleSheet.absoluteFillObject }, topSheen: { position: "absolute", top: 0, left: 12, right: 12, height: 1 }, content: { flex: 1 } });
+const styles = StyleSheet.create({ shell: { overflow: "hidden", borderWidth: 1 }, tint: { ...StyleSheet.absoluteFill }, topSheen: { position: "absolute", top: 0, left: 12, right: 12, height: 1 }, content: { flex: 1 } });
