@@ -79,6 +79,10 @@ async function createTokens(videoId: string): Promise<TokenBundle> {
   const inlineInterpreter =
     challenge.interpreterJavascript?.privateDoNotAccessOrElseSafeScriptWrappedValue;
 
+  if (!inlineInterpreter && !interpreterUrl) {
+    throw new Error("BotGuard challenge did not include an interpreter script URL");
+  }
+
   const interpreterResponse = inlineInterpreter
     ? null
     : await fetch(`https:${interpreterUrl}`, {
