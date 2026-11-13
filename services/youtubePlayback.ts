@@ -1,7 +1,5 @@
 import type { MusicTrack } from "../types/music";
-import { resolveWithYtdlpService } from "./ytdlpResolver";
 import { resolveWithNewPipe } from "./newPipeResolver";
-import { resolveYouTubePoTokens } from "./poTokenResolver";
 
 export type ResolvedYouTubeAudio = {
   url: string;
@@ -128,16 +126,12 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
   }
 
   const errors: string[] = [];
-  // Token generation is optional and can take seconds on a cold WebView.
-  // Start it in the background, but never make the first playable stream wait for it.
-  void resolveYouTubePoTokens(videoId).catch((error) => {
-    errors.push(`PoToken: ${error instanceof Error ? error.message : String(error)}`);
-  });
-
   // Race the profiles and use the first successful playable stream.
   // Promise.allSettled would wait for every slow/failing client before returning.
+  const controllers: AbortController[] = [];
   const profileAttempts = INNERTUBE_PLAYER_CLIENTS.map(async (profile) => {
     const controller = new AbortController();
+    controllers.push(controller);
     const timeout = setTimeout(() => controller.abort(), 7000);
     try {
       const response = await fetch(PLAYER_URL, {
@@ -203,6 +197,8 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
   let resolvedStream: ResolvedYouTubeAudio;
   try {
     resolvedStream = await Promise.any(profileAttempts);
+    // Stop redundant client requests as soon as one profile supplies a stream.
+    controllers.forEach((controller) => controller.abort());
   } catch (error) {
     const failures = error instanceof AggregateError
       ? error.errors.map((item) => item instanceof Error ? item.message : String(item))
@@ -243,23 +239,6 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
     errors.push(
       error instanceof Error ? error.message : `NewPipe: ${String(error)}`
     );
-  }
-
-  // Retain the existing no-op compatibility shim; it does not perform yt-dlp requests.
-  try {
-    const fallback = await resolveWithYtdlpService(track);
-    if (fallback?.url) {
-      return {
-        url: fallback.url,
-        mimeType: "audio/mp4",
-        durationSeconds:
-          fallback.durationSeconds || Math.max(0, Math.round((track.durationMs || 0) / 1000)),
-        userAgent: INNERTUBE_PLAYER_CLIENTS[0].userAgent,
-        expiresAt: Date.now() + 3600 * 1000
-      };
-    }
-  } catch {
-    // Ignore fallback error and surface InnerTube error details
   }
 
   throw new Error(
