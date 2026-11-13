@@ -163,14 +163,26 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const convolver = context.createConvolver();
       const dry = context.createGain();
       const wet = context.createGain();
-      source.connect(panner);
+      const frequencies = [60, 250, 1000, 4000, 12000];
+      const filters = frequencies.map((frequency, index) => {
+        const filter = context.createBiquadFilter();
+        filter.type = index === 0 ? "lowshelf" : index === frequencies.length - 1 ? "highshelf" : "peaking";
+        filter.frequency.setValueAtTime(frequency, context.currentTime);
+        filter.Q.setValueAtTime(1, context.currentTime);
+        filter.gain.setValueAtTime(0, context.currentTime);
+        return filter;
+      });
+      let previous: MediaElementAudioSourceNode | ReturnType<AudioContext["createBiquadFilter"]> = source;
+      filters.forEach((filter) => { previous.connect(filter); previous = filter; });
+      previous.connect(panner);
       panner.connect(dry);
       dry.connect(context.destination);
       panner.connect(convolver);
       convolver.connect(wet);
       wet.connect(context.destination);
-      graphRef.current = { source, panner, convolver, dry, wet };
+      graphRef.current = { source, panner, convolver, dry, wet, filters };
       applyEffects(usePreferencesStore.getState().spatialBalance, usePreferencesStore.getState().reverbPreset);
+      applyEqualizer(usePreferencesStore.getState().equalizerEnabled, usePreferencesStore.getState().equalizerBands);
       void context.resume().then(() => element.play()).catch((error: unknown) => setPlaybackError(error instanceof Error ? error.message : "Could not start this local audio file."));
     } catch (error) {
       setPlaybackError(error instanceof Error ? error.message : "Could not connect the audio effects engine.");
@@ -193,6 +205,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     graphRef.current?.convolver.disconnect();
     graphRef.current?.dry.disconnect();
     graphRef.current?.wet.disconnect();
+    graphRef.current?.filters.forEach((filter) => filter.disconnect());
     graphRef.current = null;
   }, []);
 
