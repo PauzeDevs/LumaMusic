@@ -59,7 +59,7 @@ export default function ProfileScreen() {
               } else if (item.title === "Notifications") {
                 Alert.alert("Notifications", "Push notifications are not enabled in this build. No notification permission has been requested.");
               } else if (item.title === "Appearance") {
-                Alert.alert("Appearance", "LumaMusic is using its dark matte theme with restrained glass-inspired surfaces.");
+                router.push("/appearance");
               } else {
                 void Linking.openURL("https://github.com/PauzeDevs/LumaMusic");
               }
