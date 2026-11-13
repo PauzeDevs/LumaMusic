@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.6 },
   title: { color: colors.text, fontSize: 25, fontWeight: "800", letterSpacing: -0.7, marginTop: 2 },
   content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 36 },
-  heading: { color: colors.text, fontSize: 17, fontWeight: "750", marginTop: 22, marginBottom: 5 },
+  heading: { color: colors.text, fontSize: 17, fontWeight: "700", marginTop: 22, marginBottom: 5 },
   copy: { color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 12 },
   panel: { borderRadius: 19 },
   accentGrid: { padding: 10, gap: 7 },
