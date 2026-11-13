@@ -5,6 +5,7 @@ import { Alert, Animated, Easing, Image, PanResponder, Pressable, Share, StyleSh
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
+import type { SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
@@ -18,7 +19,7 @@ function formatTime(seconds: number) {
 
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
-  const styles = createStyles(colors, isDark);
+  const styles = createStyles(colors, isDark, surfaceStyle);
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -171,7 +172,7 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
