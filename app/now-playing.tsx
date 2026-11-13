@@ -5,6 +5,7 @@ import { Alert, Animated, Easing, Image, PanResponder, Pressable, Share, StyleSh
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
+import type { SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
@@ -18,7 +19,6 @@ function formatTime(seconds: number) {
 
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
-  const styles = createStyles(colors, isDark);
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -33,6 +33,7 @@ export default function NowPlayingScreen() {
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
+  const styles = createStyles(colors, isDark, surfaceStyle);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
   const artworkScale = useRef(new Animated.Value(1)).current;
@@ -98,8 +99,12 @@ export default function NowPlayingScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 44 : surfaceStyle === "frosted" ? 72 : surfaceStyle === "clear" ? 88 : 0} style={styles.ambientBlur} />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View pointerEvents="none" style={styles.headerCopy}><Text style={styles.overline}>PLAYING</Text><Text style={styles.headerTitle}>LumaMusic</Text></View>
+        <View style={styles.headerLeading}>
+          <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Go back">
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
+          </Pressable>
+          <View style={styles.brand}><Image source={require("../assets/lumamusic-icon.png")} style={styles.brandLogo} /><Text style={styles.brandName}>LumaMusic</Text></View>
+        </View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -172,11 +177,15 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
+  headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.82)" },
+  brand: { flexDirection: "row", alignItems: "center", gap: 9 },
+  brandLogo: { width: 30, height: 30, borderRadius: 9 },
+  brandName: { color: colors.text, fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
   headerCopy: { position: "absolute", left: 52, right: 52, top: 0, bottom: 0, alignItems: "center", justifyContent: "center", gap: 3 },
   overline: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
   headerTitle: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: "600", includeFontPadding: false, textAlign: "center" },
