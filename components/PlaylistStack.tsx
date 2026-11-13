@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
+import type { ThemePalette } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 
 export type PlaylistStackItem = {
   id: string;
@@ -13,6 +14,8 @@ export type PlaylistStackItem = {
 type Props = { items: PlaylistStackItem[]; emptyText?: string };
 
 export function PlaylistStack({ items, emptyText = "Your playlists will appear here." }: Props) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [activeIndex, setActiveIndex] = useState(0);
   const drag = useRef(new Animated.ValueXY()).current;
   const locked = useRef(false);
@@ -81,7 +84,7 @@ export function PlaylistStack({ items, emptyText = "Your playlists will appear h
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   wrap: { marginTop: 5 },
   deck: { height: 226, justifyContent: "center", alignItems: "center" },
   card: { position: "absolute", width: "100%", height: 196, borderRadius: 23, overflow: "hidden", backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
@@ -96,4 +99,4 @@ const styles = StyleSheet.create({
   hint: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.25 },
   count: { color: colors.muted, fontSize: 9, fontWeight: "700" },
   empty: { color: colors.subtle, fontSize: 11, lineHeight: 18, paddingVertical: 12 }
-});
+}); }
