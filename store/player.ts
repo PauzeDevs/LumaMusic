@@ -44,9 +44,11 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   repeatMode: "off",
   setTrack: (track, queue, queueIndex) => {
     const nextQueue = queue && queue.length > 0 ? queue : [track];
-    const resolvedIndex = queueIndex !== undefined && queueIndex >= 0 && queueIndex < nextQueue.length
+    const matchingIndex = nextQueue.findIndex((item) => item.id === track.id);
+    const resolvedIndex = queueIndex !== undefined && Number.isInteger(queueIndex) &&
+      queueIndex >= 0 && queueIndex < nextQueue.length && nextQueue[queueIndex]?.id === track.id
       ? queueIndex
-      : Math.max(0, nextQueue.findIndex((item) => item === track));
+      : Math.max(0, matchingIndex);
     return set({
       currentTrack: track,
       currentQueueIndex: resolvedIndex,
@@ -60,7 +62,10 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   },
   setPlaybackStatus: (status) => set(status),
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
-  setPlaybackRate: (playbackRate) => set({ playbackRate }),
+  setPlaybackRate: (playbackRate) => {
+    if (!Number.isFinite(playbackRate)) return;
+    set({ playbackRate: Math.max(0.5, Math.min(2, playbackRate)) });
+  },
   setSleepTimerMinutes: (sleepTimerMinutes) => set({ sleepTimerMinutes }),
   removeFromQueue: (trackId) => set((state) => {
     const removedBeforeCurrent = state.queue.slice(0, state.currentQueueIndex)
