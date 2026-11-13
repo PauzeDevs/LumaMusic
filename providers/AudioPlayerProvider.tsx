@@ -236,8 +236,15 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
-      if (status.playing) player.pause();
-      else player.play();
+      if (status.playing) {
+        player.pause();
+      } else if (status.error || !status.isLoaded) {
+        // A failed/expired YouTube stream cannot reliably resume in-place.
+        // Resolve a fresh URL and replace the failed source on an explicit Play tap.
+        void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
+      } else {
+        player.play();
+      }
       return;
     }
     if (isLocalTrack(state.currentTrack)) {
@@ -247,7 +254,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
     if (status.playing) player.pause();
     else if (state.currentTrack) player.play();
-  }, [player, status.playing]);
+  }, [player, status.playing, status.error, status.isLoaded, playTrackSafely]);
 
   const playNext = useCallback(async () => {
     const state = usePlayerStore.getState();
