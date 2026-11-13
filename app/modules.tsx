@@ -98,13 +98,18 @@ export default function ModulesScreen() {
         const item = sourceNames[id] ?? catalog.find((entry) => entry.id === id);
         if (!item) return null;
         return <GlassSurface key={id} style={styles.moduleCard} contentStyle={styles.moduleContent}>
-          <View style={styles.moduleIcon}><Ionicons name={(("icon" in item ? item.icon : "extension-puzzle-outline")) as never} size={21} color={colors.accent} /></View>
-          <View style={{ flex: 1 }}><Text style={styles.moduleName}>{item.name}</Text><Text style={styles.moduleMeta}>{"detail" in item ? item.detail : "Installed interface module"}</Text></View>
-          <View style={styles.orderControls}>
-            <Pressable onPress={() => move(id, -1)} disabled={index === 0} style={styles.orderButton}><Ionicons name="chevron-up" size={17} color={index === 0 ? colors.subtle : colors.text} /></Pressable>
-            <Pressable onPress={() => move(id, 1)} disabled={index === installed.length - 1} style={styles.orderButton}><Ionicons name="chevron-down" size={17} color={index === installed.length - 1 ? colors.subtle : colors.text} /></Pressable>
+          <View style={[styles.moduleIcon, { backgroundColor: id === "youtube-music" ? "#F13B45" : id === "local-library" ? "#34343A" : "#25252A" }]}>
+            <Ionicons name={(("icon" in item ? item.icon : "extension-puzzle-outline")) as never} size={23} color="#FFFFFF" />
           </View>
-          {id === "youtube-music" || id === "local-library" ? <View style={styles.corePill}><Text style={styles.coreText}>CORE</Text></View> : <Pressable onPress={() => remove(id)} style={styles.removeButton}><Ionicons name="close" size={17} color={colors.muted} /></Pressable>}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.moduleName}>{item.name}</Text>
+            <Text style={styles.moduleMeta}>{id in sourceNames ? sourceNames[id].status : "On · Installed locally"}</Text>
+            <Text style={styles.moduleFoot}>{id in sourceNames ? sourceNames[id].detail : "Interface"}  |  {id in sourceNames ? sourceNames[id].version : "v1.0"}</Text>
+          </View>
+          <Pressable onPress={() => move(id, index === installed.length - 1 ? -1 : 1)} disabled={installed.length < 2} style={styles.dragHandle} accessibilityRole="button" accessibilityLabel="Move module in list">
+            <Ionicons name="menu" size={22} color={colors.muted} />
+          </Pressable>
+          {id === "youtube-music" || id === "local-library" ? null : <Pressable onPress={() => remove(id)} style={styles.removeButton}><Ionicons name="close" size={17} color={colors.muted} /></Pressable>}
         </GlassSurface>;
       })}
 
