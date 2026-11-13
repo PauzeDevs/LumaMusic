@@ -321,8 +321,8 @@ function mapRelease(item: Obj): MusicRelease | null {
     item.subtitle?.musicTwoRowItemRenderer?.subtitle);
   const details = subtitle || readText(item.subtitle);
   const normalized = details.toLowerCase();
-  const kind = /\\bep\\b/.test(normalized) ? "ep" : /\\bsingle\\b/.test(normalized) ? "single" : "album";
-  const countMatch = details.match(/(\\d+)\\s*(?:songs?|tracks?)/i);
+  const kind = /\bep\b/.test(normalized) ? "ep" : /\bsingle\b/.test(normalized) ? "single" : "album";
+  const countMatch = details.match(/(\d+)\s*(?:songs?|tracks?)/i);
   return {
     id: "youtube-release:" + browseId,
     browseId,
