@@ -48,7 +48,6 @@ export default function NowPlayingScreen() {
     pulse.start();
     return () => pulse.stop();
   }, [isPlaying, motionStyle, animationIntensity, artworkScale]);
-  const accentTheme = usePreferencesStore((s) => s.accentTheme);
   const accentColor = colors.accent;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
