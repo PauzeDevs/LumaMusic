@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Image, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Alert, Animated, Easing, Image, PanResponder, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
@@ -31,6 +31,23 @@ export default function NowPlayingScreen() {
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const queue = usePlayerStore((s) => s.queue);
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
+  const playerStyle = usePreferencesStore((s) => s.playerStyle);
+  const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
+  const motionStyle = usePreferencesStore((s) => s.motionStyle);
+  const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
+  const artworkScale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    artworkScale.stopAnimation();
+    artworkScale.setValue(1);
+    if (!isPlaying || motionStyle === "off" || animationIntensity <= 0) return;
+    const amplitude = 0.012 + (animationIntensity / 100) * 0.035;
+    const pulse = Animated.loop(Animated.sequence([
+      Animated.timing(artworkScale, { toValue: 1 + amplitude, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(artworkScale, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+    ]));
+    pulse.start();
+    return () => pulse.stop();
+  }, [isPlaying, motionStyle, animationIntensity, artworkScale]);
   const accentTheme = usePreferencesStore((s) => s.accentTheme);
   const accentColor = { red: "#F05A68", violet: "#B69BFF", blue: "#72B7F4", green: "#8DD6B5" }[accentTheme];
   const likedTracks = useLibraryStore((s) => s.likedTracks);
@@ -87,7 +104,7 @@ export default function NowPlayingScreen() {
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
-        <View style={styles.artFrame}>
+        <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ scale: artworkScale }] }]}>
           {track.artwork && !artworkFailed ? <Image source={{ uri: track.artwork }} style={styles.artwork} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
         </View>
         <View style={styles.trackInfo}>
@@ -201,8 +218,8 @@ function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 18 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottomGlass: { borderRadius: 23, overflow: "hidden", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)", marginBottom: 6, shadowColor: "#000", shadowOpacity: isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
-  bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)" },
+  bottomGlass: { borderRadius: 23, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.18)" : "rgba(255,255,255,0.2)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.68)" : "rgba(255,255,255,0.68)") : (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+  bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: surfaceStyle === "liquid" ? (isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)") : "transparent" },
   bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 8 },
   bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
   bottomText: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "center", includeFontPadding: false, flexShrink: 0, width: "100%" },
