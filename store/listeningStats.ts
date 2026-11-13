@@ -14,6 +14,7 @@ type StatsState = {
 let lastSample: { id: string; position: number } | null = null;
 let pendingSeconds = 0;
 let pendingTrack: MusicTrack | null = null;
+let pendingDateKey: string | null = null;
 let activeSessionTrackId: string | null = null;
 const dateKey = (date = new Date()) => {
   const y = date.getFullYear(), m = String(date.getMonth() + 1).padStart(2, "0"), d = String(date.getDate()).padStart(2, "0");
@@ -25,8 +26,8 @@ function trackMeta(track: MusicTrack): ListeningTrackStat {
 }
 function flushPending(set: (fn: (state: StatsState) => Partial<StatsState>) => void) {
   if (!pendingTrack || pendingSeconds <= 0) return;
-  const track = pendingTrack, seconds = pendingSeconds, key = dateKey();
-  pendingTrack = null; pendingSeconds = 0;
+  const track = pendingTrack, seconds = pendingSeconds, key = pendingDateKey ?? dateKey();
+  pendingTrack = null; pendingSeconds = 0; pendingDateKey = null;
   set((state) => {
     const day = state.days[key] ?? { seconds: 0, plays: 0, tracks: {} };
     const existing = day.tracks[track.id] ?? trackMeta(track);
@@ -52,14 +53,17 @@ export const useListeningStatsStore = create<StatsState>()(persist((set) => ({
     if (lastSample?.id === track.id) {
       const delta = position - lastSample.position;
       if (delta > 0 && delta <= 2.5) {
+        const sampleDate = dateKey();
+        if (pendingDateKey && pendingDateKey !== sampleDate) flushPending(set);
         pendingSeconds += delta;
         pendingTrack = track;
+        pendingDateKey = sampleDate;
         if (pendingSeconds >= 2) flushPending(set);
       }
     }
     lastSample = { id: track.id, position };
   },
-  clearStats: () => { lastSample = null; pendingSeconds = 0; pendingTrack = null; activeSessionTrackId = null; set({ days: {} }); }
+  clearStats: () => { lastSample = null; pendingSeconds = 0; pendingTrack = null; pendingDateKey = null; activeSessionTrackId = null; set({ days: {} }); }
 }), {
   name: "lumamusic-listening-stats-v1",
   storage: createJSONStorage(() => AsyncStorage),
