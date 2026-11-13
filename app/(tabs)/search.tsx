@@ -137,7 +137,7 @@ export default function SearchScreen() {
                 <Pressable key={item.label} onPress={() => chooseSuggestion(item.query)} style={[styles.moodCard, index % 2 === 0 ? styles.moodCardWarm : styles.moodCardCool]}>
                   <View style={styles.moodIcon}><Ionicons name={item.icon as never} size={19} color={colors.text} /></View>
                   <Text style={styles.moodLabel}>{item.label}</Text>
-                  <Ionicons name="arrow-up-right" size={16} color={colors.muted} style={styles.moodArrow} />
+                  <Ionicons name="arrow-up-right-box" size={16} color={colors.muted} style={styles.moodArrow} />
                 </Pressable>
               ))}
             </View>
