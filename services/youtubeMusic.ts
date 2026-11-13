@@ -300,3 +300,61 @@ export async function getYouTubeMusicArtistTracks(artistId: string, limit = 30):
     .filter((item): item is MusicTrack => Boolean(item));
   return uniqueById(tracks).slice(0, limit);
 }
+
+export type MusicRelease = {
+  id: string;
+  browseId: string;
+  title: string;
+  subtitle: string;
+  artwork: string;
+  kind: "album" | "ep" | "single";
+  trackCount: number;
+};
+
+function mapRelease(item: Obj): MusicRelease | null {
+  const browseId = browseIdFor(item);
+  const title = titleFor(item).trim();
+  if (!browseId || !title) return null;
+  const subtitle = readText(item.subtitle ?? item.subtitleText ?? item.shortBylineText ??
+    item.subtitle?.runs ?? item.subtitle?.simpleText ??
+    item.subtitle?.musicResponsiveListItemRenderer?.text ??
+    item.subtitle?.musicTwoRowItemRenderer?.subtitle);
+  const details = subtitle || readText(item.subtitle);
+  const normalized = details.toLowerCase();
+  const kind = /\\bep\\b/.test(normalized) ? "ep" : /\\bsingle\\b/.test(normalized) ? "single" : "album";
+  const countMatch = details.match(/(\\d+)\\s*(?:songs?|tracks?)/i);
+  return {
+    id: "youtube-release:" + browseId,
+    browseId,
+    title,
+    subtitle: details || (kind === "album" ? "Album" : kind === "ep" ? "EP" : "Single"),
+    artwork: imageFor(item),
+    kind,
+    trackCount: countMatch ? Number(countMatch[1]) : 0
+  };
+}
+
+/** Reads the artist's catalogue shelves, including album, EP and single cards. */
+export async function getYouTubeMusicArtistReleases(artistId: string, limit = 30): Promise<MusicRelease[]> {
+  const browseId = artistId.trim();
+  if (!browseId.startsWith("UC")) return [];
+  const payload = await innerTubePost(BROWSE_URL, { browseId });
+  const cards = collectRenderers(payload, "musicTwoRowItemRenderer");
+  const responsiveCards = collectRenderers(payload, "musicResponsiveListItemRenderer");
+  return uniqueById([...cards, ...responsiveCards]
+    .map(mapRelease)
+    .filter((item): item is MusicRelease => Boolean(item)))
+    .filter((item) => item.browseId.startsWith("MPRE") || item.browseId.startsWith("OLAK") || item.browseId.startsWith("M"))
+    .slice(0, limit);
+}
+
+/** Loads all playable tracks from an album, EP or single browse page. */
+export async function getYouTubeMusicReleaseTracks(releaseBrowseId: string, limit = 100): Promise<MusicTrack[]> {
+  const browseId = releaseBrowseId.trim();
+  if (!browseId) return [];
+  const payload = await innerTubePost(BROWSE_URL, { browseId });
+  const tracks = collectRenderers(payload, "musicResponsiveListItemRenderer")
+    .map(mapTrack)
+    .filter((item): item is MusicTrack => Boolean(item));
+  return uniqueById(tracks).slice(0, limit);
+}
