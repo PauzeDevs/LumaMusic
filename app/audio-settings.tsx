@@ -28,7 +28,7 @@ const REVERB_OPTIONS: { value: ReverbPreset; label: string; detail: string }[] =
   { value: "hall", label: "Hall", detail: "Wide space" }
 ];
 
-function GainSlider({ label, value, onChange, accent, muted }: { label: string; value: number; onChange: (value: number) => void; accent: string; muted: string }) {
+function GainSlider({ label, value, onChange, accent, muted, styles }: { label: string; value: number; onChange: (value: number) => void; accent: string; muted: string; styles: ReturnType<typeof makeStyles> }) {
   const width = useRef(1);
   const update = (x: number) => onChange(Math.round((Math.max(0, Math.min(width.current, x)) / width.current * 24 - 12) * 10) / 10);
   const responder = useMemo(() => PanResponder.create({
@@ -42,8 +42,8 @@ function GainSlider({ label, value, onChange, accent, muted }: { label: string; 
     <View onLayout={(event) => { width.current = event.nativeEvent.layout.width; }} {...responder.panHandlers} style={styles.sliderTouch}>
       <View style={[styles.sliderTrack, { backgroundColor: muted }]} />
       <View style={[styles.sliderZero, { left: "50%" }]} />
-      <View style={[styles.sliderFill, { width: Math.abs(value) / 12 * 50 + "%", left: value < 0 ? 50 - Math.abs(value) / 12 * 50 + "%" : "50%", backgroundColor: accent }]} />
-      <View style={[styles.sliderThumb, { left: (value + 12) / 24 * 100 + "%", borderColor: accent }]} />
+      <View style={[styles.sliderFill, { width: `${Math.abs(value) / 12 * 50}%`, left: value < 0 ? `${50 - Math.abs(value) / 12 * 50}%` : "50%", backgroundColor: accent }]} />
+      <View style={[styles.sliderThumb, { left: `${(value + 12) / 24 * 100}%`, borderColor: accent }]} />
     </View>
     <Text style={styles.bandHint}>{BANDS.find((band) => band.label === label)?.detail}</Text>
   </View>;
@@ -64,7 +64,7 @@ export default function AudioSettingsScreen() {
   const setReverbPreset = usePreferencesStore((state) => state.setReverbPreset);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const localPlayback = currentTrack?.source === "local";
-  const balanceWidth = useRef(1);
+  const streamingPlayback = currentTrack?.source === "youtube_music";
   const [balanceRailWidth, setBalanceRailWidth] = useState(1);
   const setBalanceFromX = (x: number) => setSpatialBalance(Math.max(-1, Math.min(1, (x / balanceRailWidth) * 2 - 1)));
   const balanceResponder = useMemo(() => PanResponder.create({
@@ -103,13 +103,13 @@ export default function AudioSettingsScreen() {
         </View>
         <View style={stylesForScreen.presetRow}>{PRESETS.map((preset) => <Pressable key={preset.label} onPress={() => applyPreset(preset.values)} style={stylesForScreen.presetChip}><Text style={stylesForScreen.presetText}>{preset.label}</Text></Pressable>)}</View>
         <View style={[stylesForScreen.bandGrid, !equalizerEnabled && { opacity: 0.42 }]} pointerEvents={equalizerEnabled ? "auto" : "none"}>
-          {BANDS.map((band, index) => <GainSlider key={band.label} label={band.label} value={equalizerBands[index] ?? 0} onChange={(value) => setEqualizerBand(index, value)} accent={colors.accent} muted="#38383E" />)}
+          {BANDS.map((band, index) => <GainSlider key={band.label} label={band.label} value={equalizerBands[index] ?? 0} onChange={(value) => setEqualizerBand(index, value)} accent={colors.accent} muted="#38383E" styles={stylesForScreen} />)}
         </View>
         <View style={stylesForScreen.cardFooter}>
           <Text style={stylesForScreen.smallNote}>{equalizerEnabled ? "EQUALIZER ON" : "EQUALIZER OFF"} · ±12 dB</Text>
           <Pressable onPress={resetEqualizer}><Text style={stylesForScreen.reset}>Reset</Text></Pressable>
         </View>
-        {!localPlayback ? <Text style={stylesForScreen.sourceNote}>Equalizer processing currently applies to imported local audio. Streaming-source processing is not exposed by the current playback engine.</Text> : <Text style={stylesForScreen.sourceNote}>Live processing is active for this imported local track.</Text>}
+        {streamingPlayback ? <Text style={stylesForScreen.sourceNote}>Live processing is routed through the native Audio Lab engine for this YouTube Music stream.</Text> : localPlayback ? <Text style={stylesForScreen.sourceNote}>Live processing is active for this imported local track.</Text> : <Text style={stylesForScreen.sourceNote}>Your EQ settings are saved and will apply to the next supported track.</Text>}
       </View>
 
       <View style={stylesForScreen.featureCard}>
@@ -122,12 +122,12 @@ export default function AudioSettingsScreen() {
         <View style={stylesForScreen.reverbGrid}>{REVERB_OPTIONS.map((option) => <Pressable key={option.value} onPress={() => setReverbPreset(option.value)} style={[stylesForScreen.reverbOption, reverbPreset === option.value && stylesForScreen.reverbActive]}><Text style={[stylesForScreen.reverbTitle, reverbPreset === option.value && stylesForScreen.reverbTitleActive]}>{option.label}</Text><Text style={stylesForScreen.reverbDetail}>{option.detail}</Text></Pressable>)}</View>
         <View style={stylesForScreen.separator} />
         <View style={stylesForScreen.balanceHeading}><View style={{ flex: 1 }}><Text style={stylesForScreen.sectionLabel}>STEREO BALANCE</Text><Text style={stylesForScreen.cardSub}>Shift the mix between left and right.</Text></View><Text style={stylesForScreen.balanceValue}>{balanceLabel}</Text></View>
-        <View style={stylesForScreen.balanceTouch} onLayout={(event) => { balanceRailWidth.current = event.nativeEvent.layout.width; setBalanceRailWidth(event.nativeEvent.layout.width); }} {...balanceResponder.panHandlers}>
-          <View style={stylesForScreen.balanceRail}><View style={stylesForScreen.balanceCenter} /><View style={[stylesForScreen.balanceThumb, { left: ((spatialBalance + 1) / 2) * 100 + "%" }]} /></View>
+        <View style={stylesForScreen.balanceTouch} onLayout={(event) => { setBalanceRailWidth(Math.max(1, event.nativeEvent.layout.width)); }} {...balanceResponder.panHandlers}>
+          <View style={stylesForScreen.balanceRail}><View style={stylesForScreen.balanceCenter} /><View style={[stylesForScreen.balanceThumb, { left: `${((spatialBalance + 1) / 2) * 100}%` }]} /></View>
         </View>
         <View style={stylesForScreen.balanceLabels}><Text>LEFT</Text><Text>CENTER</Text><Text>RIGHT</Text></View>
         <Pressable style={stylesForScreen.resetBalance} onPress={() => setSpatialBalance(0)}><Text style={stylesForScreen.reset}>Reset balance</Text></Pressable>
-        <Text style={stylesForScreen.sourceNote}>{localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply to imported local audio. Streaming playback does not currently expose an effects graph."}</Text>
+        <Text style={stylesForScreen.sourceNote}>{streamingPlayback ? "Reverb and stereo balance are processed live on this YouTube Music stream." : localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply when a supported track is playing."}</Text>
       </View>
 
       <View style={stylesForScreen.featureCard}>
