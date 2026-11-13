@@ -199,6 +199,13 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (requestId !== playbackRequestSequence.current) return;
         player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
         player.play();
+        // Warm the next playlist stream while this song is already playing.
+        // Selecting it later can then reuse the in-memory URL cache.
+        const nextTrack = queue.slice(Math.max(0, (queueIndex ?? queue.findIndex((item) => item.id === track.id)) + 1))
+          .find((item) => isExternalTrack(item));
+        if (nextTrack) {
+          void resolveYouTubeMusicAudio(nextTrack).catch(() => undefined);
+        }
         // Keep the loading state until Expo Audio reports actual playback/buffering status.
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
         return;
