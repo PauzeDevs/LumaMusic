@@ -17,12 +17,12 @@ export type LumaLibraryBackup = {
 type DriveFile = { id: string; name: string; modifiedTime?: string };
 type DriveListResponse = { files?: DriveFile[] };
 
-function configureGoogleSignIn() {
+export function configureGoogleDriveSignIn() {
   GoogleSignin.configure({ scopes: [DRIVE_SCOPE] });
 }
 
 async function accessToken(): Promise<string> {
-  configureGoogleSignIn();
+  configureGoogleDriveSignIn();
   const tokens = await GoogleSignin.getTokens();
   if (!tokens.accessToken) throw new Error("Google did not provide a Drive access token. Reconnect your Google account.");
   return tokens.accessToken;
