@@ -49,7 +49,7 @@ export default function NowPlayingScreen() {
     return () => pulse.stop();
   }, [isPlaying, motionStyle, animationIntensity, artworkScale]);
   const accentTheme = usePreferencesStore((s) => s.accentTheme);
-  const accentColor = { red: "#F05A68", violet: "#B69BFF", blue: "#72B7F4", green: "#8DD6B5" }[accentTheme];
+  const accentColor = colors.accent;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
@@ -97,7 +97,7 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <BlurView tint={blurTint} intensity={32} style={styles.ambientBlur} />
+      <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 44 : surfaceStyle === "frosted" ? 72 : surfaceStyle === "clear" ? 88 : 0} style={styles.ambientBlur} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
         <View pointerEvents="none" style={styles.headerCopy}><Text style={styles.overline}>PLAYING</Text><Text style={styles.headerTitle}>LumaMusic</Text></View>
