@@ -28,6 +28,8 @@ export default function NowPlayingScreen() {
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const queue = usePlayerStore((s) => s.queue);
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
+  const accentTheme = usePreferencesStore((s) => s.accentTheme);
+  const accentColor = { red: "#F05A68", violet: "#B69BFF", blue: "#72B7F4", green: "#8DD6B5" }[accentTheme];
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
   const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
@@ -96,8 +98,8 @@ export default function NowPlayingScreen() {
         </View>
         <View style={styles.progressArea}>
             <View ref={progressRef} style={[styles.progressTrack, progressBarStyle === "classic" && styles.progressTrackClassic]} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
-              <View style={[styles.progressFill, progressBarStyle === "classic" && styles.progressFillClassic, { width: `${progress}%` }]} />
-              <View style={[styles.progressThumb, progressBarStyle === "classic" && styles.progressThumbClassic, { left: `${progress}%` }]} />
+              <View style={[styles.progressFill, progressBarStyle === "classic" && styles.progressFillClassic, { width: `${progress}%`, backgroundColor: accentColor }]} />
+              <View style={[styles.progressThumb, progressBarStyle === "classic" && styles.progressThumbClassic, { left: `${progress}%`, borderColor: accentColor }]} />
             </View>
             <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
         </View>
