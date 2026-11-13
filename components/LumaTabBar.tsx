@@ -35,8 +35,9 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
       const routeIndex = state.routes.findIndex((route) => route.name === tab.name);
       const focused = state.index === routeIndex;
       return <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={styles.tab}>
-        <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.accent : colors.subtle} />
-        <Text style={[styles.label, { color: focused ? colors.accent : colors.subtle }]}>{tab.label}</Text>
+        <View style={[styles.iconWrap, focused && { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)" }]}>
+          <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={23} color={focused ? colors.text : colors.subtle} />
+        </View>
       </Pressable>;
     })}</View>
   </View>;
@@ -48,5 +49,5 @@ const styles = StyleSheet.create({
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }, miniCopy: { flex: 1, gap: 3 },
   miniTitle: { fontSize: 12, fontWeight: "700" }, miniArtist: { fontSize: 10 }, playButton: { padding: 8 },
   progressTrack: { position: "absolute", bottom: 0, left: 0, right: 0, height: 2 }, progressFill: { height: 2 },
-  tabs: { flexDirection: "row", justifyContent: "space-around", paddingTop: 4 }, tab: { alignItems: "center", gap: 4, minWidth: 58 }, label: { fontSize: 10, fontWeight: "600" }
+  tabs: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingTop: 2, paddingBottom: 1 }, tab: { flex: 1, alignItems: "center", justifyContent: "center" }, iconWrap: { width: 58, height: 42, borderRadius: 22, alignItems: "center", justifyContent: "center" }
 });
