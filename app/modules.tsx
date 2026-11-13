@@ -5,7 +5,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassSurface } from "../components/GlassSurface";
 import { useCustomizationStore } from "../store/customization";
-import { usePreferencesStore, type AccentTheme, type SurfaceStyle } from "../store/preferences";
+import { usePreferencesStore, type AccentTheme, type PlayerStyle, type SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
 
 const accents: { id: AccentTheme; label: string; color: string }[] = [
@@ -17,6 +17,11 @@ const accents: { id: AccentTheme; label: string; color: string }[] = [
 const surfaces: { id: SurfaceStyle; label: string }[] = [
   { id: "liquid", label: "Liquid glass" }, { id: "frosted", label: "Frosted" },
   { id: "clear", label: "Clear glass" }, { id: "matte", label: "Dark matte" }
+];
+const playerStyles: { id: PlayerStyle; label: string; detail: string; icon: string }[] = [
+  { id: "standard", label: "Standard", detail: "Clean artwork and controls", icon: "albums-outline" },
+  { id: "vinyl", label: "Vinyl", detail: "Round record-inspired artwork", icon: "disc-outline" },
+  { id: "poster", label: "Poster", detail: "Tall editorial artwork", icon: "images-outline" }
 ];
 const catalog = [
   { id: "monochrome", name: "Monochrome", kind: "Appearance", detail: "A restrained black-and-white look", icon: "contrast-outline", accent: "mono" as AccentTheme, surface: "matte" as SurfaceStyle },
@@ -40,21 +45,24 @@ export default function ModulesScreen() {
   const deleteLook = useCustomizationStore((s) => s.deleteLook);
   const setAccent = usePreferencesStore((s) => s.setAccentTheme);
   const setSurface = usePreferencesStore((s) => s.setSurfaceStyle);
+  const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
   const activeAccent = usePreferencesStore((s) => s.accentTheme);
   const activeSurface = usePreferencesStore((s) => s.surfaceStyle);
+  const activePlayerStyle = usePreferencesStore((s) => s.playerStyle);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [lookName, setLookName] = useState("");
   const [lookAccent, setLookAccent] = useState<AccentTheme>("red");
   const [lookSurface, setLookSurface] = useState<SurfaceStyle>("liquid");
+  const [lookPlayerStyle, setLookPlayerStyle] = useState<PlayerStyle>("standard");
 
-  const applyLook = (accent: AccentTheme, surface: SurfaceStyle) => {
-    setAccent(accent); setSurface(surface);
+  const applyLook = (accent: AccentTheme, surface: SurfaceStyle, playerStyle: PlayerStyle = "standard") => {
+    setAccent(accent); setSurface(surface); setPlayerStyle(playerStyle);
   };
   const createLook = () => {
     const name = lookName.trim();
     if (!name) { Alert.alert("Give your look a name", "Add a name before saving your design."); return; }
-    saveLook({ id: "look-" + Date.now().toString(36), name, accent: lookAccent, surface: lookSurface });
+    saveLook({ id: "look-" + Date.now().toString(36), name, accent: lookAccent, surface: lookSurface, playerStyle: lookPlayerStyle });
     setLookName(""); setBuilderOpen(false);
   };
 
@@ -121,8 +129,8 @@ export default function ModulesScreen() {
         <Pressable onPress={() => setBuilderOpen(true)} style={styles.primaryButton}><Text style={styles.primaryText}>Open look designer</Text></Pressable>
       </GlassSurface> : customLooks.map((look) => <GlassSurface key={look.id} style={styles.moduleCard} contentStyle={styles.moduleContent}>
         <View style={[styles.lookSwatch, { backgroundColor: accents.find((a) => a.id === look.accent)?.color }]} />
-        <View style={{ flex: 1 }}><Text style={styles.moduleName}>{look.name}</Text><Text style={styles.moduleMeta}>{accents.find((a) => a.id === look.accent)?.label} · {surfaces.find((s) => s.id === look.surface)?.label}</Text></View>
-        <Pressable onPress={() => applyLook(look.accent, look.surface)} style={[styles.action, activeAccent === look.accent && activeSurface === look.surface && styles.actionInstalled]}><Text style={[styles.actionText, activeAccent === look.accent && activeSurface === look.surface && styles.actionTextInstalled]}>{activeAccent === look.accent && activeSurface === look.surface ? "Active" : "Apply"}</Text></Pressable>
+        <View style={{ flex: 1 }}><Text style={styles.moduleName}>{look.name}</Text><Text style={styles.moduleMeta}>{accents.find((a) => a.id === look.accent)?.label} · {surfaces.find((s) => s.id === look.surface)?.label} · {playerStyles.find((s) => s.id === (look.playerStyle ?? "standard"))?.label} player</Text></View>
+        <Pressable onPress={() => applyLook(look.accent, look.surface, look.playerStyle ?? "standard")} style={[styles.action, activeAccent === look.accent && activeSurface === look.surface && activePlayerStyle === (look.playerStyle ?? "standard") && styles.actionInstalled]}><Text style={[styles.actionText, activeAccent === look.accent && activeSurface === look.surface && activePlayerStyle === (look.playerStyle ?? "standard") && styles.actionTextInstalled]}>{activeAccent === look.accent && activeSurface === look.surface && activePlayerStyle === (look.playerStyle ?? "standard") ? "Active" : "Apply"}</Text></Pressable>
         <Pressable onPress={() => deleteLook(look.id)} style={styles.removeButton}><Ionicons name="trash-outline" size={16} color={colors.muted} /></Pressable>
       </GlassSurface>)}
       <Pressable onPress={() => router.push("/appearance")} style={styles.moreSettings}><Ionicons name="options-outline" size={17} color={colors.accent} /><Text style={styles.moreSettingsText}>Open all appearance controls</Text><Ionicons name="chevron-forward" size={16} color={colors.subtle} /></Pressable>
@@ -139,6 +147,8 @@ export default function ModulesScreen() {
         <View style={styles.swatchGrid}>{accents.map((accent) => <Pressable key={accent.id} onPress={() => setLookAccent(accent.id)} style={[styles.swatchOption, lookAccent === accent.id && styles.swatchSelected]}><View style={[styles.swatchDot, { backgroundColor: accent.color }]} /><Text style={styles.swatchLabel}>{accent.label}</Text>{lookAccent === accent.id ? <Ionicons name="checkmark-circle" size={15} color={colors.accent} /> : null}</Pressable>)}</View>
         <Text style={styles.fieldLabel}>SURFACE FINISH</Text>
         <View style={styles.surfaceGrid}>{surfaces.map((surface) => <Pressable key={surface.id} onPress={() => setLookSurface(surface.id)} style={[styles.surfaceOption, lookSurface === surface.id && styles.surfaceSelected]}><Text style={styles.surfaceText}>{surface.label}</Text>{lookSurface === surface.id ? <Ionicons name="checkmark-circle" size={15} color={colors.accent} /> : null}</Pressable>)}</View>
+        <Text style={styles.fieldLabel}>PLAYER DESIGN</Text>
+        <View style={styles.playerGrid}>{playerStyles.map((style) => <Pressable key={style.id} onPress={() => setLookPlayerStyle(style.id)} style={[styles.playerOption, lookPlayerStyle === style.id && styles.surfaceSelected]}><Ionicons name={style.icon as never} size={18} color={lookPlayerStyle === style.id ? colors.accent : colors.muted} /><View style={{ flex: 1 }}><Text style={styles.surfaceText}>{style.label}</Text><Text style={styles.playerDetail}>{style.detail}</Text></View>{lookPlayerStyle === style.id ? <Ionicons name="checkmark-circle" size={15} color={colors.accent} /> : null}</Pressable>)}</View>
         <Pressable onPress={createLook} style={styles.saveButton}><Text style={styles.saveText}>Save my look</Text></Pressable>
       </View></View>
     </Modal>
@@ -191,6 +201,7 @@ function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
   surfaceOption: { width: "48%", minHeight: 42, paddingHorizontal: 10, borderRadius: 11, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   surfaceSelected: { borderColor: c.accent, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.03)" },
   surfaceText: { color: c.text, fontSize: 10, fontWeight: "600" },
+  playerGrid: { gap: 7 }, playerOption: { minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", gap: 9 }, playerDetail: { color: c.subtle, fontSize: 8, marginTop: 2 },
   saveButton: { height: 49, borderRadius: 15, backgroundColor: c.accent, alignItems: "center", justifyContent: "center", marginTop: 21 },
   saveText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" }
 }); }
