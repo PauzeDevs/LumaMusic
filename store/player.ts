@@ -62,7 +62,15 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
   setPlaybackRate: (playbackRate) => set({ playbackRate }),
   setSleepTimerMinutes: (sleepTimerMinutes) => set({ sleepTimerMinutes }),
-  removeFromQueue: (trackId) => set((state) => ({ queue: state.queue.filter((track) => track.id !== trackId || track.id === state.currentTrack?.id) })),
+  removeFromQueue: (trackId) => set((state) => {
+    const removedBeforeCurrent = state.queue.slice(0, state.currentQueueIndex)
+      .filter((track) => track.id === trackId && track.id !== state.currentTrack?.id).length;
+    const queue = state.queue.filter((track) => track.id !== trackId || track.id === state.currentTrack?.id);
+    return {
+      queue,
+      currentQueueIndex: Math.max(0, Math.min(queue.length - 1, state.currentQueueIndex - removedBeforeCurrent))
+    };
+  }),
   removeQueueItemAt: (index) => set((state) => {
     if (index < 0 || index >= state.queue.length || index === state.currentQueueIndex) return state;
     return {
