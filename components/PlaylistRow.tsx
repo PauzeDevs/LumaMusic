@@ -9,7 +9,7 @@ export function PlaylistRow({ playlist }: { playlist: MusicPlaylist }) {
   return (
     <Pressable
       style={styles.row}
-      onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : undefined}
+      onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } }) : undefined}
     >
       <Artwork uri={playlist.artwork} size={58} radius={13} />
       <View style={styles.copy}>
