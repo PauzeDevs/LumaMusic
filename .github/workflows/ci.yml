@@ -5,6 +5,7 @@ on:
     branches:
       - Fix/Vision2.0LunaMusic
       - fix/LunaMusic
+      - feature/customizableui
       - main
   pull_request:
     branches:
