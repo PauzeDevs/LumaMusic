@@ -1,0 +1,181 @@
+import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { GoogleSignin, isErrorWithCode, statusCodes } from "@react-native-google-signin/google-signin";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { GlassSurface } from "../components/GlassSurface";
+import { useLibraryStore } from "../store/library";
+import { colors } from "../theme/colors";
+import {
+  disconnectGoogleAccount,
+  downloadLibraryBackup,
+  isLibraryBackup,
+  makeLibraryBackup,
+  uploadLibraryBackup
+} from "../services/googleDrive";
+
+type AccountUser = { name: string; email: string; photo: string | null };
+
+export default function AccountScreen() {
+  const [user, setUser] = useState<AccountUser | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+
+  useEffect(() => {
+    const current = GoogleSignin.getCurrentUser();
+    if (current) {
+      setUser({
+        name: current.user.name ?? "Music listener",
+        email: current.user.email,
+        photo: current.user.photo
+      });
+    }
+  }, []);
+
+  const connectGoogle = async () => {
+    setBusy(true);
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const result = await GoogleSignin.signIn();
+      if (result.type !== "success") return;
+      const current = GoogleSignin.getCurrentUser();
+      if (!current) throw new Error("Google sign-in completed, but the account profile could not be read.");
+      setUser({ name: current.user.name ?? "Music listener", email: current.user.email, photo: current.user.photo });
+      const remote = await downloadLibraryBackup();
+      if (remote && isLibraryBackup(remote)) {
+        Alert.alert(
+          "Cloud library found",
+          "A LumaMusic backup already exists in this Google account. Restore it on this device?",
+          [
+            { text: "Keep this device", style: "cancel", onPress: () => {
+              const local = useLibraryStore.getState();
+              void uploadLibraryBackup(makeLibraryBackup(local)).then(() => setLastSync(new Date().toLocaleString())).catch((error) => Alert.alert("Backup failed", error instanceof Error ? error.message : "Please try again."));
+            } },
+            { text: "Restore cloud library", onPress: () => {
+              useLibraryStore.setState({
+                likedTracks: remote.likedTracks,
+                recentTracks: remote.recentTracks,
+                localTracks: remote.localTracks,
+                playlists: remote.playlists
+              });
+              setLastSync(new Date().toLocaleString());
+            } }
+          ]
+        );
+      } else {
+        await uploadLibraryBackup(makeLibraryBackup(useLibraryStore.getState()));
+        setLastSync(new Date().toLocaleString());
+      }
+    } catch (error) {
+      if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_CANCELLED) return;
+      Alert.alert("Google connection failed", error instanceof Error ? error.message : "Please try again.");
+      setUser(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const syncNow = async () => {
+    setBusy(true);
+    try {
+      const backup = makeLibraryBackup(useLibraryStore.getState());
+      await uploadLibraryBackup(backup);
+      setLastSync(new Date().toLocaleString());
+      Alert.alert("Library backed up", "Your LumaMusic library is safely stored in your hidden Google Drive app data.");
+    } catch (error) {
+      Alert.alert("Sync failed", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disconnect = () => Alert.alert(
+    "Disconnect Google?",
+    "Your cloud backup will remain in Google Drive, but this device will stop syncing until you connect again.",
+    [
+      { text: "Cancel", style: "cancel" },
+      { text: "Disconnect", style: "destructive", onPress: async () => {
+        try { await disconnectGoogleAccount(); setUser(null); setLastSync(null); }
+        catch (error) { Alert.alert("Could not disconnect", error instanceof Error ? error.message : "Please try again."); }
+      } }
+    ]
+  );
+
+  return (
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={22} color={colors.text} /></Pressable>
+        <View><Text style={styles.eyebrow}>YOUR LUMAMUSIC ID</Text><Text style={styles.title}>Account</Text></View>
+      </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.heroIcon}><Ionicons name="cloud-done-outline" size={31} color={colors.accent} /></View>
+        <Text style={styles.heroTitle}>{user ? "Your library travels with you." : "Your music. Your Google Drive."}</Text>
+        <Text style={styles.heroCopy}>Connect Google to back up playlists, liked songs, listening history and preferences. LumaMusic stores this data in Google's hidden appDataFolder, not in a visible Drive folder.</Text>
+        <GlassSurface style={styles.accountCard} contentStyle={styles.accountCardContent}>
+          <View style={styles.googleIcon}><Ionicons name="logo-google" size={21} color={colors.text} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{user?.name ?? "Google account"}</Text>
+            <Text style={styles.cardSub}>{user?.email ?? "Not connected"}</Text>
+          </View>
+          <View style={[styles.status, user && styles.statusOn]}><Text style={styles.statusText}>{user ? "CONNECTED" : "OFFLINE"}</Text></View>
+        </GlassSurface>
+        {user ? (
+          <>
+            <Pressable disabled={busy} onPress={syncNow} style={styles.primaryButton}>
+              {busy ? <ActivityIndicator color="#FFFFFF" /> : <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />}
+              <Text style={styles.primaryText}>{busy ? "Working..." : "Sync library now"}</Text>
+            </Pressable>
+            <Pressable disabled={busy} onPress={disconnect} style={styles.secondaryButton}><Text style={styles.secondaryText}>Disconnect Google</Text></Pressable>
+            <Text style={styles.syncInfo}>{lastSync ? "Last synced: " + lastSync : "Connected. Your backup is ready."}</Text>
+          </>
+        ) : (
+          <Pressable disabled={busy} onPress={connectGoogle} style={styles.primaryButton}>
+            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Ionicons name="logo-google" size={18} color="#FFFFFF" />}
+            <Text style={styles.primaryText}>{busy ? "Connecting..." : "Continue with Google"}</Text>
+          </Pressable>
+        )}
+        <GlassSurface style={styles.infoCard} contentStyle={styles.infoContent}>
+          <View style={styles.infoRow}><Ionicons name="eye-off-outline" size={18} color={colors.accent} /><Text style={styles.infoTitle}>Invisible in Drive</Text></View>
+          <Text style={styles.infoCopy}>The appDataFolder is private to LumaMusic and doesn't appear in the normal Google Drive interface.</Text>
+          <View style={styles.infoRow}><Ionicons name="lock-closed-outline" size={18} color={colors.accent} /><Text style={styles.infoTitle}>Limited permission</Text></View>
+          <Text style={styles.infoCopy}>LumaMusic requests only the drive.appdata scope. It cannot browse your documents, photos or other Drive files.</Text>
+          <View style={styles.infoRow}><Ionicons name="phone-portrait-outline" size={18} color={colors.accent} /><Text style={styles.infoTitle}>Offline still works</Text></View>
+          <Text style={styles.infoCopy}>Your existing on-device library stays available. Sync is currently started manually from this screen.</Text>
+        </GlassSurface>
+        <Text style={styles.footnote}>LumaMusic stores library metadata only. Audio files are never uploaded.</Text>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+  header: { height: 66, flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20 },
+  back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceElevated, alignItems: "center", justifyContent: "center" },
+  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.6 },
+  title: { color: colors.text, fontSize: 25, fontWeight: "800", marginTop: 2 },
+  content: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 36 },
+  heroIcon: { width: 62, height: 62, borderRadius: 22, backgroundColor: "rgba(240,90,104,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 18 },
+  heroTitle: { color: colors.text, fontSize: 27, lineHeight: 33, fontWeight: "800", letterSpacing: -0.8 },
+  heroCopy: { color: colors.muted, fontSize: 12, lineHeight: 19, marginTop: 9, marginBottom: 23 },
+  accountCard: { borderRadius: 19, marginBottom: 17 },
+  accountCardContent: { padding: 15, flexDirection: "row", alignItems: "center", gap: 12 },
+  googleIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
+  cardTitle: { color: colors.text, fontSize: 13, fontWeight: "700" },
+  cardSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  status: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.07)" },
+  statusOn: { backgroundColor: "rgba(90,190,140,0.14)" },
+  statusText: { color: colors.muted, fontSize: 8, fontWeight: "800", letterSpacing: 0.8 },
+  primaryButton: { minHeight: 52, borderRadius: 16, backgroundColor: colors.accentStrong, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 3 },
+  primaryText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  secondaryButton: { minHeight: 48, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  secondaryText: { color: colors.muted, fontSize: 12, fontWeight: "700" },
+  syncInfo: { color: colors.subtle, fontSize: 10, textAlign: "center", marginTop: 3 },
+  infoCard: { borderRadius: 19, marginTop: 22 },
+  infoContent: { padding: 16, gap: 8 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 9, marginTop: 6 },
+  infoTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
+  infoCopy: { color: colors.muted, fontSize: 10, lineHeight: 16, marginLeft: 27, marginBottom: 3 },
+  footnote: { color: colors.subtle, fontSize: 9, lineHeight: 15, textAlign: "center", marginTop: 17 }
+});
