@@ -36,9 +36,9 @@ export default function QueueScreen() {
                 <Text numberOfLines={1} style={styles.artist}>{isCurrent ? "CURRENT TRACK · " : ""}{track.artist}</Text>
               </Pressable>
               <View style={styles.actions}>
-                <Pressable disabled={index === 0} onPress={() => moveQueueTrack(index, index - 1)} style={styles.action}><Ionicons name="chevron-up" size={17} color={index === 0 ? c.subtle : c.muted} /></Pressable>
-                <Pressable disabled={index === queue.length - 1} onPress={() => moveQueueTrack(index, index + 1)} style={styles.action}><Ionicons name="chevron-down" size={17} color={index === queue.length - 1 ? c.subtle : c.muted} /></Pressable>
-                {!isCurrent ? <Pressable onPress={() => removeQueueItemAt(index)} style={styles.action}><Ionicons name="close" size={18} color={c.muted} /></Pressable> : null}
+                <Pressable disabled={index === 0} onPress={() => moveQueueTrack(index, index - 1)} style={styles.action}><Ionicons name="chevron-up" size={17} color={index === 0 ? colors.subtle : colors.muted} /></Pressable>
+                <Pressable disabled={index === queue.length - 1} onPress={() => moveQueueTrack(index, index + 1)} style={styles.action}><Ionicons name="chevron-down" size={17} color={index === queue.length - 1 ? colors.subtle : colors.muted} /></Pressable>
+                {!isCurrent ? <Pressable onPress={() => removeQueueItemAt(index)} style={styles.action}><Ionicons name="close" size={18} color={colors.muted} /></Pressable> : null}
               </View>
             </View>
           );
@@ -61,7 +61,7 @@ return StyleSheet.create({
   caption: { color: c.subtle, fontSize: 11, marginBottom: 14 },
   list: { paddingBottom: 28 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 15, marginBottom: 7, backgroundColor: c.surface },
-  current: { borderWidth: 1, borderColor: "c.border", backgroundColor: "c.surfaceElevated" },
+  current: { borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceElevated },
   trackTitle: { color: c.text, fontSize: 12, fontWeight: "700" },
   artist: { color: c.muted, fontSize: 10, marginTop: 4 },
   actions: { flexDirection: "row", alignItems: "center", gap: 1 },
