@@ -1,193 +1,220 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GlassSurface } from "../components/GlassSurface";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { ThemePalette } from "../theme/colors";
 import { useTheme } from "../theme/useTheme";
 
+const BANDS = [
+  { label: "60", detail: "SUB BASS", frequency: "60 Hz" },
+  { label: "250", detail: "BASS", frequency: "250 Hz" },
+  { label: "1K", detail: "MIDS", frequency: "1 kHz" },
+  { label: "4K", detail: "PRESENCE", frequency: "4 kHz" },
+  { label: "12K", detail: "AIR", frequency: "12 kHz" }
+];
+const PRESETS = [
+  { label: "Flat", values: [0, 0, 0, 0, 0] },
+  { label: "Bass", values: [7, 5, 0, -1, 1] },
+  { label: "Vocal", values: [-2, 0, 4, 3, 1] },
+  { label: "Bright", values: [0, -1, 1, 4, 6] }
+];
 const REVERB_OPTIONS: { value: ReverbPreset; label: string; detail: string }[] = [
-  { value: "off", label: "Off", detail: "Original sound" },
-  { value: "room", label: "Room", detail: "Small, intimate space" },
-  { value: "studio", label: "Studio", detail: "Soft controlled reflections" },
-  { value: "hall", label: "Hall", detail: "Wide, long ambience" }
+  { value: "off", label: "Off", detail: "Original" },
+  { value: "room", label: "Room", detail: "Intimate" },
+  { value: "studio", label: "Studio", detail: "Controlled" },
+  { value: "hall", label: "Hall", detail: "Wide space" }
 ];
 
+function GainSlider({ label, value, onChange, accent, muted }: { label: string; value: number; onChange: (value: number) => void; accent: string; muted: string }) {
+  const width = useRef(1);
+  const update = (x: number) => onChange(Math.round((Math.max(0, Math.min(width.current, x)) / width.current * 24 - 12) * 10) / 10);
+  const responder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => update(event.nativeEvent.locationX),
+    onPanResponderMove: (event) => update(event.nativeEvent.locationX)
+  }), [onChange]);
+  return <View style={styles.bandRow}>
+    <View style={styles.bandLabels}><Text style={styles.bandFrequency}>{label}</Text><Text style={styles.bandValue}>{value > 0 ? "+" : ""}{value.toFixed(1)} dB</Text></View>
+    <View onLayout={(event) => { width.current = event.nativeEvent.layout.width; }} {...responder.panHandlers} style={styles.sliderTouch}>
+      <View style={[styles.sliderTrack, { backgroundColor: muted }]} />
+      <View style={[styles.sliderZero, { left: "50%" }]} />
+      <View style={[styles.sliderFill, { width: Math.abs(value) / 12 * 50 + "%", left: value < 0 ? 50 - Math.abs(value) / 12 * 50 + "%" : "50%", backgroundColor: accent }]} />
+      <View style={[styles.sliderThumb, { left: (value + 12) / 24 * 100 + "%", borderColor: accent }]} />
+    </View>
+    <Text style={styles.bandHint}>{BANDS.find((band) => band.label === label)?.detail}</Text>
+  </View>;
+}
+
 export default function AudioSettingsScreen() {
-  const { colors, blurTint } = useTheme();
-  const styles = createStyles(colors);
-  const progressBarStyle = usePreferencesStore((state) => state.progressBarStyle);
-  const setProgressBarStyle = usePreferencesStore((state) => state.setProgressBarStyle);
+  const { colors } = useTheme();
+  const stylesForScreen = useMemo(() => makeStyles(colors), [colors]);
+  const { width } = useWindowDimensions();
+  const equalizerEnabled = usePreferencesStore((state) => state.equalizerEnabled);
+  const equalizerBands = usePreferencesStore((state) => state.equalizerBands);
+  const setEqualizerEnabled = usePreferencesStore((state) => state.setEqualizerEnabled);
+  const setEqualizerBand = usePreferencesStore((state) => state.setEqualizerBand);
+  const resetEqualizer = usePreferencesStore((state) => state.resetEqualizer);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const setSpatialBalance = usePreferencesStore((state) => state.setSpatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
   const setReverbPreset = usePreferencesStore((state) => state.setReverbPreset);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const localPlayback = currentTrack?.source === "local";
-  const railWidth = useRef(1);
-  const startX = useRef(0);
-  const [balanceWidth, setBalanceWidth] = useState(1);
-  const setBalanceFromX = (x: number) => setSpatialBalance(Math.max(-1, Math.min(1, (x / balanceWidth) * 2 - 1)));
-  const panResponder = useMemo(() => PanResponder.create({
+  const balanceWidth = useRef(1);
+  const [balanceRailWidth, setBalanceRailWidth] = useState(1);
+  const setBalanceFromX = (x: number) => setSpatialBalance(Math.max(-1, Math.min(1, (x / balanceRailWidth) * 2 - 1)));
+  const balanceResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (event) => {
-      startX.current = event.nativeEvent.locationX;
-      setBalanceFromX(startX.current);
-    },
-    onPanResponderMove: (_event, gesture) => setBalanceFromX(startX.current + gesture.dx)
-  }), [balanceWidth, setSpatialBalance]);
+    onPanResponderGrant: (event) => setBalanceFromX(event.nativeEvent.locationX),
+    onPanResponderMove: (event) => setBalanceFromX(event.nativeEvent.locationX)
+  }), [balanceRailWidth]);
   const balancePercent = Math.round(Math.abs(spatialBalance) * 100);
-  const balanceLabel = spatialBalance < -0.015 ? "Left " + balancePercent + "%" : spatialBalance > 0.015 ? "Right " + balancePercent + "%" : "Centered";
+  const balanceLabel = spatialBalance < -0.015 ? "LEFT " + balancePercent + "%" : spatialBalance > 0.015 ? "RIGHT " + balancePercent + "%" : "CENTRED";
+  const dots = Array.from({ length: Math.ceil(width / 28) * 26 }, (_, index) => ({ left: (index % Math.ceil(width / 28)) * 28 + 7, top: Math.floor(index / Math.ceil(width / 28)) * 28 + 7 }));
 
-  return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={22} color={colors.text} /></Pressable>
-        <View><Text style={styles.eyebrow}>PERSONALISE YOUR SOUND</Text><Text style={styles.title}>Audio settings</Text></View>
-      </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.sectionTitle}>Playback appearance</Text>
-        <Text style={styles.sectionCopy}>Choose how the progress bar looks while LumaMusic controls playback.</Text>
-        <View style={styles.choiceRow}>
-          <Pressable onPress={() => setProgressBarStyle("apple")} style={styles.choicePressable}>
-            <GlassSurface style={[styles.choice, progressBarStyle === "apple" && styles.choiceActive]} contentStyle={styles.choiceContent}>
-              <View style={styles.previewTrack}><View style={styles.previewFill} /><View style={styles.previewDot} /></View>
-              <Text style={styles.choiceTitle}>Apple Music</Text>
-              <Text style={styles.choiceSub}>Slim line and floating thumb</Text>
-              {progressBarStyle === "apple" ? <Ionicons name="checkmark-circle" size={17} color={colors.accent} /> : null}
-            </GlassSurface>
-          </Pressable>
-          <Pressable onPress={() => setProgressBarStyle("classic")} style={styles.choicePressable}>
-            <GlassSurface style={[styles.choice, progressBarStyle === "classic" && styles.choiceActive]} contentStyle={styles.choiceContent}>
-              <View style={styles.previewTrackClassic}><View style={styles.previewFillClassic} /><View style={styles.previewDotClassic} /></View>
-              <Text style={styles.choiceTitle}>Classic</Text>
-              <Text style={styles.choiceSub}>Raised bar with a larger handle</Text>
-              {progressBarStyle === "classic" ? <Ionicons name="checkmark-circle" size={17} color={colors.accent} /> : null}
-            </GlassSurface>
-          </Pressable>
-          <Pressable onPress={() => setProgressBarStyle("waveform")} style={styles.choicePressable}>
-            <GlassSurface style={[styles.choice, progressBarStyle === "waveform" && styles.choiceActive]} contentStyle={styles.choiceContent}>
-              <View style={styles.previewWaveform}>
-                {[5, 9, 13, 7, 16, 11, 6, 14, 9, 17, 8, 12, 6, 15, 10, 7, 14, 9, 16, 6, 12, 8, 15, 10].map((height, index) => (
-                  <View key={index} style={[styles.previewWaveBar, { height, backgroundColor: index < 11 ? colors.accent : colors.subtle }]} />
-                ))}
-              </View>
-              <Text style={styles.choiceTitle}>Waveform</Text>
-              <Text style={styles.choiceSub}>Animated-style waveform timeline</Text>
-              {progressBarStyle === "waveform" ? <Ionicons name="checkmark-circle" size={17} color={colors.accent} /> : null}
-            </GlassSurface>
+  const applyPreset = (values: number[]) => values.forEach((value, index) => setEqualizerBand(index, value));
+
+  return <SafeAreaView style={stylesForScreen.safe} edges={["top", "bottom"]}>
+    <View pointerEvents="none" style={stylesForScreen.dotLayer}>{dots.map((dot, index) => <View key={index} style={[stylesForScreen.dot, { left: dot.left, top: dot.top }]} />)}</View>
+    <View style={stylesForScreen.header}>
+      <Pressable onPress={() => router.back()} style={stylesForScreen.back}><Ionicons name="chevron-back" size={23} color="#FFFFFF" /></Pressable>
+      <View style={{ flex: 1 }}><Text style={stylesForScreen.eyebrow}>LUMAMUSIC · SOUND DESIGN</Text><Text style={stylesForScreen.title}>Audio Lab</Text></View>
+      <View style={stylesForScreen.headerMark}><Ionicons name="options-outline" size={21} color="#FFFFFF" /></View>
+    </View>
+    <ScrollView contentContainerStyle={stylesForScreen.content} showsVerticalScrollIndicator={false}>
+      <Text style={stylesForScreen.hero}>Make every{ "\n" }frequency yours.</Text>
+      <Text style={stylesForScreen.intro}>Shape the sound, tune the space, and keep your settings saved on this device.</Text>
+
+      <View style={stylesForScreen.featureCard}>
+        <View style={stylesForScreen.cardHeader}>
+          <View style={stylesForScreen.cardIcon}><Ionicons name="options" size={21} color={colors.accent} /></View>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>01 · TONE CONTROL</Text><Text style={stylesForScreen.cardTitle}>Equalizer</Text></View>
+          <Pressable onPress={() => setEqualizerEnabled(!equalizerEnabled)} style={[stylesForScreen.toggle, equalizerEnabled && stylesForScreen.toggleOn]}>
+            <View style={[stylesForScreen.toggleDot, equalizerEnabled && stylesForScreen.toggleDotOn]} />
           </Pressable>
         </View>
+        <View style={stylesForScreen.eqArtwork}>
+          {[18, 35, 24, 46, 30, 52, 38, 25, 43, 34, 49, 28, 40, 20, 33, 46, 26, 39, 18].map((height, index) => <View key={index} style={[stylesForScreen.eqArtBar, { height, backgroundColor: index % 3 === 0 ? colors.accent : "#66666D" }]} />)}
+        </View>
+        <View style={stylesForScreen.presetRow}>{PRESETS.map((preset) => <Pressable key={preset.label} onPress={() => applyPreset(preset.values)} style={stylesForScreen.presetChip}><Text style={stylesForScreen.presetText}>{preset.label}</Text></Pressable>)}</View>
+        <View style={[stylesForScreen.bandGrid, !equalizerEnabled && { opacity: 0.42 }]} pointerEvents={equalizerEnabled ? "auto" : "none"}>
+          {BANDS.map((band, index) => <GainSlider key={band.label} label={band.label} value={equalizerBands[index] ?? 0} onChange={(value) => setEqualizerBand(index, value)} accent={colors.accent} muted="#38383E" />)}
+        </View>
+        <View style={stylesForScreen.cardFooter}>
+          <Text style={stylesForScreen.smallNote}>{equalizerEnabled ? "EQUALIZER ON" : "EQUALIZER OFF"} · ±12 dB</Text>
+          <Pressable onPress={resetEqualizer}><Text style={stylesForScreen.reset}>Reset</Text></Pressable>
+        </View>
+        {!localPlayback ? <Text style={stylesForScreen.sourceNote}>Equalizer processing currently applies to imported local audio. Streaming-source processing is not exposed by the current playback engine.</Text> : <Text style={stylesForScreen.sourceNote}>Live processing is active for this imported local track.</Text>}
+      </View>
 
-        <Text style={[styles.sectionTitle, styles.effectsHeading]}>Spatial balance</Text>
-        <Text style={styles.sectionCopy}>Move the stereo image toward the left or right channel. Changes apply live to imported audio playing inside LumaMusic.</Text>
-        <GlassSurface style={styles.effectCard} contentStyle={styles.effectContent}>
-          <View style={styles.effectTop}>
-            <View style={styles.effectIcon}><Ionicons name="headset-outline" size={19} color={colors.accent} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.effectTitle}>Left / right balance</Text><Text style={styles.effectSub}>Stereo panning · Live processing</Text></View>
-            <Text style={styles.valueText}>{balanceLabel}</Text>
-          </View>
-          <View
-            style={styles.balanceTouch}
-            onLayout={(event) => { railWidth.current = event.nativeEvent.layout.width; setBalanceWidth(event.nativeEvent.layout.width); }}
-            {...panResponder.panHandlers}
-            accessibilityRole="adjustable"
-            accessibilityLabel="Stereo balance"
-            accessibilityValue={{ min: -100, max: 100, now: Math.round(spatialBalance * 100) }}
-          >
-            <View style={styles.balanceRail}>
-              <View style={styles.balanceCenter} />
-              <View style={[styles.balanceThumb, { left: (((spatialBalance + 1) / 2) * 100).toFixed(2) + "%" as `${number}%` }]} />
-            </View>
-          </View>
-          <View style={styles.balanceLabels}><Text style={styles.balanceLabel}>LEFT</Text><Text style={styles.balanceLabel}>CENTER</Text><Text style={styles.balanceLabel}>RIGHT</Text></View>
-          <Pressable style={styles.resetButton} onPress={() => setSpatialBalance(0)}><Text style={styles.resetText}>Reset balance</Text></Pressable>
-        </GlassSurface>
+      <View style={stylesForScreen.featureCard}>
+        <View style={stylesForScreen.cardHeader}>
+          <View style={stylesForScreen.cardIcon}><Ionicons name="water-outline" size={21} color={colors.accent} /></View>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>02 · SPACE & DEPTH</Text><Text style={stylesForScreen.cardTitle}>Audio effects</Text></View>
+          <View style={stylesForScreen.activePill}><Text style={stylesForScreen.activePillText}>{reverbPreset.toUpperCase()}</Text></View>
+        </View>
+        <Text style={stylesForScreen.sectionLabel}>REVERB PRESET</Text>
+        <View style={stylesForScreen.reverbGrid}>{REVERB_OPTIONS.map((option) => <Pressable key={option.value} onPress={() => setReverbPreset(option.value)} style={[stylesForScreen.reverbOption, reverbPreset === option.value && stylesForScreen.reverbActive]}><Text style={[stylesForScreen.reverbTitle, reverbPreset === option.value && stylesForScreen.reverbTitleActive]}>{option.label}</Text><Text style={stylesForScreen.reverbDetail}>{option.detail}</Text></Pressable>)}</View>
+        <View style={stylesForScreen.separator} />
+        <View style={stylesForScreen.balanceHeading}><View style={{ flex: 1 }}><Text style={stylesForScreen.sectionLabel}>STEREO BALANCE</Text><Text style={stylesForScreen.cardSub}>Shift the mix between left and right.</Text></View><Text style={stylesForScreen.balanceValue}>{balanceLabel}</Text></View>
+        <View style={stylesForScreen.balanceTouch} onLayout={(event) => { balanceRailWidth.current = event.nativeEvent.layout.width; setBalanceRailWidth(event.nativeEvent.layout.width); }} {...balanceResponder.panHandlers}>
+          <View style={stylesForScreen.balanceRail}><View style={stylesForScreen.balanceCenter} /><View style={[stylesForScreen.balanceThumb, { left: ((spatialBalance + 1) / 2) * 100 + "%" }]} /></View>
+        </View>
+        <View style={stylesForScreen.balanceLabels}><Text>LEFT</Text><Text>CENTER</Text><Text>RIGHT</Text></View>
+        <Pressable style={stylesForScreen.resetBalance} onPress={() => setSpatialBalance(0)}><Text style={stylesForScreen.reset}>Reset balance</Text></Pressable>
+        <Text style={stylesForScreen.sourceNote}>{localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply to imported local audio. Streaming playback does not currently expose an effects graph."}</Text>
+      </View>
 
-        <Text style={[styles.sectionTitle, styles.effectsHeading]}>Reverb</Text>
-        <Text style={styles.sectionCopy}>Add generated room reflections to your audio. Each preset changes the decay and wet signal in the native audio graph.</Text>
-        <GlassSurface style={styles.effectCard} contentStyle={styles.effectContent}>
-          <View style={styles.effectTop}>
-            <View style={styles.effectIcon}><Ionicons name="water-outline" size={19} color={colors.accent} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.effectTitle}>Space and ambience</Text><Text style={styles.effectSub}>Convolution reverb · Live processing</Text></View>
-            <View style={styles.activePill}><Text style={styles.activePillText}>{reverbPreset.toUpperCase()}</Text></View>
-          </View>
-          <View style={styles.reverbOptions}>
-            {REVERB_OPTIONS.map((option) => (
-              <Pressable key={option.value} onPress={() => setReverbPreset(option.value)} style={[styles.reverbChip, reverbPreset === option.value && styles.reverbChipActive]}>
-                <Text style={[styles.reverbText, reverbPreset === option.value && styles.reverbTextActive]}>{option.label}</Text>
-                <Text style={styles.reverbDetail}>{option.detail}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </GlassSurface>
+      <View style={stylesForScreen.featureCard}>
+        <View style={stylesForScreen.cardHeader}>
+          <View style={stylesForScreen.cardIcon}><Ionicons name="swap-horizontal-outline" size={21} color="#85858D" /></View>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>03 · TRACK TRANSITIONS</Text><Text style={stylesForScreen.cardTitle}>Crossfade</Text></View>
+          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>IN DEVELOPMENT</Text></View>
+        </View>
+        <Text style={stylesForScreen.cardSub}>Seamless transitions between tracks need a dual-stream playback path. The current player uses a single active stream, so this control is not exposed as a fake switch.</Text>
+      </View>
 
-        <GlassSurface style={styles.noteCard} contentStyle={styles.noteContent}>
-          <Ionicons name="information-circle-outline" size={17} color={colors.muted} />
-          <Text style={styles.noteText}>
-            {localPlayback
-              ? "Effects are active on this imported local track. Your settings are saved on this device."
-              : "Your effects settings are saved on this device. Processing options apply to imported local audio."}
-          </Text>
-        </GlassSurface>
-      </ScrollView>
-    </SafeAreaView>
-  );
+      <View style={stylesForScreen.featureCard}>
+        <View style={stylesForScreen.cardHeader}>
+          <View style={stylesForScreen.cardIcon}><Ionicons name="disc-outline" size={21} color="#85858D" /></View>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>04 · SOURCE QUALITY</Text><Text style={stylesForScreen.cardTitle}>Lossless audio</Text></View>
+          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>SOURCE DEPENDENT</Text></View>
+        </View>
+        <Text style={stylesForScreen.cardSub}>Audio quality is determined by the provider's stream. LumaMusic won't label a stream lossless unless the source actually supplies lossless audio.</Text>
+      </View>
+
+      <View style={stylesForScreen.footer}><Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} /><Text style={stylesForScreen.footerText}>Your Audio Lab preferences are saved automatically.</Text></View>
+    </ScrollView>
+  </SafeAreaView>;
 }
 
-function createStyles(colors: ThemePalette) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 15 },
-  back: { width: 36, height: 38, alignItems: "center", justifyContent: "center" },
-  eyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
-  title: { color: colors.text, fontSize: 25, fontWeight: "800", marginTop: 3 },
-  content: { padding: 20, paddingTop: 4, paddingBottom: 36 },
-  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "800" },
-  sectionCopy: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
-  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
-  choicePressable: { width: "48%", flexGrow: 1, flexBasis: "46%" },
-  choice: { flex: 1, minHeight: 128, borderRadius: 17 },
-  choiceContent: { flex: 1, padding: 13, justifyContent: "space-between" },
-  choiceActive: { borderColor: "rgba(255,255,255,0.34)", backgroundColor: "rgba(255,255,255,0.07)" },
-  previewWaveform: { height: 28, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4, marginBottom: 8 },
-  previewWaveBar: { width: 3, borderRadius: 3 },
-  previewTrack: { height: 4, borderRadius: 4, backgroundColor: "#343642", marginTop: 8, marginBottom: 10, position: "relative" },
-  previewFill: { width: "48%", height: 4, borderRadius: 4, backgroundColor: colors.accent },
-  previewDot: { position: "absolute", width: 10, height: 10, borderRadius: 5, left: "48%", top: -3, marginLeft: -5, backgroundColor: colors.text },
-  previewTrackClassic: { height: 8, borderRadius: 8, backgroundColor: "#343642", marginTop: 6, marginBottom: 8, position: "relative" },
-  previewFillClassic: { width: "48%", height: 8, borderRadius: 8, backgroundColor: colors.accent },
-  previewDotClassic: { position: "absolute", width: 14, height: 14, borderRadius: 7, left: "48%", top: -3, marginLeft: -7, backgroundColor: colors.text, borderWidth: 2, borderColor: colors.accent },
-  choiceTitle: { color: colors.text, fontSize: 12, fontWeight: "800" },
-  choiceSub: { color: colors.muted, fontSize: 9, lineHeight: 13, marginTop: 3 },
-  effectsHeading: { marginTop: 29 },
-  effectCard: { borderRadius: 17, marginTop: 12 },
-  effectContent: { padding: 15 },
-  effectTop: { flexDirection: "row", alignItems: "center", gap: 10 },
-  effectIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.07)", alignItems: "center", justifyContent: "center" },
-  effectTitle: { color: colors.text, fontSize: 12, fontWeight: "800" },
-  effectSub: { color: colors.muted, fontSize: 10, marginTop: 3 },
-  valueText: { color: colors.accent, fontSize: 9, fontWeight: "800" },
-  balanceTouch: { height: 38, justifyContent: "center", marginTop: 12 },
-  balanceRail: { height: 4, borderRadius: 4, backgroundColor: "#343642", position: "relative" },
-  balanceCenter: { width: 1, height: 15, backgroundColor: colors.muted, position: "absolute", left: "50%", top: -5 },
-  balanceThumb: { width: 15, height: 15, borderRadius: 8, backgroundColor: colors.text, borderWidth: 2, borderColor: colors.accent, position: "absolute", top: -5, marginLeft: -7.5 },
-  balanceLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: 3 },
-  balanceLabel: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 0.8 },
-  resetButton: { alignSelf: "flex-end", paddingVertical: 8, paddingHorizontal: 3, marginTop: 6 },
-  resetText: { color: colors.muted, fontSize: 9, fontWeight: "700" },
-  activePill: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.07)" },
-  activePillText: { color: colors.accent, fontSize: 7, fontWeight: "800", letterSpacing: 0.8 },
-  reverbOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 17 },
-  reverbChip: { minWidth: "47%", flexGrow: 1, paddingHorizontal: 11, paddingVertical: 11, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: colors.border },
-  reverbChipActive: { borderColor: "rgba(255,255,255,0.35)", backgroundColor: "rgba(255,255,255,0.09)" },
-  reverbText: { color: colors.subtle, fontSize: 10, fontWeight: "800" },
-  reverbTextActive: { color: colors.text },
-  reverbDetail: { color: colors.subtle, fontSize: 8, marginTop: 4 },
-  noteCard: { borderRadius: 14, marginTop: 18 },
-  noteContent: { flexDirection: "row", gap: 9, padding: 13 },
-  noteText: { flex: 1, color: colors.muted, fontSize: 9, lineHeight: 15 }
+function makeStyles(colors: ThemePalette) { return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#09090B" },
+  dotLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  dot: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.075)" },
+  header: { flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
+  back: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#202024", alignItems: "center", justifyContent: "center" },
+  eyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.6 },
+  title: { color: "#FFFFFF", fontSize: 27, fontWeight: "900", letterSpacing: -0.8, marginTop: 2 },
+  headerMark: { width: 42, height: 42, borderRadius: 14, backgroundColor: "#202024", alignItems: "center", justifyContent: "center" },
+  content: { paddingHorizontal: 20, paddingTop: 21, paddingBottom: 38 },
+  hero: { color: "#FFFFFF", fontSize: 37, lineHeight: 39, fontWeight: "900", letterSpacing: -1.6 },
+  intro: { color: "#9A9AA2", fontSize: 13, lineHeight: 20, marginTop: 10, marginBottom: 23, maxWidth: 320 },
+  featureCard: { backgroundColor: "#171719", borderRadius: 25, borderWidth: 1, borderColor: "#303035", padding: 18, marginBottom: 15, overflow: "hidden" },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 11 },
+  cardIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: "#252529", alignItems: "center", justifyContent: "center" },
+  cardEyebrow: { color: "#92929A", fontSize: 8, fontWeight: "800", letterSpacing: 1.2 },
+  cardTitle: { color: "#FFFFFF", fontSize: 20, fontWeight: "800", letterSpacing: -0.5, marginTop: 2 },
+  toggle: { width: 45, height: 27, borderRadius: 15, backgroundColor: "#3A3A40", padding: 3, justifyContent: "center" },
+  toggleOn: { backgroundColor: colors.accent },
+  toggleDot: { width: 21, height: 21, borderRadius: 11, backgroundColor: "#FFFFFF" },
+  toggleDotOn: { alignSelf: "flex-end" },
+  eqArtwork: { height: 68, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, backgroundColor: "#101012", borderRadius: 16, marginTop: 17, marginBottom: 15 },
+  eqArtBar: { width: 5, borderRadius: 4 },
+  presetRow: { flexDirection: "row", gap: 7, marginBottom: 15 },
+  presetChip: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: 11, backgroundColor: "#252529", borderWidth: 1, borderColor: "#37373D" },
+  presetText: { color: "#D7D7DC", fontSize: 10, fontWeight: "700" },
+  bandGrid: { gap: 14 },
+  bandRow: { gap: 7 },
+  bandLabels: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  bandFrequency: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+  bandValue: { color: "#BDBDC4", fontSize: 10, fontVariant: ["tabular-nums"] },
+  sliderTouch: { height: 25, justifyContent: "center" },
+  sliderTrack: { height: 4, borderRadius: 3, width: "100%" },
+  sliderZero: { position: "absolute", width: 1, height: 12, backgroundColor: "#8A8A92", top: 6 },
+  sliderFill: { position: "absolute", height: 4, borderRadius: 3 },
+  sliderThumb: { position: "absolute", width: 14, height: 14, borderRadius: 8, marginLeft: -7, backgroundColor: "#FFFFFF", borderWidth: 2, top: 5 },
+  bandHint: { color: "#73737C", fontSize: 7, fontWeight: "800", letterSpacing: 1.1 },
+  cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 15 },
+  smallNote: { color: "#85858D", fontSize: 8, fontWeight: "800", letterSpacing: 1 },
+  reset: { color: colors.accent, fontSize: 10, fontWeight: "800" },
+  sourceNote: { color: "#898991", fontSize: 9, lineHeight: 14, marginTop: 13 },
+  activePill: { paddingHorizontal: 9, paddingVertical: 6, borderRadius: 9, backgroundColor: "rgba(255,255,255,0.08)" },
+  activePillText: { color: colors.accent, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
+  sectionLabel: { color: "#8E8E96", fontSize: 8, fontWeight: "900", letterSpacing: 1.3 },
+  reverbGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 13 },
+  reverbOption: { flexGrow: 1, width: "47%", padding: 12, borderRadius: 13, backgroundColor: "#222226", borderWidth: 1, borderColor: "#35353B" },
+  reverbActive: { borderColor: colors.accent, backgroundColor: "rgba(255,255,255,0.08)" },
+  reverbTitle: { color: "#BDBDC4", fontSize: 11, fontWeight: "800" },
+  reverbTitleActive: { color: "#FFFFFF" },
+  reverbDetail: { color: "#777780", fontSize: 9, marginTop: 4 },
+  separator: { height: 1, backgroundColor: "#303035", marginVertical: 17 },
+  balanceHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cardSub: { color: "#A1A1A9", fontSize: 11, lineHeight: 17, marginTop: 7 },
+  balanceValue: { color: colors.accent, fontSize: 9, fontWeight: "900" },
+  balanceTouch: { height: 34, justifyContent: "center", marginTop: 10 },
+  balanceRail: { height: 4, borderRadius: 3, backgroundColor: "#3A3A40", position: "relative" },
+  balanceCenter: { position: "absolute", left: "50%", top: -5, width: 1, height: 14, backgroundColor: "#A0A0A8" },
+  balanceThumb: { position: "absolute", top: -6, width: 16, height: 16, borderRadius: 9, marginLeft: -8, backgroundColor: "#FFFFFF", borderWidth: 2, borderColor: colors.accent },
+  balanceLabels: { flexDirection: "row", justifyContent: "space-between" },
+  resetBalance: { alignSelf: "flex-end", paddingVertical: 8 },
+  soonPill: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: "#252529" },
+  soonText: { color: "#96969E", fontSize: 7, fontWeight: "900", letterSpacing: 0.6 },
+  footer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16 },
+  footerText: { color: "#92929A", fontSize: 10 }
 }); }
