@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
 import { useLibraryStore } from "../store/library";
+import { useListeningStatsStore } from "../store/listeningStats";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { MusicTrack } from "../types/music";
@@ -121,6 +122,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       playbackPosition: status.currentTime, playbackDuration: status.duration,
       playbackError: status.error ?? null
     });
+    if (currentTrack) useListeningStatsStore.getState().recordProgress(currentTrack, status.currentTime, status.playing);
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus, currentTrack?.id]);
 
   const applyEqualizer = useCallback((enabled: boolean, bands: number[]) => {
@@ -190,7 +192,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [applyEffects, applyEqualizer, setPlaybackError]);
 
   const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string) => {
-    const active = playbackState === "playing" || playbackState === "buffering";
+    const active = playbackState === "playing";
     setPlaybackStatus({
       isPlaying: active,
       isBuffering: playbackState === "buffering",
@@ -199,6 +201,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       playbackError: null
     });
     const track = usePlayerStore.getState().currentTrack;
+    if (track) useListeningStatsStore.getState().recordProgress(track, position, active);
     if (track) {
       void PlaybackNotificationManager.show({
         state: active ? "playing" : "paused",
@@ -232,6 +235,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     disconnectGraph();
     usePlayerStore.getState().setTrack(track, queue, queueIndex);
     useLibraryStore.getState().addRecentTrack(track);
+    useListeningStatsStore.getState().registerPlay(track);
 
     if (isExternalTrack(track)) {
       setLocalSource(null);
