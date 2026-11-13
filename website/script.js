@@ -8,7 +8,7 @@ if(menuButton&&mainNav){
 }
 (()=>{
  const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
- const targets=document.querySelectorAll(".intro-section,.section-top,.feature-card,.feature-disclaimer,.catalogue-copy,.catalogue-panel,.closing-section,.legal-links a,.site-footer");
+ const targets=document.querySelectorAll(".intro-section,.section-top,.feature-item,.feature-disclaimer,.catalogue-copy,.catalogue-panel,.closing-section,.legal-links a,.site-footer");
  targets.forEach((node,index)=>{node.classList.add("js-reveal");node.style.transitionDelay=(index%4)*65+"ms";});
  if(reduce||!("IntersectionObserver" in window)){targets.forEach(node=>node.classList.add("is-visible"));return;}
  const observer=new IntersectionObserver((entries,instance)=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add("is-visible");instance.unobserve(entry.target);}}),{threshold:.1,rootMargin:"0px 0px -35px 0px"});
