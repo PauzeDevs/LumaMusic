@@ -13,6 +13,7 @@ import { router } from "expo-router";
 const settings = [
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
   { icon: "notifications-outline", title: "Notifications", subtitle: "New music and updates" },
+  { icon: "extension-puzzle-outline", title: "Modules", subtitle: "Add features and build your own look" },
   { icon: "color-palette-outline", title: "Appearance", subtitle: "Colours, motion and listening layout" },
   { icon: "musical-notes-outline", title: "Playback", subtitle: "Playback, progress and sound controls" },
   { icon: "shield-checkmark-outline", title: "Privacy", subtitle: "Your data and listening activity" },
@@ -72,6 +73,8 @@ export default function ProfileScreen() {
                 router.push("/account");
               } else if (item.title === "Notifications") {
                 Alert.alert("Notifications", "Push notifications are not enabled in this build. No notification permission has been requested.");
+              } else if (item.title === "Modules") {
+                router.push("/modules");
               } else if (item.title === "Appearance") {
                 router.push("/appearance");
               } else {
