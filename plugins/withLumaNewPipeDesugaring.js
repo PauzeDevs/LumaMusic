@@ -19,7 +19,7 @@ module.exports = function withLumaNewPipeDesugaring(config) {
   return withAppBuildGradle(config, (config) => {
     let gradle = config.modResults.contents;
     if (!gradle.includes("coreLibraryDesugaringEnabled true")) {
-      const match = /compileOptions\\s*\\{/.exec(gradle);
+      const match = /compileOptions\s*\{/.exec(gradle);
       if (match) {
         const open = gradle.indexOf("{", match.index);
         gradle = gradle.slice(0, open + 1) + "\n    coreLibraryDesugaringEnabled true" + gradle.slice(open + 1);
