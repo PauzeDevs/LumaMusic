@@ -126,7 +126,7 @@ export default function LibraryScreen() {
             title: playlist.title,
             subtitle: playlist.subtitle,
             artwork: playlist.artwork,
-            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : undefined
+            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } }) : undefined
           }))} emptyText="No public playlists are available right now." />
         </View></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
