@@ -6,7 +6,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Artwork } from "../../components/Artwork";
+import { PlaylistStack } from "../../components/PlaylistStack";
 import { GlassSurface } from "../../components/GlassSurface";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
@@ -108,28 +108,26 @@ export default function LibraryScreen() {
         </GlassSurface></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} />
-          {localPlaylists.length === 0 ? <Text style={styles.note}>Build your own collections. They stay on this device.</Text> : localPlaylists.map((playlist) => (
-            <Pressable key={playlist.id} style={styles.localPlaylist} onPress={() => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })}>
-              <View style={styles.localPlaylistIcon}><Ionicons name="albums-outline" size={19} color={colors.accent} /></View>
-              <View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>{playlist.name}</Text><Text style={styles.shortcutSub}>{playlist.tracks.length} tracks · On this device</Text></View>
-              <Ionicons name="chevron-forward" size={17} color={colors.muted} />
-            </Pressable>
-          ))}
+          <PlaylistStack items={localPlaylists.map((playlist) => ({
+            id: playlist.id,
+            title: playlist.name,
+            subtitle: playlist.tracks.length + " tracks · On this device",
+            artwork: playlist.tracks[0]?.artwork,
+            onPress: () => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })
+          }))} emptyText="Build your own collections. They stay on this device." />
         </View></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Discover playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
           {playlistsLoading ? <Text style={styles.note}>Finding playlists…</Text> : null}
           {playlistsError ? <Text style={styles.note}>Could not load playlists right now.</Text> : null}
           {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.note}>No public playlists are available right now.</Text> : null}
-          <View style={styles.playlistGrid}>
-            {playlists.map((playlist) => (
-              <Pressable key={playlist.id} style={styles.playlist} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : null}>
-                <View style={styles.playlistArtwork}><Artwork uri={playlist.artwork} size={156} radius={17} /></View>
-                <Text style={styles.playlistTitle}>{playlist.title}</Text>
-                <Text style={styles.playlistSub}>{playlist.subtitle}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <PlaylistStack items={playlists.map((playlist) => ({
+            id: playlist.id,
+            title: playlist.title,
+            subtitle: playlist.subtitle,
+            artwork: playlist.artwork,
+            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : undefined
+          }))} emptyText="No public playlists are available right now." />
         </View></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Liked songs" />
@@ -198,10 +196,5 @@ const styles = StyleSheet.create({
   modalCreate: { paddingHorizontal: 15, paddingVertical: 11, borderRadius: 12, backgroundColor: colors.accent },
   modalCreateText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 28 },
-  playlistGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 18 },
-  playlist: { width: "48%" },
-  playlistArtwork: { marginBottom: 8 },
-  playlistTitle: { color: colors.text, fontSize: 13, fontWeight: "700" },
-  playlistSub: { color: colors.muted, fontSize: 10, marginTop: 3 },
   note: { color: colors.subtle, fontSize: 10, lineHeight: 16 }
 });

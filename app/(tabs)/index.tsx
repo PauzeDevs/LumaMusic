@@ -9,7 +9,7 @@ import { GlassSurface } from "../../components/GlassSurface";
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
-import { Artwork } from "../../components/Artwork";
+import { PlaylistStack } from "../../components/PlaylistStack";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { ScrollReveal } from "../../components/ScrollReveal";
@@ -79,15 +79,13 @@ export default function ListenScreen() {
           {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
           {playlistsError ? <Text style={styles.errorText}>Could not load playlists right now.</Text> : null}
           {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.message}>No public playlists are available right now.</Text> : null}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
-            {playlists.map((playlist) => (
-              <Pressable key={playlist.id} style={styles.playlistCard} onPress={() => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : null}>
-                <Artwork uri={playlist.artwork} size={148} radius={18} />
-                <Text numberOfLines={1} style={styles.cardTitle}>{playlist.title}</Text>
-                <Text numberOfLines={1} style={styles.cardSubtitle}>{playlist.subtitle}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <PlaylistStack items={playlists.map((playlist) => ({
+            id: playlist.id,
+            title: playlist.title,
+            subtitle: playlist.subtitle,
+            artwork: playlist.artwork,
+            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title } }) : undefined
+          }))} emptyText="No featured playlists right now." />
         </View></ScrollReveal>
 
         <ScrollReveal scrollY={scrollY}><View style={styles.section}>
@@ -138,10 +136,6 @@ const styles = StyleSheet.create({
   heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#F0F2F5", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, marginTop: 16 },
   heroButtonText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 30 },
-  horizontal: { gap: 14, paddingRight: 20 },
-  playlistCard: { width: 148 },
-  cardTitle: { color: colors.text, fontSize: 13, fontWeight: "700", marginTop: 9 },
-  cardSubtitle: { color: colors.muted, fontSize: 11, marginTop: 3 },
   message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
   errorCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, gap: 10 },
   errorText: { color: colors.muted, fontSize: 12, paddingVertical: 12 },
