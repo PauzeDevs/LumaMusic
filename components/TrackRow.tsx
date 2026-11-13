@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { MusicTrack } from "../types/music";
 import { colors } from "../theme/colors";
+import { useAccentColor } from "../theme/useAccentColor";
+import { usePreferencesStore } from "../store/preferences";
 import { Artwork } from "./Artwork";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
@@ -11,6 +13,8 @@ import { useAudioEngine } from "../providers/AudioPlayerProvider";
 type Props = { track: MusicTrack; index?: number; showIndex?: boolean; queue?: MusicTrack[]; playlistId?: string };
 
 export function TrackRow({ track, index, showIndex = false, queue, playlistId }: Props) {
+  const accent = useAccentColor();
+  const compactRows = usePreferencesStore((state) => state.compactRows);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const likedTracks = useLibraryStore((state) => state.likedTracks);
   const playlists = useLibraryStore((state) => state.playlists);
@@ -44,8 +48,8 @@ export function TrackRow({ track, index, showIndex = false, queue, playlistId }:
   };
 
   return (
-    <View style={styles.row}>
-      {showIndex ? <Text style={[styles.index, isCurrent && styles.active]}>{String((index ?? 0) + 1).padStart(2, "0")}</Text> : null}
+    <View style={[styles.row, compactRows && styles.compactRow]}>
+      {showIndex ? <Text style={[styles.index, isCurrent && { color: accent }]}>{String((index ?? 0) + 1).padStart(2, "0")}</Text> : null}
       <Pressable onPress={handlePlay} style={styles.main}>
         <Artwork uri={track.artwork} size={52} radius={12} />
         <View style={styles.copy}>
@@ -57,7 +61,7 @@ export function TrackRow({ track, index, showIndex = false, queue, playlistId }:
         <Ionicons name={playlistId ? "remove-circle-outline" : "add-circle-outline"} size={20} color={colors.muted} />
       </Pressable>
       <Pressable hitSlop={10} style={styles.more} onPress={() => toggleLike(track)} accessibilityRole="button" accessibilityLabel={isLiked ? "Unlike track" : "Like track"}>
-        <Ionicons name={isLiked ? "heart" : "heart-outline"} size={19} color={isLiked ? colors.accent : colors.muted} />
+        <Ionicons name={isLiked ? "heart" : "heart-outline"} size={19} color={isLiked ? accent : colors.muted} />
       </Pressable>
       <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={() => setPickerVisible(false)}>
         <View style={styles.modalBackdrop}>
@@ -89,6 +93,7 @@ export function TrackRow({ track, index, showIndex = false, queue, playlistId }:
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8 },
+  compactRow: { paddingVertical: 3 },
   main: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12, minWidth: 0 },
   index: { width: 22, color: colors.subtle, fontSize: 12, fontWeight: "700" },
   copy: { flex: 1, gap: 4, minWidth: 0 },
