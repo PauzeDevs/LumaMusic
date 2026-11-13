@@ -19,7 +19,7 @@ type LrclibRecord = {
 const API = "https://lrclib.net/api";
 const CLIENT_HEADER = "LumaMusic/0.1.0 (https://github.com/PauzeDevs/LumaMusic)";
 const CACHE_TTL = 6 * 60 * 60 * 1000;
-const MISS_TTL = 10 * 60 * 1000;
+const MISS_TTL = 10 * 60 * 1000;\nconst ERROR_TTL = 30 * 1000;
 const cache = new Map<string, { expiresAt: number; value: LyricsState }>();
 const inFlight = new Map<string, Promise<LyricsState>>();
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
@@ -122,7 +122,7 @@ export function getLyrics(track: MusicTrack): Promise<LyricsState> {
   if (pending) return pending;
 
   const request = fetchLyrics(track).then((value) => {
-    cache.set(key, { value, expiresAt: Date.now() + (value.status === "not_found" ? MISS_TTL : CACHE_TTL) });
+    cache.set(key, { value, expiresAt: Date.now() + (value.status === "not_found" ? MISS_TTL : value.status === "error" ? ERROR_TTL : CACHE_TTL) });
     return value;
   }).finally(() => inFlight.delete(key));
   inFlight.set(key, request);
