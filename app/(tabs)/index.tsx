@@ -4,16 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GlassSurface } from "../../components/GlassSurface";
-
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
-import { PlaylistStack } from "../../components/PlaylistStack";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
-import { ScrollReveal } from "../../components/ScrollReveal";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
 import { useListeningStatsStore } from "../../store/listeningStats";
@@ -44,39 +40,47 @@ export default function ListenScreen() {
     queryFn: () => getFeaturedPlaylists(8)
   });
 
-  useEffect(() => setHeroArtworkFailed(false), [tracks[0]?.artwork]);
+  useEffect(() => setHeroArtworkFailed(false), [playlists[0]?.artwork, tracks[0]?.artwork]);
 
-  const startListening = () => {
-    if (!tracks.length) {
-      Alert.alert("Music is loading", error instanceof Error ? error.message : "Try again when discovery has loaded.");
-      return;
-    }
-    void playTrack(tracks[0], tracks).catch((err: unknown) => {
+  const play = (track: MusicTrack, queue: MusicTrack[]) => {
+    void playTrack(track, queue).catch((err: unknown) => {
       Alert.alert("Couldn't start playback", err instanceof Error ? err.message : "Please try another track.");
     });
+  };
+  const featured = tracks[0];
+  const featuredPlaylist = playlists[0];
+  const heroTitle = featuredPlaylist?.title ?? featured?.title ?? "Find your next favourite";
+  const heroSubtitle = featuredPlaylist?.subtitle ?? featured?.artist ?? "A fresh mix, picked for your next listening session";
+  const heroArtwork = featuredPlaylist?.artwork ?? featured?.artwork;
+
+  const openFeatured = () => {
+    if (featuredPlaylist?.sourcePlaylistId) {
+      router.push({ pathname: "/playlist/[id]", params: { id: featuredPlaylist.sourcePlaylistId, title: featuredPlaylist.title, artwork: featuredPlaylist.artwork ?? "" } });
+    } else if (featured) play(featured, tracks);
+    else router.push("/(tabs)/search");
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={8} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
-        <ScrollReveal scrollY={scrollY}><View style={styles.topline}>
-          <View>
-            <Text style={styles.eyebrow}>YOUR SOUND, YOUR SPACE</Text>
-            <Text style={styles.greeting}>{new Date().getHours() < 12 ? "Good morning." : new Date().getHours() < 18 ? "Good afternoon." : "Good evening."}</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}>
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <Image source={require("../../assets/lumamusic-icon.png")} style={styles.brandLogo} resizeMode="contain" />
+            <Text style={styles.brandName}>LumaMusic</Text>
           </View>
-          <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profile")}>
-            <Text style={styles.avatarText}>P</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open menu" style={styles.menuButton} onPress={() => router.push("/(tabs)/profile")}>
+            <Ionicons name="menu" size={28} color={colors.text} />
           </Pressable>
-        </View></ScrollReveal>
+        </View>
 
-        <ScrollReveal scrollY={scrollY} delay={25}><GlassSurface style={styles.searchPrompt} contentStyle={styles.searchPromptContent}><Pressable style={styles.searchPromptInner} onPress={() => router.push("/(tabs)/search")}>
-          <Ionicons name="search" size={19} color={colors.muted} />
-          <Text style={styles.searchText}>Songs, artists, moods...</Text>
-          <Ionicons name="options-outline" size={18} color={colors.subtle} />
-        </Pressable></GlassSurface></ScrollReveal>
-
-        <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
-          {tracks[0]?.artwork && !heroArtworkFailed ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} onError={() => setHeroArtworkFailed(true)} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
+        <View style={styles.hero}>
+          {heroArtwork && !heroArtworkFailed
+            ? <Image source={{ uri: heroArtwork }} style={styles.heroBlur} blurRadius={14} onError={() => setHeroArtworkFailed(true)} />
+            : <View style={styles.heroFallback} />}
+          {heroArtwork && !heroArtworkFailed
+            ? <Image source={{ uri: heroArtwork }} style={styles.heroArtwork} resizeMode="cover" />
+            : <Ionicons name="musical-notes" size={64} color="rgba(255,255,255,0.25)" style={styles.heroIcon} />}
           <View style={styles.heroShade} />
           <View style={styles.heroContent}>
             <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
@@ -88,7 +92,27 @@ export default function ListenScreen() {
               <Text style={styles.heroButtonText}>Start listening</Text>
             </Pressable>
           </View>
-        </View></ScrollReveal>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeading title="Recently Played" action="See all" onPress={() => router.push("/(tabs)/library")} />
+          {recentTracks.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+              {recentTracks.slice(0, 12).map((track) => (
+                <Pressable key={track.id} style={styles.recentCard} onPress={() => play(track, recentTracks)}>
+                  <Image source={track.artwork ? { uri: track.artwork } : require("../../assets/lumamusic-icon.png")} style={styles.recentArtwork} />
+                  <Text numberOfLines={1} style={styles.recentTitle}>{track.title}</Text>
+                  <Text numberOfLines={1} style={styles.recentArtist}>{track.artist}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyRecent}>
+              <Ionicons name="time-outline" size={21} color={colors.subtle} />
+              <View style={styles.emptyCopy}><Text style={styles.emptyTitle}>Your listening story starts here</Text><Text style={styles.emptyText}>Play a track and it will show up here.</Text></View>
+            </View>
+          )}
+        </View>
 
         {recentTracks.length > 0 ? <ScrollReveal scrollY={scrollY}><View style={styles.section}>
           <SectionHeading title="Recently played" action="See all" onPress={() => router.push("/(tabs)/library")} />
@@ -114,8 +138,8 @@ export default function ListenScreen() {
           }))} emptyText="No featured playlists right now." />
         </View></ScrollReveal>
 
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Fresh discoveries" action="Refresh" onPress={() => { void loadTrending(); }} />
+        <View style={styles.section}>
+          <SectionHeading title="Most Played" action="Refresh" onPress={() => { void loadTrending(); }} />
           {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
           {error ? (
             <View style={styles.errorCard}>

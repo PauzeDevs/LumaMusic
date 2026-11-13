@@ -104,7 +104,7 @@ export default function ProfileScreen() {
 }
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { paddingHorizontal: 20, paddingBottom: 34 },
   topline: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },

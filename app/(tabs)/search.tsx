@@ -222,7 +222,7 @@ export default function SearchScreen() {
 }
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 38 },
   topLine: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 9, marginBottom: 18 },
   title: { color: colors.text, fontSize: 31, fontWeight: "800", letterSpacing: -1.1 },
