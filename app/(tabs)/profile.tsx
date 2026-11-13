@@ -20,7 +20,7 @@ const settings = [
 
 export default function ProfileScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);\n  const isPlaying = usePlayerStore((state) => state.isPlaying);
   const localPlaylists = useLibraryStore((state) => state.playlists);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -41,9 +41,9 @@ export default function ProfileScreen() {
           <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
-            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Opened in external player" : "Pick a track and let the room fill up."}</Text>
+            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + (isPlaying ? " · Playing in LumaMusic" : " · In LumaMusic player") : "Pick a track and let the room fill up."}</Text>
           </View>
-          <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "OPEN" : "IDLE"}</Text></View>
+          <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? (isPlaying ? "PLAYING" : "PAUSED") : "IDLE"}</Text></View>
         </View>
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Your playlists</Text><Text style={styles.sectionMeta}>{localPlaylists.length} SAVED</Text></View>
         <PlaylistStack items={localPlaylists.map((playlist) => ({
