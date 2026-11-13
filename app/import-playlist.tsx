@@ -3,7 +3,8 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "../theme/colors";
+import type { ThemePalette } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 import { parsePlaylistExport, type ImportedPlaylistEntry } from "../services/playlistImport";
 import { searchYouTubeMusicTracks } from "../services/youtubeMusic";
 import type { MusicTrack } from "../types/music";
@@ -28,6 +29,8 @@ function similarity(left: string, right: string): number {
 }
 
 export default function ImportPlaylistScreen() {
+  const { colors, blurTint } = useTheme();
+  const styles = createStyles(colors);
   const [playlistName, setPlaylistName] = useState("Imported playlist");
   const [rawText, setRawText] = useState("");
   const [isMatching, setIsMatching] = useState(false);
@@ -155,7 +158,7 @@ export default function ImportPlaylistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
   back: { width: 36, height: 38, alignItems: "center", justifyContent: "center" },
@@ -181,4 +184,4 @@ const styles = StyleSheet.create({
   resultArtist: { color: colors.muted, fontSize: 10, marginTop: 2 },
   unmatched: { color: colors.subtle, fontSize: 10, lineHeight: 16, marginTop: 10 },
   disclaimer: { color: colors.subtle, fontSize: 9, lineHeight: 15, marginTop: 20, textAlign: "center" }
-});
+}); }

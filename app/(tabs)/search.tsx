@@ -8,7 +8,8 @@ import { ArtistRow } from "../../components/ArtistRow";
 import { PlaylistRow } from "../../components/PlaylistRow";
 import { TrackRow } from "../../components/TrackRow";
 import { ScrollReveal } from "../../components/ScrollReveal";
-import { colors } from "../../theme/colors";
+import type { ThemePalette } from "../../theme/colors";
+import { useTheme } from "../../theme/useTheme";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { searchYouTubeMusicArtists, searchYouTubeMusicPlaylists, searchYouTubeMusicTracks } from "../../services/youtubeMusic";
 
@@ -21,6 +22,8 @@ const suggestions = [
 ] as const;
 
 export default function SearchScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const scrollY = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
@@ -206,7 +209,7 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 34 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10, marginBottom: 22 },
@@ -248,4 +251,4 @@ const styles = StyleSheet.create({
   groupHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 9, marginBottom: 5 },
   groupTitle: { color: colors.text, fontSize: 14, fontWeight: "800" },
   groupCount: { color: colors.subtle, fontSize: 10, fontWeight: "700" }
-});
+}); }

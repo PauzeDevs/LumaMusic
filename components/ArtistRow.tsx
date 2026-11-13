@@ -1,15 +1,17 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 import type { MusicArtist } from "../types/music";
 import { Artwork } from "./Artwork";
 
 export function ArtistRow({ artist }: { artist: MusicArtist }) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   return (
     <Pressable
       style={styles.row}
-      onPress={() => router.push({ pathname: "/artist/[id]", params: { id: artist.sourceArtistId, name: artist.name } })}
+      onPress={() => router.push({ pathname: "/artist/[id]", params: { id: artist.sourceArtistId, name: artist.name, artwork: artist.artwork } })}
     >
       <Artwork uri={artist.artwork} size={54} radius={27} />
       <View style={styles.copy}>
@@ -21,9 +23,11 @@ export function ArtistRow({ artist }: { artist: MusicArtist }) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ReturnType<typeof useTheme>["colors"]) {
+return StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 },
   copy: { flex: 1, gap: 4 },
-  name: { color: colors.text, fontSize: 14, fontWeight: "700" },
-  handle: { color: colors.muted, fontSize: 11 }
+  name: { color: c.text, fontSize: 14, fontWeight: "700" },
+  handle: { color: c.muted, fontSize: 11 }
 });
+}

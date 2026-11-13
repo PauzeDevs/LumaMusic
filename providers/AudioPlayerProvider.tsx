@@ -3,6 +3,7 @@ import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-au
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
+import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
 import { useLibraryStore } from "../store/library";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -68,11 +69,13 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const localSourceSequence = useRef(0);
   const playbackRequestSequence = useRef(0);
   const handledFinishedState = useRef(false);
+  const fetchingAutoplayQueue = useRef(false);
   const automaticRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const graphRef = useRef<AudioGraph | null>(null);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   if (!audioContextRef.current) audioContextRef.current = new AudioContext({ latencyHint: "playback" });
 
   const setPlaybackStatus = usePlayerStore((state) => state.setPlaybackStatus);
@@ -120,8 +123,16 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
 
+  useEffect(() => {
+    if (status.playing && startupTimeoutRef.current) {
+      clearTimeout(startupTimeoutRef.current);
+      startupTimeoutRef.current = null;
+    }
+  }, [status.playing]);
+
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
+    if (startupTimeoutRef.current) clearTimeout(startupTimeoutRef.current);
     graphRef.current?.source.disconnect();
     graphRef.current?.panner.disconnect();
     graphRef.current?.convolver.disconnect();
@@ -176,6 +187,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number) => {
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
     const requestId = ++playbackRequestSequence.current;
+    if (startupTimeoutRef.current) {
+      clearTimeout(startupTimeoutRef.current);
+      startupTimeoutRef.current = null;
+    }
     const queue = nextQueue?.length ? nextQueue : [track];
     if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
     // Stop the previous stream immediately; don't let it play underneath a new selection.
@@ -201,7 +216,23 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         });
         if (requestId !== playbackRequestSequence.current) return;
         player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
+        // Android requires an active media/lock-screen session for sustained background playback.
+        // Keep it active while paused so notification and lock-screen controls remain available.
+        player.setActiveForLockScreen(true, {
+          title: track.title,
+          artist: track.artist,
+          albumTitle: "LumaMusic",
+          ...(track.artwork ? { artworkUrl: track.artwork } : {})
+        });
         player.play();
+        // Do not leave the UI spinning forever if the resolved stream never starts.
+        startupTimeoutRef.current = setTimeout(() => {
+          startupTimeoutRef.current = null;
+          const latest = usePlayerStore.getState();
+          if (requestId !== playbackRequestSequence.current || latest.currentTrack?.id !== track.id || !latest.isBuffering) return;
+          player.pause();
+          latest.setPlaybackError("Audio stream did not start within 20 seconds. The stream may be unavailable or blocked. Tap Play to retry.");
+        }, 20_000);
         // Warm the next playlist stream while this song is already playing.
         // Selecting it later can then reuse the in-memory URL cache.
         const nextTrack = queue.slice(Math.max(0, (queueIndex ?? queue.findIndex((item) => item.id === track.id)) + 1))
@@ -213,6 +244,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
         return;
       } catch (error) {
+        if (startupTimeoutRef.current) {
+          clearTimeout(startupTimeoutRef.current);
+          startupTimeoutRef.current = null;
+        }
         if (requestId !== playbackRequestSequence.current) return;
         const errorMessage = error instanceof Error ? error.message : "Could not stream this track.";
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: false, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: errorMessage });
@@ -278,9 +313,18 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.queue.length === 0 || !state.currentTrack) return;
     const currentIndex = state.currentQueueIndex;
     if (state.repeatMode === "one") {
-      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
-      else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
-      else { await player.seekTo(0); player.play(); }
+      // Restart the already-loaded source instead of resolving the stream again.
+      // Re-resolving at the end of every song can fail or leave repeat-one silent.
+      if (isExternalTrack(state.currentTrack)) {
+        await player.seekTo(0);
+        player.play();
+      } else if (isLocalTrack(state.currentTrack)) {
+        audioRef.current?.seekToTime(0);
+        void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+      } else {
+        await player.seekTo(0);
+        player.play();
+      }
       return;
     }
     let nextTrack: MusicTrack | undefined;
@@ -306,9 +350,36 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (isPlayable(candidate)) { nextTrack = candidate; nextQueueIndex = index; break; }
       }
     }
-    if (nextTrack) await playTrackSafely(nextTrack, state.queue, nextQueueIndex);
-    else if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
-    else if (!isExternalTrack(state.currentTrack)) player.pause();
+    if (nextTrack) {
+      await playTrackSafely(nextTrack, state.queue, nextQueueIndex);
+      return;
+    }
+
+    // When the user's queue is exhausted, ask YouTube Music for its Up Next
+    // radio recommendations and append them to the queue for continuous listening.
+    if (isExternalTrack(state.currentTrack) && !fetchingAutoplayQueue.current) {
+      fetchingAutoplayQueue.current = true;
+      try {
+        const videoId = state.currentTrack.youtubeVideoId || state.currentTrack.sourceTrackId || state.currentTrack.id.replace(/^youtube:/i, "");
+        const recommendations = await getYouTubeMusicUpNextTracks(videoId, 20);
+        const existingIds = new Set(state.queue.map((item) => item.id));
+        const freshTracks = recommendations.filter((item) => isPlayable(item) && item.id !== state.currentTrack?.id && !existingIds.has(item.id));
+        if (freshTracks.length > 0) {
+          const latest = usePlayerStore.getState();
+          const expandedQueue = [...latest.queue, ...freshTracks];
+          const firstIndex = latest.queue.length;
+          await playTrackSafely(freshTracks[0], expandedQueue, firstIndex);
+          return;
+        }
+      } catch {
+        // Recommendation lookup is best-effort. Keep playback errors quiet at track end.
+      } finally {
+        fetchingAutoplayQueue.current = false;
+      }
+    }
+
+    if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
+    else player.pause();
   }, [playTrackSafely, player]);
 
   const playPrevious = useCallback(async () => {

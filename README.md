@@ -43,6 +43,21 @@ Use an Expo development build when testing native audio. The app resolves availa
 | Interface progress | [UI and integration status](docs/UI_PHASE.md) |
 | API and playback | [Integration notes](docs/INTEGRATION_PHASE.md) |
 
+
+### GOOGLE DRIVE ACCOUNT SETUP
+
+LumaMusic can back up library metadata to the user's private Google Drive `appDataFolder`. It requests only the non-sensitive `drive.appdata` scope; it does not browse normal Drive files or upload audio.
+
+Before Google sign-in can work in a native build:
+
+1. Create a Google Cloud project and enable the Google Drive API.
+2. Configure the OAuth consent screen and add the `drive.appdata` scope.
+3. Create Android and iOS OAuth client IDs for package/bundle ID `dev.pauze.lumamusic`. Add the Android SHA-1 fingerprints for each signing certificate used by development and production builds.
+4. Replace the placeholder `iosUrlScheme` in `app.json` with the reversed iOS client ID (the `com.googleusercontent.apps...` value).
+5. Rebuild the native app. Google Sign-In uses native code and does not run in Expo Go.
+
+The Account screen currently supports connecting, first-time restore-or-keep choice, manual backup, and disconnect. Automatic background sync and robust multi-device conflict merging are not enabled yet. The local library remains available when offline.
+
 ### THE CATALOGUE
 
 LumaMusic is an independent, unofficial project and is not affiliated with or endorsed by Google or YouTube. Discovery uses an undocumented public YouTube Music web interface that may change. The app uses an undocumented YouTube Music web interface for discovery and best-effort stream resolution. LumaMusic does not claim official Google authorization. Availability and compatibility can change without notice.

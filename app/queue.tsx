@@ -5,9 +5,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePlayerStore } from "../store/player";
-import { colors } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 
 export default function QueueScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const queue = usePlayerStore((s) => s.queue);
   const removeQueueItemAt = usePlayerStore((s) => s.removeQueueItemAt);
   const moveQueueTrack = usePlayerStore((s) => s.moveQueueTrack);
@@ -47,21 +49,23 @@ export default function QueueScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
+function makeStyles(c: ReturnType<typeof useTheme>["colors"]) {
+return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: c.background, paddingHorizontal: 20 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 10, paddingBottom: 12 },
   back: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  eyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
-  title: { color: colors.text, fontSize: 27, fontWeight: "800", marginTop: 3 },
-  clear: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 12, backgroundColor: colors.surface },
-  clearText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
-  caption: { color: colors.subtle, fontSize: 11, marginBottom: 14 },
+  eyebrow: { color: c.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
+  title: { color: c.text, fontSize: 27, fontWeight: "800", marginTop: 3 },
+  clear: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 12, backgroundColor: c.surface },
+  clearText: { color: c.muted, fontSize: 11, fontWeight: "700" },
+  caption: { color: c.subtle, fontSize: 11, marginBottom: 14 },
   list: { paddingBottom: 28 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 15, marginBottom: 7, backgroundColor: colors.surface },
-  current: { borderWidth: 1, borderColor: "rgba(198,167,255,0.3)", backgroundColor: "rgba(198,167,255,0.07)" },
-  trackTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
-  artist: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 15, marginBottom: 7, backgroundColor: c.surface },
+  current: { borderWidth: 1, borderColor: c.border, backgroundColor: c.surfaceElevated },
+  trackTitle: { color: c.text, fontSize: 12, fontWeight: "700" },
+  artist: { color: c.muted, fontSize: 10, marginTop: 4 },
   actions: { flexDirection: "row", alignItems: "center", gap: 1 },
   action: { width: 27, height: 32, alignItems: "center", justifyContent: "center" },
-  empty: { color: colors.muted, textAlign: "center", marginTop: 50, fontSize: 12 }
+  empty: { color: c.muted, textAlign: "center", marginTop: 50, fontSize: 12 }
 });
+}
