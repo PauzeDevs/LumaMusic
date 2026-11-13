@@ -32,8 +32,9 @@ export default function PlaylistScreen() {
   const remoteTracks = remoteTracksQuery.data ?? [];
 
   const playAll = () => {
-    if (!localPlaylist || localPlaylist.tracks.length === 0) return;
-    playTrack(localPlaylist.tracks[0], localPlaylist.tracks).catch((error: unknown) => {
+    const tracks = localPlaylist?.tracks ?? remoteTracks;
+    if (tracks.length === 0) return;
+    playTrack(tracks[0], tracks).catch((error: unknown) => {
       Alert.alert("Couldn't start playlist", error instanceof Error ? error.message : "Please try again.");
     });
   };
