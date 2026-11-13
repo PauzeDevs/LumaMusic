@@ -60,7 +60,7 @@ jobs:
 
       - name: Build optimized release APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --stacktrace --info
 
       - name: Rename APK
         run: |
