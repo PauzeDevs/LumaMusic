@@ -128,13 +128,10 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
   }
 
   const errors: string[] = [];
-  let poTokens: Awaited<ReturnType<typeof resolveYouTubePoTokens>> = null;
-
-  try {
-    poTokens = await resolveYouTubePoTokens(videoId);
-  } catch (error) {
+  const poTokensPromise = resolveYouTubePoTokens(videoId).catch((error) => {
     errors.push(`PoToken: ${error instanceof Error ? error.message : String(error)}`);
-  }
+    return null;
+  });
 
   for (const profile of INNERTUBE_PLAYER_CLIENTS) {
     try {
