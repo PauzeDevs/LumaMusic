@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   accentOption: { minHeight: 48, borderRadius: 13, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 11, borderWidth: 1, borderColor: "transparent" },
   selected: { backgroundColor: "rgba(255,255,255,0.055)", borderColor: "rgba(255,255,255,0.12)" },
   swatch: { width: 19, height: 19, borderRadius: 10 },
-  optionText: { color: colors.text, fontSize: 13, fontWeight: "650" },
+  optionText: { color: colors.text, fontSize: 13, fontWeight: "600" },
   motionPanel: { paddingHorizontal: 14 },
   motionOption: { minHeight: 67, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   last: { borderBottomWidth: 0 },
@@ -95,4 +95,4 @@ const styles = StyleSheet.create({
   switchRow: { minHeight: 72, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 12 },
   note: { flexDirection: "row", gap: 9, alignItems: "center", marginTop: 22, padding: 14, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.035)" },
   noteText: { color: colors.muted, fontSize: 10, lineHeight: 16, flex: 1 }
-});
+}) as Record<string, any>;
