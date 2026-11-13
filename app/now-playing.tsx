@@ -100,11 +100,30 @@ export default function NowPlayingScreen() {
           </Pressable>
         </View>
         <View style={styles.progressArea}>
-            <View ref={progressRef} style={[styles.progressTrack, progressBarStyle === "classic" && styles.progressTrackClassic]} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
-              <View style={[styles.progressFill, progressBarStyle === "classic" && styles.progressFillClassic, { width: `${progress}%`, backgroundColor: accentColor }]} />
-              <View style={[styles.progressThumb, progressBarStyle === "classic" && styles.progressThumbClassic, { left: `${progress}%`, borderColor: accentColor }]} />
+            <View ref={progressRef} style={[
+              styles.progressTrack,
+              progressBarStyle === "classic" && styles.progressTrackClassic,
+              progressBarStyle === "waveform" && styles.progressTrackWaveform
+            ]} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
+              {progressBarStyle === "waveform" ? (
+                <View style={styles.waveformBars}>
+                  {Array.from({ length: 42 }, (_, index) => {
+                    const height = 7 + Math.round(Math.abs(Math.sin(index * 1.17) * Math.cos(index * 0.39)) * 19);
+                    return <View key={index} style={[styles.waveformBar, { height, backgroundColor: index / 42 <= progress / 100 ? accentColor : colors.subtle }]} />;
+                  })}
+                  <View style={[styles.waveformThumb, { left: `${progress}%`, backgroundColor: accentColor }]} />
+                </View>
+              ) : (
+                <>
+                  <View style={[styles.progressFill, progressBarStyle === "classic" && styles.progressFillClassic, { width: `${progress}%`, backgroundColor: accentColor }]} />
+                  <View style={[styles.progressThumb, progressBarStyle === "classic" && styles.progressThumbClassic, { left: `${progress}%`, borderColor: accentColor }]} />
+                </>
+              )}
             </View>
-            <View style={styles.timeRow}><Text style={styles.time}>{formatTime(playbackPosition)}</Text><Text style={styles.time}>{formatTime(duration)}</Text></View>
+            <View style={styles.timeRow}>
+              <Text style={styles.time}>{formatTime(playbackPosition)}</Text>
+              <Text style={[styles.time, styles.timeRight]}>{progressBarStyle === "waveform" ? `-${formatTime(Math.max(0, duration - playbackPosition))}` : formatTime(duration)}</Text>
+            </View>
         </View>
         {isBuffering ? <Text style={styles.status}>Buffering audio…</Text> : null}
         {playbackError ? <Text style={styles.error}>{playbackError}</Text> : null}
@@ -163,6 +182,10 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   externalPlaybackHint: { color: colors.subtle, fontSize: 9, textAlign: "center" },
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
   progressTrackClassic: { height: 8, borderRadius: 8 },
+  progressTrackWaveform: { height: 34, backgroundColor: "transparent", justifyContent: "center" },
+  waveformBars: { width: "100%", height: 34, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
+  waveformBar: { width: 3, borderRadius: 3 },
+  waveformThumb: { position: "absolute", width: 7, height: 7, borderRadius: 4, top: 13, marginLeft: -3.5, borderWidth: 1, borderColor: "#FFFFFF" },
   progressHitArea: { position: "absolute", top: -14, bottom: -14, left: 0, right: 0 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 4 },
   progressFillClassic: { height: 8, borderRadius: 8 },
@@ -170,6 +193,7 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   progressThumbClassic: { width: 14, height: 14, borderRadius: 7, top: -3, marginLeft: -7 },
   timeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   time: { color: colors.subtle, fontSize: 12, lineHeight: 16, minWidth: 44, flexShrink: 0, fontVariant: ["tabular-nums"] },
+  timeRight: { textAlign: "right", alignSelf: "flex-end" },
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
