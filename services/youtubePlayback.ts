@@ -1,5 +1,6 @@
 import type { MusicTrack } from "../types/music";
 import { resolveWithYtdlpService } from "./ytdlpResolver";
+import { resolveWithNewPipe } from "./newPipeResolver";
 
 export type ResolvedYouTubeAudio = {
   url: string;
@@ -111,7 +112,7 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
 
 /**
  * Resolves a playable audio stream directly through YouTube's InnerTube /player API.
- * Falls back to the optional ytdlpResolver service only if all InnerTube clients fail.
+ * Keeps InnerTube as the primary resolver and falls back to NewPipe on Android only if all InnerTube clients fail.
  */
 export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<ResolvedYouTubeAudio> {
   const videoId = extractYouTubeVideoId(track);
@@ -220,7 +221,36 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
     }
   }
 
-  // Fallback to optional external yt-dlp resolver if configured in the environment
+  // Android fallback: NewPipe uses its own extraction implementation.
+  // The InnerTube clients above remain the primary path and are never modified
+  // or bypassed when one of them returns a playable stream.
+  try {
+    const newPipeResult = await resolveWithNewPipe(videoId);
+    if (newPipeResult?.url) {
+      const expiryMatch = newPipeResult.url.match(/[?&]expire=(\\d+)/);
+      const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
+      const resolved: ResolvedYouTubeAudio = {
+        url: newPipeResult.url,
+        mimeType: newPipeResult.mimeType || "audio/*",
+        durationSeconds:
+          newPipeResult.durationSeconds ||
+          Math.max(0, Math.round((track.durationMs || 0) / 1000)),
+        bitrate: newPipeResult.bitrate > 0 ? newPipeResult.bitrate : undefined,
+        userAgent: newPipeResult.userAgent,
+        expiresAt: parsedExpiry > Date.now()
+          ? parsedExpiry
+          : Date.now() + 30 * 60 * 1000
+      };
+      streamCache.set(videoId, resolved);
+      return resolved;
+    }
+  } catch (error) {
+    errors.push(
+      error instanceof Error ? error.message : `NewPipe: ${String(error)}`
+    );
+  }
+
+  // Retain the existing no-op compatibility shim; it does not perform yt-dlp requests.
   try {
     const fallback = await resolveWithYtdlpService(track);
     if (fallback?.url) {
