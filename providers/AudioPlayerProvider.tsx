@@ -196,6 +196,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
             Referer: "https://www.youtube.com/"
           }
         });
+        if (requestId !== playbackRequestSequence.current) return;
         player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
         player.play();
         // Keep the loading state until Expo Audio reports actual playback/buffering status.
