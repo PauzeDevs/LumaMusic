@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AudioPlayerProvider } from "../providers/AudioPlayerProvider";
-import PoTokenWebViewHost from "../components/PoTokenWebViewHost";
 import { colors } from "../theme/colors";
 
 const queryClient = new QueryClient({
@@ -20,7 +19,6 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <AudioPlayerProvider>
         <StatusBar style="light" />
-        <PoTokenWebViewHost />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="appearance" options={{ presentation: "card", animation: "slide_from_right" }} />
