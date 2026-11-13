@@ -1,6 +1,7 @@
 import type { MusicTrack } from "../types/music";
 import { resolveWithYtdlpService } from "./ytdlpResolver";
 import { resolveWithNewPipe } from "./newPipeResolver";
+import { resolveYouTubePoTokens } from "./poTokenResolver";
 
 export type ResolvedYouTubeAudio = {
   url: string;
@@ -127,6 +128,13 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
   }
 
   const errors: string[] = [];
+  let poTokens: Awaited<ReturnType<typeof resolveYouTubePoTokens>> = null;
+
+  try {
+    poTokens = await resolveYouTubePoTokens(videoId);
+  } catch (error) {
+    errors.push(`PoToken: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   for (const profile of INNERTUBE_PLAYER_CLIENTS) {
     try {
@@ -144,7 +152,10 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
           context: profile.context,
           videoId,
           racyCheckOk: true,
-          contentCheckOk: true
+          contentCheckOk: true,
+          ...(poTokens
+            ? { serviceIntegrityDimensions: { poToken: poTokens.sessionToken } }
+            : {})
         })
       });
 
@@ -210,8 +221,14 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
         : 0;
       const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
 
+      const resolvedStreamUrl = bestFormat ? bestFormat.url : hlsManifestUrl!;
+      const mediaUrl = new URL(resolvedStreamUrl);
+      if (poTokens?.contentToken) {
+        mediaUrl.searchParams.set("pot", poTokens.contentToken);
+      }
+
       const resolved: ResolvedYouTubeAudio = {
-        url: bestFormat ? bestFormat.url : hlsManifestUrl!,
+        url: mediaUrl.toString(),
         mimeType: bestFormat ? bestFormat.mimeType : "application/x-mpegURL",
         durationSeconds: durationFromPlayer || durationFromFormat || fallbackDuration,
         bitrate: bestFormat ? Number(bestFormat.bitrate || 128000) : undefined,
@@ -236,8 +253,12 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
     if (newPipeResult?.url) {
       const expiryMatch = newPipeResult.url.match(/[?&]expire=(\\d+)/);
       const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
+      const newPipeUrl = new URL(newPipeResult.url);
+      if (poTokens?.contentToken) {
+        newPipeUrl.searchParams.set("pot", poTokens.contentToken);
+      }
       const resolved: ResolvedYouTubeAudio = {
-        url: newPipeResult.url,
+        url: newPipeUrl.toString(),
         mimeType: newPipeResult.mimeType || "audio/*",
         durationSeconds:
           newPipeResult.durationSeconds ||
