@@ -159,6 +159,13 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
       if (status !== "OK") {
         const reason = payload?.playabilityStatus?.reason || status || "Unavailable";
         errors.push(`${profile.name}: ${reason}`);
+
+        // Bot verification is an account/network challenge, not a transient
+        // client-format issue. Stop cycling InnerTube profiles and hand off
+        // immediately to the independent NewPipe extractor below.
+        if (/sign in to confirm|bot|automated requests|unusual traffic/i.test(String(reason))) {
+          break;
+        }
         continue;
       }
 
