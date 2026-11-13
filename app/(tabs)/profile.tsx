@@ -20,7 +20,8 @@ const settings = [
 
 export default function ProfileScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
-  const currentTrack = usePlayerStore((state) => state.currentTrack);\n  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
   const localPlaylists = useLibraryStore((state) => state.playlists);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
