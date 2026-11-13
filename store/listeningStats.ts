@@ -7,13 +7,14 @@ export type ListeningTrackStat = { id: string; title: string; artist: string; ar
 export type ListeningDay = { seconds: number; plays: number; tracks: Record<string, ListeningTrackStat> };
 type StatsState = {
   days: Record<string, ListeningDay>;
-  registerPlay: (track: MusicTrack) => void;
+  beginTrack: () => void;
   recordProgress: (track: MusicTrack, position: number, playing: boolean) => void;
   clearStats: () => void;
 };
 let lastSample: { id: string; position: number } | null = null;
 let pendingSeconds = 0;
 let pendingTrack: MusicTrack | null = null;
+let activeSessionTrackId: string | null = null;
 const dateKey = (date = new Date()) => {
   const y = date.getFullYear(), m = String(date.getMonth() + 1).padStart(2, "0"), d = String(date.getDate()).padStart(2, "0");
   return y + "-" + m + "-" + d;
@@ -34,19 +35,19 @@ function flushPending(set: (fn: (state: StatsState) => Partial<StatsState>) => v
 }
 export const useListeningStatsStore = create<StatsState>()(persist((set) => ({
   days: {},
-  registerPlay: (track) => {
-    flushPending(set);
-    lastSample = null;
-    const key = dateKey();
-    set((state) => {
-      const day = state.days[key] ?? { seconds: 0, plays: 0, tracks: {} };
-      const existing = day.tracks[track.id] ?? trackMeta(track);
-      return { days: { ...state.days, [key]: { ...day, plays: day.plays + 1, tracks: { ...day.tracks, [track.id]: { ...existing, plays: existing.plays + 1 } } } } };
-    });
-  },
+  beginTrack: () => { flushPending(set); lastSample = null; activeSessionTrackId = null; },
   recordProgress: (track, position, playing) => {
     if (!playing || !Number.isFinite(position)) {
       flushPending(set); lastSample = null; return;
+    }
+    if (activeSessionTrackId !== track.id) {
+      activeSessionTrackId = track.id;
+      const key = dateKey();
+      set((state) => {
+        const day = state.days[key] ?? { seconds: 0, plays: 0, tracks: {} };
+        const existing = day.tracks[track.id] ?? trackMeta(track);
+        return { days: { ...state.days, [key]: { ...day, plays: day.plays + 1, tracks: { ...day.tracks, [track.id]: { ...existing, plays: existing.plays + 1 } } } } };
+      });
     }
     if (lastSample?.id === track.id) {
       const delta = position - lastSample.position;
@@ -58,7 +59,7 @@ export const useListeningStatsStore = create<StatsState>()(persist((set) => ({
     }
     lastSample = { id: track.id, position };
   },
-  clearStats: () => { lastSample = null; pendingSeconds = 0; pendingTrack = null; set({ days: {} }); }
+  clearStats: () => { lastSample = null; pendingSeconds = 0; pendingTrack = null; activeSessionTrackId = null; set({ days: {} }); }
 }), {
   name: "lumamusic-listening-stats-v1",
   storage: createJSONStorage(() => AsyncStorage),
