@@ -28,7 +28,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 
   return (
     <View style={styles.shell}>
-      <BlurView tint="dark" intensity={75} style={StyleSheet.absoluteFill} />
+      <BlurView tint="dark" intensity={88} style={StyleSheet.absoluteFill} />
       <View pointerEvents="none" style={styles.shellSheen} />
       {track ? (
         <View style={styles.mini}>
@@ -62,9 +62,9 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  shell: { marginHorizontal: 12, marginBottom: 8, borderRadius: 25, overflow: "hidden", backgroundColor: "rgba(18,20,25,0.72)", borderWidth: 1, borderColor: "rgba(255,255,255,0.16)", paddingTop: 9, paddingBottom: 10, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
+  shell: { marginHorizontal: 12, marginBottom: 8, borderRadius: 25, overflow: "hidden", backgroundColor: "rgba(37,23,35,0.68)", borderWidth: 1, borderColor: "rgba(255,255,255,0.24)", paddingTop: 9, paddingBottom: 10, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 12 },
   shellSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: "rgba(255,255,255,0.24)" },
-  mini: { height: 60, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  mini: { height: 60, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.095)", borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 },
   miniTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
