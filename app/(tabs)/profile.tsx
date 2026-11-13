@@ -11,6 +11,7 @@ import { useLibraryStore } from "../../store/library";
 import { router } from "expo-router";
 
 const settings = [
+  { icon: "stats-chart-outline", title: "Listening Stats", subtitle: "Your Replay, listening time and top tracks" },
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
   { icon: "notifications-outline", title: "Notifications", subtitle: "New music and updates" },
   { icon: "extension-puzzle-outline", title: "Modules", subtitle: "Add features and build your own look" },
@@ -62,7 +63,9 @@ export default function ProfileScreen() {
         <GlassSurface style={styles.settings} contentStyle={styles.settingsContent}>
           {settings.map((item, index) => (
             <Pressable key={item.title} onPress={() => {
-              if (item.title === "Playback") {
+              if (item.title === "Listening Stats") {
+                router.push("/stats");
+              } else if (item.title === "Playback") {
                 router.push("/audio-settings");
               } else if (item.title === "Privacy") {
                 Alert.alert("Clear local library?", "This removes liked songs, listening history and local playlists from this device.", [
