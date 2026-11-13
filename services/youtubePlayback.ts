@@ -128,20 +128,21 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
   }
 
   const errors: string[] = [];
-  const poTokensPromise = resolveYouTubePoTokens(videoId).catch((error) => {
+  // Token generation is optional and can take seconds on a cold WebView.
+  // Start it in the background, but never make the first playable stream wait for it.
+  void resolveYouTubePoTokens(videoId).catch((error) => {
     errors.push(`PoToken: ${error instanceof Error ? error.message : String(error)}`);
-    return null;
   });
-  // PoTokens are best-effort. Never hold playback for the WebView's 12s timeout.
-  const poTokens = await Promise.race([
-    poTokensPromise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 450))
-  ]);
 
-  for (const profile of INNERTUBE_PLAYER_CLIENTS) {
+  // Ask all InnerTube client profiles at once. The first usable direct stream wins,
+  // rather than waiting for several slow profile requests one after another.
+  const profileResults = await Promise.allSettled(INNERTUBE_PLAYER_CLIENTS.map(async (profile) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
     try {
       const response = await fetch(PLAYER_URL, {
         method: "POST",
+        signal: controller.signal,
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -154,95 +155,59 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
           context: profile.context,
           videoId,
           racyCheckOk: true,
-          contentCheckOk: true,
-          
+          contentCheckOk: true
         })
       });
-
-      if (!response.ok) {
-        errors.push(`${profile.name}: HTTP ${response.status}`);
-        continue;
-      }
-
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload: Record<string, any> = await response.json();
       const status = payload?.playabilityStatus?.status;
-
       if (status !== "OK") {
         const reason = payload?.playabilityStatus?.reason || status || "Unavailable";
-        errors.push(`${profile.name}: ${reason}`);
-
-        // Bot verification is an account/network challenge, not a transient
-        // client-format issue. Stop cycling InnerTube profiles and hand off
-        // immediately to the independent NewPipe extractor below.
-        if (/sign in to confirm|bot|automated requests|unusual traffic/i.test(String(reason))) {
-          break;
-        }
-        continue;
+        throw new Error(String(reason));
       }
 
       const streamingData = payload?.streamingData;
-      const adaptiveFormats: Record<string, any>[] = Array.isArray(streamingData?.adaptiveFormats)
-        ? streamingData.adaptiveFormats
-        : [];
-      const formats: Record<string, any>[] = Array.isArray(streamingData?.formats)
-        ? streamingData.formats
-        : [];
-
-      // Collect direct audio-only streams first
-      const audioStreams = [...adaptiveFormats, ...formats].filter(
-        (fmt) =>
-          typeof fmt?.url === "string" &&
-          fmt.url.length > 0 &&
-          typeof fmt?.mimeType === "string" &&
-          fmt.mimeType.startsWith("audio/")
+      const adaptiveFormats: Record<string, any>[] = Array.isArray(streamingData?.adaptiveFormats) ? streamingData.adaptiveFormats : [];
+      const formats: Record<string, any>[] = Array.isArray(streamingData?.formats) ? streamingData.formats : [];
+      const audioStreams = [...adaptiveFormats, ...formats].filter((fmt) =>
+        typeof fmt?.url === "string" && fmt.url.length > 0 &&
+        typeof fmt?.mimeType === "string" && fmt.mimeType.startsWith("audio/")
       );
-
-      // Prioritize audio/mp4 (M4A/AAC, itag 140) first because it plays natively on both iOS AVPlayer and Android ExoPlayer,
-      // then sort by highest bitrate.
       audioStreams.sort((a, b) => {
         const aIsMp4 = a.mimeType.includes("audio/mp4") ? 1 : 0;
         const bIsMp4 = b.mimeType.includes("audio/mp4") ? 1 : 0;
         if (aIsMp4 !== bIsMp4) return bIsMp4 - aIsMp4;
         return Number(b.bitrate || 0) - Number(a.bitrate || 0);
       });
-
       const bestFormat = audioStreams[0];
       const hlsManifestUrl: string | undefined = streamingData?.hlsManifestUrl;
-
-      if (!bestFormat && !hlsManifestUrl) {
-        errors.push(`${profile.name}: No direct audio stream URL in response`);
-        continue;
-      }
+      if (!bestFormat && !hlsManifestUrl) throw new Error("No direct audio stream URL in response");
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
       const durationFromPlayer = Number(payload?.videoDetails?.lengthSeconds || 0);
-      const durationFromFormat = bestFormat?.approxDurationMs
-        ? Math.round(Number(bestFormat.approxDurationMs) / 1000)
-        : 0;
+      const durationFromFormat = bestFormat?.approxDurationMs ? Math.round(Number(bestFormat.approxDurationMs) / 1000) : 0;
       const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
-
-      const resolvedStreamUrl = bestFormat ? bestFormat.url : hlsManifestUrl!;
-      const mediaUrl = new URL(resolvedStreamUrl);
-      if (poTokens?.contentToken) {
-        mediaUrl.searchParams.set("pot", poTokens.contentToken);
-      }
-
-      const resolved: ResolvedYouTubeAudio = {
-        url: mediaUrl.toString(),
+      return {
+        url: bestFormat ? bestFormat.url : hlsManifestUrl!,
         mimeType: bestFormat ? bestFormat.mimeType : "application/x-mpegURL",
         durationSeconds: durationFromPlayer || durationFromFormat || fallbackDuration,
         bitrate: bestFormat ? Number(bestFormat.bitrate || 128000) : undefined,
         userAgent: profile.userAgent,
         expiresAt: Date.now() + expiresInSeconds * 1000
-      };
-
-      streamCache.set(videoId, resolved);
-      return resolved;
-    } catch (error) {
-      errors.push(
-        `${profile.name}: ${error instanceof Error ? error.message : String(error)}`
-      );
+      } satisfies ResolvedYouTubeAudio;
+    } finally {
+      clearTimeout(timeout);
     }
+  }));
+
+  for (let index = 0; index < profileResults.length; index += 1) {
+    const result = profileResults[index];
+    if (result.status === "fulfilled") {
+      streamCache.set(videoId, result.value);
+      return result.value;
+    }
+    const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
+    errors.push(`${INNERTUBE_PLAYER_CLIENTS[index].name}: ${reason}`);
   }
 
   // Android fallback: NewPipe uses its own extraction implementation.
@@ -254,9 +219,6 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
       const expiryMatch = newPipeResult.url.match(/[?&]expire=(\\d+)/);
       const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
       const newPipeUrl = new URL(newPipeResult.url);
-      if (poTokens?.contentToken) {
-        newPipeUrl.searchParams.set("pot", poTokens.contentToken);
-      }
       const resolved: ResolvedYouTubeAudio = {
         url: newPipeUrl.toString(),
         mimeType: newPipeResult.mimeType || "audio/*",
