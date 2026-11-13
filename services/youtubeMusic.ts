@@ -64,7 +64,9 @@ function thumbnailUrl(value: any): string {
 }
 
 function imageFor(item: Obj, videoId?: string): string {
-  const raw = thumbnailUrl(item.thumbnailRenderer ?? item.thumbnail ?? item);
+  // Use the selected track renderer's own thumbnail. Nested overlay/carousel
+  // thumbnails can belong to a neighbouring item and desynchronise cover art.
+  const raw = thumbnailUrl(item);
   return upgradeThumbnail(raw, videoId);
 }
 
