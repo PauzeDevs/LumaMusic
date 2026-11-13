@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-export type ProgressBarStyle = "apple" | "classic";
+export type ProgressBarStyle = "apple" | "classic" | "waveform";
 export type ReverbPreset = "off" | "room" | "studio" | "hall";
 export type AccentTheme = "red" | "violet" | "blue" | "green";
 export type AppearanceMode = "system" | "light" | "dark";
