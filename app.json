@@ -40,7 +40,8 @@
           "androidForegroundService": true,
           "androidFSTypes": [
             "mediaPlayback"
-          ]
+          ],
+          "enableFFmpeg": true
         }
       ],
       "./plugins/withLumaNewPipeDesugaring"
