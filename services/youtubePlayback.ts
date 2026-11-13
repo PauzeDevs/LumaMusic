@@ -153,9 +153,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
           videoId,
           racyCheckOk: true,
           contentCheckOk: true,
-          ...(poTokens
-            ? { serviceIntegrityDimensions: { poToken: poTokens.sessionToken } }
-            : {})
+          
         })
       });
 
