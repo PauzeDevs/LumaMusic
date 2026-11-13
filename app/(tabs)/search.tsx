@@ -1,6 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { router } from "expo-router";
 import { Animated, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArtistRow } from "../../components/ArtistRow";
@@ -115,7 +116,7 @@ export default function SearchScreen() {
         <ScrollReveal scrollY={scrollY}>
           <View style={styles.topLine}>
             <Text style={styles.title}>Search</Text>
-            <Pressable style={styles.profileButton} accessibilityRole="button" accessibilityLabel="Your account">
+            <Pressable style={styles.profileButton} onPress={() => router.push("/(tabs)/profile")} accessibilityRole="button" accessibilityLabel="Your account">
               <Ionicons name="person-outline" size={18} color={colors.muted} />
             </Pressable>
           </View>
@@ -200,11 +201,11 @@ export default function SearchScreen() {
                 <Text style={styles.groupTitle}>Albums & EPs</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.albumRail}>
                   {albums.map((album) => (
-                    <View key={album.id} style={styles.albumCard}>
+                    <Pressable key={album.id} onPress={() => router.push({ pathname: "/release/[id]", params: { id: album.id, title: album.title, artwork: album.artwork ?? "" } })} style={styles.albumCard} accessibilityRole="button" accessibilityLabel={`Open ${album.title}`}>
                       {album.artwork ? <Image source={{ uri: album.artwork }} style={styles.albumArt} /> : <View style={styles.albumArtFallback}><Ionicons name="disc-outline" size={28} color={colors.muted} /></View>}
                       <Text numberOfLines={2} style={styles.albumTitle}>{album.title}</Text>
                       <Text numberOfLines={1} style={styles.albumSubtitle}>{album.subtitle}</Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </ScrollView>
               </View>
