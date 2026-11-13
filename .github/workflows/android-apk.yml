@@ -77,6 +77,8 @@ jobs:
 
   release:
     name: Publish GitHub release
+    # Feature-branch dispatches are build-only; never overwrite the shared nightly release.
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     steps:
