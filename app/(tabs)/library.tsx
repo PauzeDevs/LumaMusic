@@ -12,11 +12,14 @@ import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
 import { ScrollReveal } from "../../components/ScrollReveal";
 import { getFeaturedPlaylists } from "../../services/youtubeMusic";
-import { colors } from "../../theme/colors";
+import type { ThemePalette } from "../../theme/colors";
+import { useTheme } from "../../theme/useTheme";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { useLibraryStore } from "../../store/library";
 
 export default function LibraryScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const scrollY = useRef(new Animated.Value(0)).current;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
@@ -159,7 +162,7 @@ export default function LibraryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20, paddingBottom: 30 },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 22 },
@@ -197,4 +200,4 @@ const styles = StyleSheet.create({
   modalCreateText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   section: { marginBottom: 28 },
   note: { color: colors.subtle, fontSize: 10, lineHeight: 16 }
-});
+}); }
