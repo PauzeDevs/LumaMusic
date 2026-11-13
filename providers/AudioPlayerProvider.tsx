@@ -23,7 +23,7 @@ type AudioEngineValue = {
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
 type ExternalMusicTrack = MusicTrack & { source: "youtube_music" };
 type LocalMusicTrack = MusicTrack & { source: "local"; localUri: string };
-type AudioGraph = { source: MediaElementAudioSourceNode; panner: StereoPannerNode; convolver: ConvolverNode; dry: GainNode; wet: GainNode };
+type AudioGraph = { source: MediaElementAudioSourceNode; panner: StereoPannerNode; convolver: ConvolverNode; dry: GainNode; wet: GainNode; filters: ReturnType<AudioContext["createBiquadFilter"]>[] };
 
 function isExternalTrack(track: MusicTrack | null | undefined): track is ExternalMusicTrack {
   return Boolean(
@@ -89,6 +89,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const playbackRate = usePlayerStore((state) => state.playbackRate);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
+  const equalizerEnabled = usePreferencesStore((state) => state.equalizerEnabled);
+  const equalizerBands = usePreferencesStore((state) => state.equalizerBands);
 
   const applyEffects = useCallback((balance: number, preset: ReverbPreset) => {
     const graph = graphRef.current;
@@ -121,7 +123,17 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     });
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus, currentTrack?.id]);
 
+  const applyEqualizer = useCallback((enabled: boolean, bands: number[]) => {
+    const graph = graphRef.current;
+    const context = audioContextRef.current;
+    if (!graph || !context) return;
+    graph.filters.forEach((filter, index) => {
+      filter.gain.setValueAtTime(enabled ? (bands[index] ?? 0) : 0, context.currentTime);
+    });
+  }, []);
+
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
+  useEffect(() => applyEqualizer(equalizerEnabled, equalizerBands), [equalizerEnabled, equalizerBands, applyEqualizer]);
 
   useEffect(() => {
     if (status.playing && startupTimeoutRef.current) {
@@ -163,7 +175,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     } catch (error) {
       setPlaybackError(error instanceof Error ? error.message : "Could not connect the audio effects engine.");
     }
-  }, [applyEffects, setPlaybackError]);
+  }, [applyEffects, applyEqualizer, setPlaybackError]);
 
   const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string) => {
     setPlaybackStatus({
