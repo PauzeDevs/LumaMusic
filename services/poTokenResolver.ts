@@ -1,11 +1,8 @@
+import { Platform } from "react-native";
+
 export type YouTubePoTokens = {
   contentToken: string;
   expiresAt: number;
-};
-
-type PendingRequest = {
-  videoId: string;
-  resolve: (value: YouTubePoTokens | null) => void;
 };
 
 type TokenMessage = {
@@ -20,6 +17,7 @@ let requestSequence = 0;
 let sendToWebView: ((requestId: string, videoId: string) => void) | null = null;
 const pending = new Map<string, (value: YouTubePoTokens | null) => void>();
 const waiting: Array<{ requestId: string; videoId: string }> = [];
+const tokenCache = new Map<string, YouTubePoTokens>();
 
 function flushQueue() {
   if (!sendToWebView) return;
@@ -51,10 +49,12 @@ export function handlePoTokenWebViewMessage(message: TokenMessage) {
     message.contentToken.length > 0 &&
     typeof message.expiresAt === "number"
   ) {
-    resolve({
+    const tokens = {
       contentToken: message.contentToken,
       expiresAt: message.expiresAt
-    });
+    };
+    tokenCache.set(message.requestId.split(":")[0], tokens);
+    resolve(tokens);
   } else {
     resolve(null);
   }
@@ -63,16 +63,21 @@ export function handlePoTokenWebViewMessage(message: TokenMessage) {
 export async function resolveYouTubePoTokens(
   videoId: string
 ): Promise<YouTubePoTokens | null> {
-  if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
+  if (Platform.OS !== "android" || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+    return null;
+  }
 
-  const requestId = `luma-${Date.now()}-${++requestSequence}`;
+  const cached = tokenCache.get(videoId);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached;
+
+  const requestId = `${videoId}:${Date.now()}:${++requestSequence}`;
   return new Promise((resolve) => {
     pending.set(requestId, resolve);
     waiting.push({ requestId, videoId });
     flushQueue();
 
-    // Token generation is best-effort. Playback continues through the normal
-    // InnerTube/NewPipe routes if YouTube or the challenge runtime is unavailable.
+    // Best-effort: if the challenge runtime is unavailable, playback continues
+    // through the normal InnerTube and NewPipe routes without a PoToken.
     setTimeout(() => {
       const finish = pending.get(requestId);
       if (finish) {
