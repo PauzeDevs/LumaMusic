@@ -163,7 +163,7 @@ export default function LibraryScreen() {
 }
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { paddingHorizontal: 20, paddingBottom: 30 },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 22 },
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.8 },
