@@ -348,7 +348,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
     // When the user's queue is exhausted, ask YouTube Music for its Up Next
     // radio recommendations and append them to the queue for continuous listening.
-    if (isExternalTrack(state.currentTrack) && state.repeatMode !== "one" && !fetchingAutoplayQueue.current) {
+    if (isExternalTrack(state.currentTrack) && !fetchingAutoplayQueue.current) {
       fetchingAutoplayQueue.current = true;
       try {
         const videoId = state.currentTrack.youtubeVideoId || state.currentTrack.sourceTrackId || state.currentTrack.id.replace(/^youtube:/i, "");
