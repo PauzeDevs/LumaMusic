@@ -216,6 +216,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
         : 0;
       const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
 
+      const poTokens = await poTokensPromise;
       const resolvedStreamUrl = bestFormat ? bestFormat.url : hlsManifestUrl!;
       const mediaUrl = new URL(resolvedStreamUrl);
       if (poTokens?.contentToken) {
@@ -246,6 +247,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
   try {
     const newPipeResult = await resolveWithNewPipe(videoId);
     if (newPipeResult?.url) {
+      const poTokens = await poTokensPromise;
       const expiryMatch = newPipeResult.url.match(/[?&]expire=(\\d+)/);
       const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
       const newPipeUrl = new URL(newPipeResult.url);
