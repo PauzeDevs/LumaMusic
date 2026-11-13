@@ -1,13 +1,13 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { TrackRow } from "../../components/TrackRow";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
-import { getYouTubeMusicArtistTracks } from "../../services/youtubeMusic";
+import { getYouTubeMusicArtistTracks, getYouTubeMusicArtistReleases, type MusicRelease } from "../../services/youtubeMusic";
 
 export default function ArtistScreen() {
   const { colors } = useTheme();
@@ -23,6 +23,11 @@ export default function ArtistScreen() {
     staleTime: 60_000
   });
   const tracks = tracksQuery.data ?? [];
+  const releasesQuery = useQuery({ queryKey: ["youtubeMusic", "artistReleases", artistId], queryFn: () => getYouTubeMusicArtistReleases(artistId ?? "", 40), enabled: Boolean(artistId?.startsWith("UC")), staleTime: 5 * 60_000 });
+  const releases = releasesQuery.data ?? [];
+  const albums = releases.filter((release) => release.kind === "album");
+  const eps = releases.filter((release) => release.kind === "ep");
+  const singles = releases.filter((release) => release.kind === "single");
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -38,6 +43,12 @@ export default function ArtistScreen() {
           <Text style={styles.title}>{artistName || "Artist"}</Text>
           <Text style={styles.copy}>Explore tracks and play them without leaving LumaMusic.</Text>
         </View>
+
+        {releasesQuery.isLoading ? <View style={styles.releaseLoading}><ActivityIndicator color={colors.accent} /><Text style={styles.stateCopy}>Finding albums and EPs…</Text></View> : null}
+        {releasesQuery.isError ? <Pressable onPress={() => releasesQuery.refetch()} style={styles.releaseRetry}><Text style={styles.retryText}>Couldn't load releases · Tap to retry</Text></Pressable> : null}
+        {albums.length > 0 ? <ReleaseShelf title="Albums" releases={albums} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
+        {eps.length > 0 ? <ReleaseShelf title="EPs" releases={eps} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
+        {singles.length > 0 ? <ReleaseShelf title="Singles" releases={singles} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Popular tracks</Text>
@@ -84,9 +95,28 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 11, marginBottom: 7 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "800" },
   count: { color: colors.subtle, fontSize: 10, fontWeight: "700" },
+  releaseLoading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 22 },
+  releaseRetry: { paddingVertical: 14, alignItems: "center" },
   state: { minHeight: 170, alignItems: "center", justifyContent: "center", padding: 22, gap: 9 },
   stateTitle: { color: colors.text, fontSize: 14, fontWeight: "800" },
   stateCopy: { color: colors.muted, fontSize: 11, lineHeight: 17, textAlign: "center" },
   retry: { marginTop: 5, paddingHorizontal: 17, paddingVertical: 9, borderRadius: 18, backgroundColor: colors.accent },
   retryText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" }
 }); }
+
+
+function ReleaseShelf({ title, releases, colors, onOpen }: { title: string; releases: MusicRelease[]; colors: ThemePalette; onOpen: (release: MusicRelease) => void }) {
+  return <View style={{ marginBottom: 24 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+      <Text style={{ color: colors.text, fontSize: 17, fontWeight: "800" }}>{title}</Text>
+      <Text style={{ color: colors.subtle, fontSize: 10, fontWeight: "700" }}>{releases.length} releases</Text>
+    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 13, paddingRight: 20 }}>
+      {releases.map((release) => <Pressable key={release.id} onPress={() => onOpen(release)} style={{ width: 142 }}>
+        <Artwork uri={release.artwork} size={142} radius={15} />
+        <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "700", marginTop: 9 }}>{release.title}</Text>
+        <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10, marginTop: 3 }}>{release.subtitle}</Text>
+      </Pressable>)}
+    </ScrollView>
+  </View>;
+}
