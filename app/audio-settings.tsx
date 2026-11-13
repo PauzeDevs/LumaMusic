@@ -69,6 +69,18 @@ export default function AudioSettingsScreen() {
               {progressBarStyle === "classic" ? <Ionicons name="checkmark-circle" size={17} color={colors.accent} /> : null}
             </GlassSurface>
           </Pressable>
+          <Pressable onPress={() => setProgressBarStyle("waveform")} style={styles.choicePressable}>
+            <GlassSurface style={[styles.choice, progressBarStyle === "waveform" && styles.choiceActive]} contentStyle={styles.choiceContent}>
+              <View style={styles.previewWaveform}>
+                {[5, 9, 13, 7, 16, 11, 6, 14, 9, 17, 8, 12, 6, 15, 10, 7, 14, 9, 16, 6, 12, 8, 15, 10].map((height, index) => (
+                  <View key={index} style={[styles.previewWaveBar, { height, backgroundColor: index < 11 ? colors.accent : colors.subtle }]} />
+                ))}
+              </View>
+              <Text style={styles.choiceTitle}>Waveform</Text>
+              <Text style={styles.choiceSub}>Animated-style waveform timeline</Text>
+              {progressBarStyle === "waveform" ? <Ionicons name="checkmark-circle" size={17} color={colors.accent} /> : null}
+            </GlassSurface>
+          </Pressable>
         </View>
 
         <Text style={[styles.sectionTitle, styles.effectsHeading]}>Spatial balance</Text>
@@ -136,11 +148,13 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   content: { padding: 20, paddingTop: 4, paddingBottom: 36 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "800" },
   sectionCopy: { color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
-  choiceRow: { flexDirection: "row", gap: 10, marginTop: 16 },
-  choicePressable: { flex: 1 },
+  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
+  choicePressable: { width: "48%", flexGrow: 1, flexBasis: "46%" },
   choice: { flex: 1, minHeight: 128, borderRadius: 17 },
   choiceContent: { flex: 1, padding: 13, justifyContent: "space-between" },
   choiceActive: { borderColor: "rgba(255,255,255,0.34)", backgroundColor: "rgba(255,255,255,0.07)" },
+  previewWaveform: { height: 28, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4, marginBottom: 8 },
+  previewWaveBar: { width: 3, borderRadius: 3 },
   previewTrack: { height: 4, borderRadius: 4, backgroundColor: "#343642", marginTop: 8, marginBottom: 10, position: "relative" },
   previewFill: { width: "48%", height: 4, borderRadius: 4, backgroundColor: colors.accent },
   previewDot: { position: "absolute", width: 10, height: 10, borderRadius: 5, left: "48%", top: -3, marginLeft: -5, backgroundColor: colors.text },
