@@ -16,7 +16,11 @@ export function PlaylistStack({ items, emptyText = "Your playlists will appear h
   const [activeIndex, setActiveIndex] = useState(0);
   const drag = useRef(new Animated.ValueXY()).current;
   const locked = useRef(false);
-  const visible = items.length ? [0, 1, 2].map((offset) => items[(activeIndex + offset) % items.length]) : [];
+  const safeIndex = items.length ? activeIndex % items.length : 0;
+  const visible = Array.from(
+    { length: Math.min(3, items.length) },
+    (_, offset) => items[(safeIndex + offset) % items.length]
+  );
 
   const advance = (direction: -1 | 1) => {
     if (items.length < 2 || locked.current) return;
@@ -26,7 +30,9 @@ export function PlaylistStack({ items, emptyText = "Your playlists will appear h
       duration: 240,
       useNativeDriver: true
     }).start(({ finished }) => {
-      if (finished) setActiveIndex((current) => (current + direction + items.length) % items.length);
+      if (finished && items.length > 0) {
+        setActiveIndex((current) => ((current % items.length) + direction + items.length) % items.length);
+      }
       drag.setValue({ x: 0, y: 0 });
       locked.current = false;
     });
@@ -82,7 +88,7 @@ export function PlaylistStack({ items, emptyText = "Your playlists will appear h
       </View>
       <View style={styles.footer}>
         <Text style={styles.hint}>SWIPE UP OR DOWN TO EXPLORE</Text>
-        <Text style={styles.count}>{activeIndex + 1} / {items.length}</Text>
+        <Text style={styles.count}>{safeIndex + 1} / {items.length}</Text>
       </View>
     </View>
   );
