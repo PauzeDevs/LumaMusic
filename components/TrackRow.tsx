@@ -2,8 +2,8 @@ import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { MusicTrack } from "../types/music";
-import { colors } from "../theme/colors";
-import { useAccentColor } from "../theme/useAccentColor";
+import type { ThemePalette } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 import { usePreferencesStore } from "../store/preferences";
 import { Artwork } from "./Artwork";
 import { usePlayerStore } from "../store/player";
@@ -13,7 +13,9 @@ import { useAudioEngine } from "../providers/AudioPlayerProvider";
 type Props = { track: MusicTrack; index?: number; showIndex?: boolean; queue?: MusicTrack[]; playlistId?: string };
 
 export function TrackRow({ track, index, showIndex = false, queue, playlistId }: Props) {
-  const accent = useAccentColor();
+  const { colors } = useTheme();
+  const accent = colors.accent;
+  const styles = createStyles(colors);
   const compactRows = usePreferencesStore((state) => state.compactRows);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const likedTracks = useLibraryStore((state) => state.likedTracks);
@@ -91,7 +93,7 @@ export function TrackRow({ track, index, showIndex = false, queue, playlistId }:
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8 },
   compactRow: { paddingVertical: 3 },
   main: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12, minWidth: 0 },
@@ -112,4 +114,4 @@ const styles = StyleSheet.create({
   playlistCount: { color: colors.subtle, fontSize: 10, marginTop: 3 },
   modalClose: { alignSelf: "flex-end", paddingHorizontal: 14, paddingVertical: 10, marginTop: 8 },
   modalCloseText: { color: colors.muted, fontSize: 11, fontWeight: "700" }
-});
+}); }
