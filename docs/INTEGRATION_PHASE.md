@@ -1,6 +1,6 @@
 # LumaMusic Integration Phase
 
-**Status:** Catalogue discovery and native in-app audio playback are present in the current application. Playback resolution is best-effort and depends on a compatible audio format being available.
+**Status:** Catalogue discovery and best-effort native in-app audio playback are present. Stream availability and playback reliability require ongoing physical-device validation.
 
 ## Discovery
 
@@ -18,7 +18,7 @@
 3. The native audio player handles playback, progress, seeking and transport controls.
 4. LumaMusic records the selection in the local recently played list.
 
-The resolver is best-effort. It does not implement signature-cipher bypasses or DRM removal. Some tracks and formats may be unavailable, and background playback, lock-screen controls and queue continuity require physical-device validation.
+The resolver is best-effort and depends on undocumented provider interfaces and direct media URLs. Some tracks and formats may be unavailable, URLs can expire or be rejected, and stream availability can change. The app retries one failed external stream automatically; persistent failures still surface to the user. Background playback, lock-screen controls and queue continuity require physical-device validation.
 
 ## Data model
 
@@ -26,9 +26,8 @@ YouTube Music tracks use namespaced IDs (`youtube:<videoId>`) and retain a canon
 
 ## Not yet integrated
 
-- Native audio stream resolution through a permitted playback interface.
-- In-app play/pause, seek, next/previous and queue synchronization for YouTube Music audio.
-- Background audio and lock-screen controls for YouTube Music tracks.
+- Reliable stream resolution across all catalogue entries and regions.
+- Exhaustive physical-device validation of background audio, lock-screen controls, interruptions and queue recovery.
 - Google account sign-in, library sync, likes, subscriptions or write actions.
 - Full artist/album/playlist detail parsing and pagination.
 - Local-device music scanning and offline downloads.
