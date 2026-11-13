@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { ThemePalette } from "../theme/colors";
 import { useTheme } from "../theme/useTheme";
 import { parsePlaylistExport, type ImportedPlaylistEntry } from "../services/playlistImport";
-import { searchYouTubeMusicTracks } from "../services/youtubeMusic";
+import { getYouTubeMusicPlaylistTracks, searchYouTubeMusicTracks } from "../services/youtubeMusic";
 import type { MusicTrack } from "../types/music";
 import { useLibraryStore } from "../store/library";
 
@@ -33,6 +33,8 @@ export default function ImportPlaylistScreen() {
   const styles = createStyles(colors);
   const [playlistName, setPlaylistName] = useState("Imported playlist");
   const [rawText, setRawText] = useState("");
+  const [playlistUrl, setPlaylistUrl] = useState("");
+  const [isImportingLink, setIsImportingLink] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [progress, setProgress] = useState(0);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -87,6 +89,61 @@ export default function ImportPlaylistScreen() {
     setIsMatching(false);
   };
 
+  const importPlaylistLink = async () => {
+    const value = playlistUrl.trim();
+    if (!value) return;
+    let parsed: URL;
+    try {
+      parsed = new URL(value);
+    } catch {
+      Alert.alert("Invalid playlist link", "Paste a complete public playlist URL.");
+      return;
+    }
+
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    const isYouTubeMusic = host === "music.youtube.com" || host === "youtube.com" || host === "m.youtube.com";
+    const playlistId = parsed.searchParams.get("list");
+    if (isYouTubeMusic && playlistId) {
+      setIsImportingLink(true);
+      try {
+        const tracks = await getYouTubeMusicPlaylistTracks(playlistId);
+        if (tracks.length === 0) {
+          Alert.alert("No tracks found", "This playlist may be private, unavailable, or empty. Try a public YouTube Music playlist.");
+          return;
+        }
+        const name = playlistName.trim() && playlistName.trim() !== "Imported playlist"
+          ? playlistName.trim()
+          : "YouTube Music playlist";
+        createPlaylist(name);
+        const created = useLibraryStore.getState().playlists[0];
+        if (!created) {
+          Alert.alert("Couldn't create playlist", "Please try again.");
+          return;
+        }
+        tracks.forEach((track) => addTrackToPlaylist(created.id, track));
+        Alert.alert("Playlist imported", `${tracks.length} tracks added to your LumaMusic library.`, [
+          { text: "Open playlist", onPress: () => router.replace({ pathname: "/playlist/[id]", params: { id: created.id, title: created.name } }) },
+          { text: "Done", style: "cancel" }
+        ]);
+      } catch (error) {
+        Alert.alert("Import failed", error instanceof Error ? error.message : "Couldn't read this playlist. Please try again.");
+      } finally {
+        setIsImportingLink(false);
+      }
+      return;
+    }
+
+    if (/spotify\.com$/.test(host) || /music\.apple\.com$/.test(host)) {
+      Alert.alert(
+        "Account connection needed",
+        "Spotify and Apple Music playlist links need their official account/API connection before LumaMusic can read the track list. YouTube Music public playlist links can be imported directly right now."
+      );
+      return;
+    }
+
+    Alert.alert("Unsupported link", "Use a public YouTube Music playlist link for direct importing, or paste a playlist export below.");
+  };
+
   const savePlaylist = () => {
     if (matches.length === 0) return;
     const name = playlistName.trim() || "Imported playlist";
@@ -118,6 +175,23 @@ export default function ImportPlaylistScreen() {
         </View>
         <Text style={styles.label}>PLAYLIST NAME</Text>
         <TextInput value={playlistName} onChangeText={setPlaylistName} placeholder="Imported playlist" placeholderTextColor={colors.subtle} style={styles.nameInput} maxLength={50} />
+        <Text style={styles.label}>PASTE A PLAYLIST LINK</Text>
+        <TextInput
+          value={playlistUrl}
+          onChangeText={setPlaylistUrl}
+          placeholder="https://music.youtube.com/playlist?list=..."
+          placeholderTextColor={colors.subtle}
+          style={styles.nameInput}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+        />
+        <Pressable style={[styles.primaryButton, (!playlistUrl.trim() || isImportingLink) && styles.disabledButton]} disabled={!playlistUrl.trim() || isImportingLink} onPress={() => void importPlaylistLink()}>
+          {isImportingLink ? <ActivityIndicator color="#17111F" /> : <Ionicons name="link" size={17} color="#17111F" />}
+          <Text style={styles.primaryText}>{isImportingLink ? "Importing playlist…" : "Import playlist link"}</Text>
+        </Pressable>
+        <Text style={styles.helper}>Direct link import currently supports public YouTube Music playlists. Spotify and Apple Music need account connections.</Text>
+        <View style={styles.sectionDivider}><Text style={styles.sectionDividerText}>OR IMPORT A PLAYLIST EXPORT</Text></View>
         <Text style={styles.label}>PLAYLIST EXPORT</Text>
         <TextInput
           value={rawText}
@@ -171,6 +245,8 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   helpLink: { flexDirection: "row", alignItems: "center", gap: 7, alignSelf: "flex-start", marginTop: 3 },
   helpText: { color: colors.accent, fontSize: 11, fontWeight: "700" },
   label: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.4, marginBottom: 8, marginTop: 12 },
+  sectionDivider: { alignItems: "center", marginTop: 23, marginBottom: 5 },
+  sectionDividerText: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.2 },
   nameInput: { color: colors.text, backgroundColor: colors.surface, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: colors.border, fontSize: 12 },
   textInput: { minHeight: 180, maxHeight: 270, color: colors.text, backgroundColor: colors.surface, borderRadius: 15, padding: 14, borderWidth: 1, borderColor: colors.border, fontSize: 11, lineHeight: 17 },
   helper: { color: colors.subtle, fontSize: 10, lineHeight: 15, marginTop: 8 },
