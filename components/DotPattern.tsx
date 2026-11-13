@@ -12,7 +12,7 @@ export function DotPattern() {
 
 const styles = StyleSheet.create({
   pattern: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: "row",
     flexWrap: "wrap",
     alignContent: "flex-start",
