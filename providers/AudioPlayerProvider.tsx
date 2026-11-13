@@ -214,6 +214,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         });
         if (requestId !== playbackRequestSequence.current) return;
         player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
+        // Android requires an active media/lock-screen session for sustained background playback.
+        // Keep it active while paused so notification and lock-screen controls remain available.
+        player.setActiveForLockScreen(true, {
+          title: track.title,
+          artist: track.artist,
+          albumTitle: "LumaMusic",
+          ...(track.artwork ? { artworkUrl: track.artwork } : {})
+        });
         player.play();
         // Do not leave the UI spinning forever if the resolved stream never starts.
         startupTimeoutRef.current = setTimeout(() => {
