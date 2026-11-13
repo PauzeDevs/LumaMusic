@@ -313,9 +313,18 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.queue.length === 0 || !state.currentTrack) return;
     const currentIndex = state.currentQueueIndex;
     if (state.repeatMode === "one") {
-      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
-      else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
-      else { await player.seekTo(0); player.play(); }
+      // Restart the already-loaded source instead of resolving the stream again.
+      // Re-resolving at the end of every song can fail or leave repeat-one silent.
+      if (isExternalTrack(state.currentTrack)) {
+        await player.seekTo(0);
+        player.play();
+      } else if (isLocalTrack(state.currentTrack)) {
+        audioRef.current?.seekToTime(0);
+        void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+      } else {
+        await player.seekTo(0);
+        player.play();
+      }
       return;
     }
     let nextTrack: MusicTrack | undefined;
