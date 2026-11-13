@@ -61,7 +61,7 @@ export function PlaylistStack({ items, emptyText = "Your playlists will appear h
             <Animated.View key={item.id} style={[styles.card, { zIndex: 10 - depth, opacity: 1 - depth * 0.15 }, animatedStyle]} {...(isFront ? panResponder.panHandlers : {})}>
               <Pressable style={styles.cardPress} onPress={item.onPress} disabled={!item.onPress}>
                 {item.artwork
-                  ? <Image source={{ uri: item.artwork }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                  ? <Image source={{ uri: item.artwork }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                   : <View style={styles.fallback}><Text style={styles.fallbackGlyph}>♫</Text></View>}
                 <View style={styles.shade} />
                 <View style={styles.copy}>
@@ -86,8 +86,8 @@ const styles = StyleSheet.create({
   deck: { height: 226, justifyContent: "center", alignItems: "center" },
   card: { position: "absolute", width: "100%", height: 196, borderRadius: 23, overflow: "hidden", backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
   cardPress: { flex: 1, justifyContent: "flex-end" },
-  shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(5,4,9,0.38)" },
-  fallback: { ...StyleSheet.absoluteFillObject, backgroundColor: "#24151F", alignItems: "center", justifyContent: "center" },
+  shade: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(5,4,9,0.38)" },
+  fallback: { ...StyleSheet.absoluteFill, backgroundColor: "#24151F", alignItems: "center", justifyContent: "center" },
   fallbackGlyph: { color: colors.accent, fontSize: 64 },
   copy: { padding: 18 },
   title: { color: "#FFFFFF", fontSize: 19, fontWeight: "800", letterSpacing: -0.35 },
