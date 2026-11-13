@@ -80,7 +80,7 @@ export default function LibraryScreen() {
           <View style={styles.topActions}><Pressable style={styles.importButton} onPress={() => router.push("/import-playlist")}><Ionicons name="swap-horizontal" size={15} color={colors.accent} /><Text style={styles.importText}>Import</Text></Pressable><Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable></View>
         </View></ScrollReveal>
         <ScrollReveal scrollY={scrollY}><View style={styles.shortcuts}>
-          <Pressable style={styles.liked} onPress={() => likedTracks.length ? void playTrack(likedTracks[0], likedTracks).catch((err: unknown) => Alert.alert("Couldn’t play liked songs", err instanceof Error ? err.message : "Try again.")) : Alert.alert("No liked songs yet", "Tap the heart beside any track to save it here.")}>
+          <Pressable style={styles.liked} onPress={() => router.push("/liked")} accessibilityRole="button" accessibilityLabel="Open liked songs">
             <View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.shortcutTitle}>Liked songs</Text>
