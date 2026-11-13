@@ -8,7 +8,8 @@ import { GlassSurface } from "../components/GlassSurface";
 import { useLibraryStore } from "../store/library";
 import { colors } from "../theme/colors";
 import {
-  configureGoogleDriveSignIn,\n  disconnectGoogleAccount,
+  configureGoogleDriveSignIn,
+  disconnectGoogleAccount,
   downloadLibraryBackup,
   isLibraryBackup,
   makeLibraryBackup,
@@ -36,7 +37,8 @@ export default function AccountScreen() {
   const connectGoogle = async () => {
     setBusy(true);
     try {
-      configureGoogleDriveSignIn();\n      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      configureGoogleDriveSignIn();
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const result = await GoogleSignin.signIn();
       if (result.type !== "success") return;
       const current = GoogleSignin.getCurrentUser();
