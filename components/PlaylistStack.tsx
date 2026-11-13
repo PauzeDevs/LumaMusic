@@ -68,7 +68,7 @@ export function PlaylistStack({ items, emptyText = "Your playlists will appear h
             >
               <Pressable style={styles.cardPress} onPress={item.onPress} disabled={!item.onPress}>
                 {item.artwork
-                  ? <Image source={{ uri: item.artwork }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                  ? <Image source={{ uri: item.artwork }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} resizeMode="cover" />
                   : <View style={styles.fallback}><Text style={styles.fallbackGlyph}>♫</Text></View>}
                 <View style={styles.shade} />
                 <View style={styles.copy}>
@@ -93,8 +93,8 @@ const styles = StyleSheet.create({
   deck: { height: 218, justifyContent: "center", alignItems: "center" },
   card: { position: "absolute", width: "100%", height: 196, borderRadius: 21, overflow: "hidden", backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: "rgba(255,255,255,0.16)" },
   cardPress: { flex: 1, justifyContent: "flex-end" },
-  shade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(5,6,10,0.4)" },
-  fallback: { ...StyleSheet.absoluteFillObject, backgroundColor: "#28212D", alignItems: "center", justifyContent: "center" },
+  shade: { ...{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }, backgroundColor: "rgba(5,6,10,0.4)" },
+  fallback: { ...{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }, backgroundColor: "#28212D", alignItems: "center", justifyContent: "center" },
   fallbackGlyph: { color: colors.accent, fontSize: 64 },
   copy: { padding: 18 },
   title: { color: "#FFFFFF", fontSize: 19, fontWeight: "800", letterSpacing: -0.35 },
