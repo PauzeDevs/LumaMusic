@@ -48,7 +48,7 @@
       "package": "dev.pauze.lumamusic",
       "adaptiveIcon": {
         "foregroundImage": "./assets/lumamusic-icon.jpg",
-        "backgroundColor": "#180006"
+        "backgroundColor": "#F8E7BF"
       }
     },
     "experiments": {
