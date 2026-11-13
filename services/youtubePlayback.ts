@@ -20,6 +20,27 @@ const streamCache = new Map<string, ResolvedYouTubeAudio>();
  * without requiring a browser JS signature decipherer or external yt-dlp server.
  */
 const INNERTUBE_PLAYER_CLIENTS = [
+  // VISIONOS currently returns direct, pre-signed media URLs without requiring
+  // a PO token or JavaScript signature deciphering. Keep the existing clients
+  // below as fallbacks in case YouTube changes this route.
+  {
+    name: "VISIONOS",
+    clientId: "101",
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+    context: {
+      client: {
+        clientName: "VISIONOS",
+        clientVersion: "1.02",
+        deviceMake: "Apple",
+        deviceModel: "RealityDevice17,1",
+        osName: "visionOS",
+        osVersion: "26.5.23O471",
+        hl: "en",
+        gl: "US"
+      }
+    }
+  },
   {
     name: "IOS",
     clientId: "5",
