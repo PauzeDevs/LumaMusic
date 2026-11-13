@@ -84,6 +84,6 @@ export async function resolveYouTubePoTokens(
         pending.delete(requestId);
         finish(null);
       }
-    }, 35_000);
+    }, 12_000);
   });
 }
