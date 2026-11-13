@@ -18,7 +18,7 @@ function formatTime(seconds: number) {
 
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, isDark);
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -156,7 +156,7 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
