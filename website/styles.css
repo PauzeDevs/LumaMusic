@@ -139,3 +139,9 @@ body>*{position:relative;z-index:1}
 .menu-toggle span{background:#1c5d37!important}
 @media(max-width:680px){.main-nav{background:#fff2d3!important;border-color:rgba(76,75,42,.2)!important}.site-header{background:rgba(255,244,217,.96)!important}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+/* Subtle candy sprinkles across the warm paper backdrop */
+body:after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.22;background-image:radial-gradient(circle at 8% 17%,#4b9655 0 3px,transparent 4px),radial-gradient(circle at 84% 22%,#e5a6b9 0 3px,transparent 4px),radial-gradient(circle at 72% 76%,#e8c65d 0 3px,transparent 4px),radial-gradient(circle at 24% 84%,#5d9a55 0 3px,transparent 4px),linear-gradient(55deg,transparent 48%,#e7a4b6 49% 54%,transparent 55%);background-size:210px 190px,260px 230px,300px 250px,240px 220px,170px 160px}
+.site-header .brand img,.site-footer .brand img{border-radius:14px}
+.catalogue-panel,.feature-item,.legal-links a{transition:background .2s,border-color .2s,transform .2s}
+.legal-links a:hover{color:#1c6037!important;background:rgba(255,255,255,.25)}
