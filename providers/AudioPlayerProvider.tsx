@@ -451,11 +451,13 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [playTrackSafely, player]);
 
   const setPlaybackRate = useCallback((rate: number) => {
+    if (!Number.isFinite(rate)) return;
     const safeRate = Math.max(0.5, Math.min(2, rate));
     setPlaybackRateState(safeRate);
   }, [setPlaybackRateState]);
 
   const setSleepTimer = useCallback((minutes: number | null) => {
+    if (minutes !== null && (!Number.isFinite(minutes) || (minutes < 0 && minutes !== -1))) return;
     if (sleepTimerRef.current) { clearTimeout(sleepTimerRef.current); sleepTimerRef.current = null; }
     setSleepTimerMinutesState(minutes);
     if (minutes !== null && minutes > 0) {
