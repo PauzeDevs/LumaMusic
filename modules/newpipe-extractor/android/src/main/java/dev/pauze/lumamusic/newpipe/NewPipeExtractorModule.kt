@@ -3,10 +3,10 @@ package dev.pauze.lumamusic.newpipe
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
-import org.schabi.newpipe.extractor.services.youtube.YoutubeService
 import org.schabi.newpipe.extractor.stream.AudioStream
 import java.io.BufferedReader
 import java.io.InputStream
@@ -76,7 +76,7 @@ class NewPipeExtractorModule : Module() {
         }
       }
 
-      val extractor = YoutubeService().getStreamExtractor(
+      val extractor = ServiceList.YouTube.getStreamExtractor(
         "https://www.youtube.com/watch?v=$videoId"
       )
       extractor.fetchPage()
