@@ -153,9 +153,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     void audioContextRef.current?.close();
   }, []);
 
-  const onLocalAudioLoad = useCallback(() => {
+  const onLocalAudioLoad = useCallback((sourceInstance: number, trackId: string) => {
     const context = audioContextRef.current;
     const element = audioRef.current;
+    const latestTrack = usePlayerStore.getState().currentTrack;
+    // A delayed load event from a replaced audio element must not start the new source.
+    if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
     if (!context || !element || graphRef.current) return;
     try {
       const source = context.createMediaElementSource(element);
@@ -570,7 +573,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
             context={audioContextRef.current ?? undefined}
             controls={false}
             playbackRate={playbackRate}
-            onLoad={onLocalAudioLoad}
+            onLoad={() => onLocalAudioLoad(localSource.instance, currentTrack?.id ?? "")}
             onError={(error) => {
               const latest = usePlayerStore.getState();
               if (localSource.instance !== localSourceSequence.current || latest.currentTrack?.id !== currentTrack?.id) return;
