@@ -134,9 +134,9 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
     errors.push(`PoToken: ${error instanceof Error ? error.message : String(error)}`);
   });
 
-  // Ask all InnerTube client profiles at once. The first usable direct stream wins,
-  // rather than waiting for several slow profile requests one after another.
-  const profileResults = await Promise.allSettled(INNERTUBE_PLAYER_CLIENTS.map(async (profile) => {
+  // Race the profiles and use the first successful playable stream.
+  // Promise.allSettled would wait for every slow/failing client before returning.
+  const profileAttempts = INNERTUBE_PLAYER_CLIENTS.map(async (profile) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7000);
     try {
@@ -158,12 +158,12 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
           contentCheckOk: true
         })
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`${profile.name}: HTTP ${response.status}`);
       const payload: Record<string, any> = await response.json();
       const status = payload?.playabilityStatus?.status;
       if (status !== "OK") {
         const reason = payload?.playabilityStatus?.reason || status || "Unavailable";
-        throw new Error(String(reason));
+        throw new Error(`${profile.name}: ${String(reason)}`);
       }
 
       const streamingData = payload?.streamingData;
@@ -181,7 +181,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
       });
       const bestFormat = audioStreams[0];
       const hlsManifestUrl: string | undefined = streamingData?.hlsManifestUrl;
-      if (!bestFormat && !hlsManifestUrl) throw new Error("No direct audio stream URL in response");
+      if (!bestFormat && !hlsManifestUrl) throw new Error(`${profile.name}: no direct audio stream URL`);
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
       const durationFromPlayer = Number(payload?.videoDetails?.lengthSeconds || 0);
@@ -198,16 +198,21 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
     } finally {
       clearTimeout(timeout);
     }
-  }));
+  });
 
-  for (let index = 0; index < profileResults.length; index += 1) {
-    const result = profileResults[index];
-    if (result.status === "fulfilled") {
-      streamCache.set(videoId, result.value);
-      return result.value;
-    }
-    const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
-    errors.push(`${INNERTUBE_PLAYER_CLIENTS[index].name}: ${reason}`);
+  let resolvedStream: ResolvedYouTubeAudio;
+  try {
+    resolvedStream = await Promise.any(profileAttempts);
+  } catch (error) {
+    const failures = error instanceof AggregateError
+      ? error.errors.map((item) => item instanceof Error ? item.message : String(item))
+      : [error instanceof Error ? error.message : String(error)];
+    errors.push(...failures);
+    resolvedStream = null as unknown as ResolvedYouTubeAudio;
+  }
+  if (resolvedStream) {
+    streamCache.set(videoId, resolvedStream);
+    return resolvedStream;
   }
 
   // Android fallback: NewPipe uses its own extraction implementation.
