@@ -102,9 +102,9 @@ export default function PoTokenWebViewHost() {
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== "android") return;
+    if (Platform.OS !== "android" || !pageLoaded) return;
     return attachPoTokenWebView(sendRequest);
-  }, [sendRequest]);
+  }, [pageLoaded, sendRequest]);
 
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     try {
