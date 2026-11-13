@@ -1,24 +1,19 @@
-# Independent PoToken service
+# On-device YouTube PoToken generation
 
-LumaMusic can optionally request YouTube BotGuard Proof-of-Origin tokens from a separate Node.js endpoint. This route uses the MIT-licensed `bgutils-js` package and `jsdom`; it does not copy Mochy-Music's GPL implementation.
+Android generates video-bound YouTube Proof-of-Origin tokens locally inside a hidden WebView. There is no LumaMusic API server, VPS, Vercel deployment, or API URL to configure.
 
-## Deploy
+## Runtime
 
-1. Deploy this repository to Vercel.
-2. The API route is available at `/api/potoken`.
-3. Set `EXPO_PUBLIC_POTOKEN_API_URL` in the Expo build environment to the full endpoint URL, for example `https://your-deployment.vercel.app/api/potoken`.
-4. Rebuild the native app so the public Expo environment variable is included.
+- The hidden WebView loads YouTube and initializes the BotGuard challenge in the YouTube page context.
+- The MIT-licensed `bgutils-js` 4.0.3 modules are loaded from jsDelivr at runtime.
+- The WebView runs the BotGuard challenge, requests the integrity token from Google's attestation endpoint, and mints a content-bound token for the requested video ID.
+- The token is returned to the React Native playback resolver and appended to the media URL as `pot=`.
+- Token generation is best-effort. If YouTube, Google attestation, the CDN, or WebView blocks the challenge, the existing InnerTube and NewPipe paths continue without a token.
 
-The endpoint accepts a POST body containing an 11-character YouTube `videoId`. It returns a session-bound token (bound to YouTube visitor data), a content-bound token (bound to the video ID), and an expiry timestamp.
+## Build requirements
 
-## Behaviour
-
-- InnerTube remains the primary playback resolver.
-- When configured, LumaMusic obtains PoTokens and adds the session token to the InnerTube player request's `serviceIntegrityDimensions.poToken` field.
-- The content token is appended to the returned media URL as `pot=`.
-- If the service is not configured or token generation fails, the existing InnerTube and NewPipe paths continue to run.
-- Tokens are not treated as a guaranteed bypass. YouTube can still reject requests based on its own risk checks, client profile, network, or service-side changes.
+This uses `react-native-webview`, which is included through Expo SDK 57's recommended package version. A new native Android build is required after installing it. Expo Go may already include the module, but production APKs must be rebuilt with the native dependency.
 
 ## Licensing
 
-The PoToken route depends on `bgutils-js` (MIT) and `jsdom` (MIT). LumaMusic's existing EPL-2.0 project licence is not replaced by this integration. The MIT notices for dependencies remain applicable.
+The BotGuard helper library is MIT-licensed. This does not copy Mochy-Music's GPL implementation and does not change LumaMusic's EPL-2.0 project licence.
