@@ -2,7 +2,8 @@ import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
+import type { ThemePalette } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 
 export function useSiriRefresh() {
   const queryClient = useQueryClient();
@@ -53,6 +54,8 @@ type SiriRefreshOverlayProps = {
 };
 
 export function SiriRefreshOverlay({ visible, refreshing, onPress }: SiriRefreshOverlayProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const slide = useRef(new Animated.Value(-90)).current;
   const glow = useRef(new Animated.Value(0)).current;
 
@@ -104,7 +107,7 @@ export function SiriRefreshOverlay({ visible, refreshing, onPress }: SiriRefresh
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   overlay: {
     position: "absolute",
     top: 8,
@@ -133,4 +136,4 @@ const styles = StyleSheet.create({
   copy: { flex: 1, gap: 2 },
   name: { color: colors.text, fontSize: 12, fontWeight: "800", letterSpacing: 0.2 },
   status: { color: colors.muted, fontSize: 10, fontWeight: "500" }
-});
+}); }
