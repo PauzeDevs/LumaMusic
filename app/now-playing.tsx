@@ -105,7 +105,7 @@ export default function NowPlayingScreen() {
       <View style={styles.main}>
         <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ scale: artworkScale }] }]}>
           {track.artwork && !artworkFailed ? <Image source={{ uri: track.artwork }} style={styles.artwork} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
-        </View>
+        </Animated.View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
