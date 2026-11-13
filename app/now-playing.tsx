@@ -19,7 +19,6 @@ function formatTime(seconds: number) {
 
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
-  const styles = createStyles(colors, isDark, surfaceStyle);
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -34,6 +33,7 @@ export default function NowPlayingScreen() {
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
+  const styles = createStyles(colors, isDark, surfaceStyle);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
   const artworkScale = useRef(new Animated.Value(1)).current;
