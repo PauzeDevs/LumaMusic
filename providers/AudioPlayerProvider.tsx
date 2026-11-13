@@ -235,7 +235,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     disconnectGraph();
     usePlayerStore.getState().setTrack(track, queue, queueIndex);
     useLibraryStore.getState().addRecentTrack(track);
-    useListeningStatsStore.getState().registerPlay(track);
+    useListeningStatsStore.getState().beginTrack();
 
     if (isExternalTrack(track)) {
       setLocalSource(null);
