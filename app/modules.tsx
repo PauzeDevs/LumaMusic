@@ -68,7 +68,7 @@ export default function ModulesScreen() {
   const createModule = () => {
     const name = moduleName.trim();
     if (!name) { Alert.alert("Name your module", "Add a name before creating your module."); return; }
-    const id = "user-" + Date.now().toString(36);
+    const id = "user-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
     createUserModule({ id, name, detail: moduleDetail.trim() || "Personal module", createdAt: Date.now() });
     setModuleName(""); setModuleDetail(""); setModuleBuilderOpen(false);
   };
