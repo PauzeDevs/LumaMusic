@@ -285,3 +285,18 @@ export async function openTrackInYouTubeMusic(track: MusicTrack): Promise<void> 
   if (!track.youtubeUrl) throw new Error("This track does not have a playable link.");
   await Linking.openURL(track.youtubeUrl);
 }
+
+/**
+ * Loads an artist's native YouTube Music page catalogue for in-app discovery.
+ * The artist browse ID is the UC... channel ID returned by artist search.
+ */
+export async function getYouTubeMusicArtistTracks(artistId: string, limit = 30): Promise<MusicTrack[]> {
+  const browseId = artistId.trim();
+  if (!browseId.startsWith("UC")) return [];
+  const payload = await innerTubePost(BROWSE_URL, { browseId });
+  const renderers = collectRenderers(payload, "musicResponsiveListItemRenderer");
+  const tracks = renderers
+    .map(mapTrack)
+    .filter((item): item is MusicTrack => Boolean(item));
+  return uniqueById(tracks).slice(0, limit);
+}
