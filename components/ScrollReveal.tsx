@@ -11,14 +11,27 @@ export function ScrollReveal({ children, scrollY, delay = 0 }: Props) {
   const motionStyle = usePreferencesStore((state) => state.motionStyle);
 
   useEffect(() => {
-    const animation = motionStyle === "off"\n      ? (entrance.setValue(1), null)\n      : Animated.spring(entrance, { toValue: 1, damping: motionStyle === "subtle" ? 25 : 20, stiffness: motionStyle === "subtle" ? 190 : 150, mass: 0.8, useNativeDriver: true });
+    if (motionStyle === "off") {
+      entrance.setValue(1);
+      return;
+    }
+    const animation = Animated.spring(entrance, {
+      toValue: 1,
+      damping: motionStyle === "subtle" ? 25 : 20,
+      stiffness: motionStyle === "subtle" ? 190 : 150,
+      mass: 0.8,
+      useNativeDriver: true
+    });
     animation.start();
     return () => animation.stop();
   }, [entrance, motionStyle]);
 
   const onLayout = (event: LayoutChangeEvent) => setTop(event.nativeEvent.layout.y);
   const reveal = motionStyle === "off" || top === null || top < VIEWPORT_HEIGHT * 0.88 ? 1 : scrollY.interpolate({
-    inputRange: [Math.max(0, top - VIEWPORT_HEIGHT * 0.92 + delay), Math.max(1, top - VIEWPORT_HEIGHT * 0.52 + delay)],
+    inputRange: [
+      Math.max(0, top - VIEWPORT_HEIGHT * 0.92 + delay),
+      Math.max(1, top - VIEWPORT_HEIGHT * 0.52 + delay)
+    ],
     outputRange: [0, 1],
     extrapolate: "clamp"
   });
