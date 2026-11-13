@@ -27,7 +27,7 @@ export function ScrollReveal({ children, scrollY, delay = 0 }: Props) {
   }, [entrance, motionStyle]);
 
   const onLayout = (event: LayoutChangeEvent) => setTop(event.nativeEvent.layout.y);
-  const reveal = motionStyle === "off" || top === null || top < VIEWPORT_HEIGHT * 0.88 ? 1 : scrollY.interpolate({
+  const reveal = motionStyle === "off" || top === null || top < VIEWPORT_HEIGHT * 0.88 ? new Animated.Value(1) : scrollY.interpolate({
     inputRange: [
       Math.max(0, top - VIEWPORT_HEIGHT * 0.92 + delay),
       Math.max(1, top - VIEWPORT_HEIGHT * 0.52 + delay)
