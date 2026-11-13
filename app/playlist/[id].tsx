@@ -1,15 +1,18 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TrackRow } from "../../components/TrackRow";
+import { Artwork } from "../../components/Artwork";
+import { getYouTubeMusicPlaylistTracks } from "../../services/youtubeMusic";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
 import { colors } from "../../theme/colors";
 
 export default function PlaylistScreen() {
-  const params = useLocalSearchParams<{ id: string; title?: string }>();
+  const params = useLocalSearchParams<{ id: string; title?: string; artwork?: string }>();
   const id = String(params.id ?? "");
   const localPlaylist = useLibraryStore((state) => state.playlists.find((playlist) => playlist.id === id));
   const deletePlaylist = useLibraryStore((state) => state.deletePlaylist);
@@ -18,6 +21,15 @@ export default function PlaylistScreen() {
   const [draftName, setDraftName] = useState("");
   const { playTrack } = useAudioEngine();
   const remoteTitle = String(params.title ?? "Playlist");
+  const remoteArtwork = String(params.artwork ?? "");
+  const remotePlaylist = !localPlaylist && Boolean(id);
+  const remoteTracksQuery = useQuery({
+    queryKey: ["youtubeMusic", "playlist", id],
+    queryFn: () => getYouTubeMusicPlaylistTracks(id),
+    enabled: remotePlaylist,
+    staleTime: 5 * 60 * 1000
+  });
+  const remoteTracks = remoteTracksQuery.data ?? [];
 
   const playAll = () => {
     if (!localPlaylist || localPlaylist.tracks.length === 0) return;
@@ -67,14 +79,20 @@ export default function PlaylistScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.hero}>
-            <View style={styles.artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>
+            {remoteArtwork ? <Artwork uri={remoteArtwork} size={112} radius={22} /> : <View style={styles.artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>}
             <Text style={styles.title}>{remoteTitle}</Text>
-            <Text style={styles.copy}>This playlist belongs to the external music catalogue. Open it there to view the full tracklist and listen.</Text>
-            <Pressable style={styles.primaryButton} onPress={() => void Linking.openURL("https://music.youtube.com/playlist?list=" + encodeURIComponent(id))}>
-              <Text style={styles.primaryText}>Open playlist</Text><Ionicons name="open-outline" size={16} color="#17111F" />
+            <Text style={styles.copy}>{remoteTracksQuery.isLoading ? "Loading tracks from the music catalogue…" : remoteTracksQuery.isError ? "Couldn't load this playlist right now." : remoteTracks.length + " tracks · Available in LumaMusic"}</Text>
+            <Pressable disabled={remoteTracks.length === 0} style={[styles.primaryButton, remoteTracks.length === 0 && styles.disabled]} onPress={playAll}>
+              <Ionicons name="play" size={16} color="#17111F" /><Text style={styles.primaryText}>Play all</Text>
             </Pressable>
-            <Text style={styles.remoteNote}>Remote playlist tracklists are not copied into your local library unless you import a supported export.</Text>
           </View>
+          {remoteTracksQuery.isLoading ? <Text style={styles.emptyCopy}>Fetching playlist tracks…</Text> : null}
+          {remoteTracksQuery.isError ? <View style={styles.empty}><Ionicons name="cloud-offline-outline" size={30} color={colors.subtle} /><Text style={styles.emptyTitle}>Playlist unavailable</Text><Text style={styles.emptyCopy}>The catalogue didn't return this playlist. Check your connection and try opening it again later.</Text></View> : null}
+          {!remoteTracksQuery.isLoading && !remoteTracksQuery.isError && remoteTracks.length > 0 ? <View>
+            <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Tracks</Text><Text style={styles.count}>{remoteTracks.length}</Text></View>
+            {remoteTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={remoteTracks} />)}
+          </View> : null}
+          {!remoteTracksQuery.isLoading && !remoteTracksQuery.isError && remoteTracks.length === 0 ? <View style={styles.empty}><Ionicons name="musical-notes-outline" size={30} color={colors.subtle} /><Text style={styles.emptyTitle}>No tracks found</Text><Text style={styles.emptyCopy}>This playlist may be private, unavailable, or unsupported by the catalogue.</Text></View> : null}
         </ScrollView>
       )}
       <Modal visible={renameVisible} transparent animationType="fade" onRequestClose={() => setRenameVisible(false)}>
