@@ -64,7 +64,9 @@ export default function ImportPlaylistScreen() {
             return { track, score: titleScore * 0.82 + artistScore * 0.18 };
           }).sort((a, b) => b.score - a.score);
           const best = ranked[0];
-          return best && best.score >= 0.56 ? { entry, track: best.track } as Match : null;
+          const hasArtist = Boolean(entry.artist.trim());
+          const isConfidentMatch = Boolean(best && best.score >= 0.76 && similarity(entry.title, best.track.title) >= 0.72 && (!hasArtist || similarity(entry.artist, best.track.artist) >= 0.5));
+          return isConfidentMatch && best ? { entry, track: best.track } as Match : null;
         } catch {
           return null;
         }
