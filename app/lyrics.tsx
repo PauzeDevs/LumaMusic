@@ -14,6 +14,8 @@ export default function LyricsScreen() {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
+  const lineOffsets = useRef<number[]>([]);
+  const isSynced = lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null);
   const activeIndex = useMemo(() => {
     if (lyrics.status !== "available") return -1;
     let active = -1;
@@ -30,7 +32,10 @@ export default function LyricsScreen() {
   }, [track?.id]);
 
   useEffect(() => {
-    if (activeIndex >= 0) scrollRef.current?.scrollTo({ y: Math.max(0, activeIndex * 66 - 170), animated: true });
+    if (activeIndex >= 0) {
+      const lineTop = lineOffsets.current[activeIndex];
+      if (lineTop !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, lineTop - 150), animated: true });
+    }
   }, [activeIndex]);
 
   const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
@@ -49,7 +54,7 @@ export default function LyricsScreen() {
       {track ? <View style={styles.trackCard}>
         <Artwork uri={track.artwork} size={54} radius={12} />
         <View style={styles.trackCopy}><Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.artist}>{track.artist}</Text></View>
-        <View style={styles.livePill}><View style={[styles.liveDot, { opacity: isPlaying ? 1 : 0.45 }]} /><Text style={styles.liveText}>{isPlaying ? "LIVE" : "PAUSED"}</Text></View>
+        <View style={styles.livePill}><View style={[styles.liveDot, { opacity: isPlaying ? 1 : 0.45 }]} /><Text style={styles.liveText}>{isSynced ? (isPlaying ? "SYNCED" : "PAUSED") : "PLAIN"}</Text></View>
       </View> : null}
 
       <View style={styles.lyricsSurface}>
@@ -61,7 +66,7 @@ export default function LyricsScreen() {
         {lyrics.status === "available" ? <>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricList} showsVerticalScrollIndicator={false}>
             <View style={styles.topFadeSpace} />
-            {lyrics.lines.map((line, index) => <Text key={`${line.time ?? "plain"}-${index}`} style={[styles.lyricLine, index === activeIndex ? styles.activeLine : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Text>)}
+            {lyrics.lines.map((line, index) => <Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? styles.activeLine : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Text>)}
             <View style={styles.bottomFadeSpace} />
           </ScrollView>
           <View style={styles.providerFooter}>
@@ -99,7 +104,7 @@ const styles = StyleSheet.create({
   lyricList: { paddingHorizontal: 24, alignItems: "flex-start" },
   topFadeSpace: { height: 170 },
   bottomFadeSpace: { height: 220 },
-  lyricLine: { color: "rgba(255,255,255,0.27)", fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
+  lyricLine: { width: "100%", color: "rgba(255,255,255,0.27)", fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
   activeLine: { color: "#FFFFFF", fontSize: 27, lineHeight: 36, textShadowColor: "rgba(198,167,255,0.22)", textShadowRadius: 18 },
   pastLine: { color: "rgba(255,255,255,0.14)" },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
