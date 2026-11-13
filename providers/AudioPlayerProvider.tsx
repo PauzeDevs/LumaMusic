@@ -73,6 +73,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const graphRef = useRef<AudioGraph | null>(null);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   if (!audioContextRef.current) audioContextRef.current = new AudioContext({ latencyHint: "playback" });
 
   const setPlaybackStatus = usePlayerStore((state) => state.setPlaybackStatus);
@@ -120,8 +121,16 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
 
+  useEffect(() => {
+    if (status.playing && startupTimeoutRef.current) {
+      clearTimeout(startupTimeoutRef.current);
+      startupTimeoutRef.current = null;
+    }
+  }, [status.playing]);
+
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
+    if (startupTimeoutRef.current) clearTimeout(startupTimeoutRef.current);
     graphRef.current?.source.disconnect();
     graphRef.current?.panner.disconnect();
     graphRef.current?.convolver.disconnect();
@@ -176,6 +185,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number) => {
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
     const requestId = ++playbackRequestSequence.current;
+    if (startupTimeoutRef.current) {
+      clearTimeout(startupTimeoutRef.current);
+      startupTimeoutRef.current = null;
+    }
     const queue = nextQueue?.length ? nextQueue : [track];
     if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
     // Stop the previous stream immediately; don't let it play underneath a new selection.
@@ -202,6 +215,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (requestId !== playbackRequestSequence.current) return;
         player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
         player.play();
+        // Do not leave the UI spinning forever if the resolved stream never starts.
+        startupTimeoutRef.current = setTimeout(() => {
+          startupTimeoutRef.current = null;
+          const latest = usePlayerStore.getState();
+          if (requestId !== playbackRequestSequence.current || latest.currentTrack?.id !== track.id || !latest.isBuffering) return;
+          player.pause();
+          latest.setPlaybackError("Audio stream did not start within 20 seconds. The stream may be unavailable or blocked. Tap Play to retry.");
+        }, 20_000);
         // Warm the next playlist stream while this song is already playing.
         // Selecting it later can then reuse the in-memory URL cache.
         const nextTrack = queue.slice(Math.max(0, (queueIndex ?? queue.findIndex((item) => item.id === track.id)) + 1))
@@ -213,6 +234,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
         return;
       } catch (error) {
+        if (startupTimeoutRef.current) {
+          clearTimeout(startupTimeoutRef.current);
+          startupTimeoutRef.current = null;
+        }
         if (requestId !== playbackRequestSequence.current) return;
         const errorMessage = error instanceof Error ? error.message : "Could not stream this track.";
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: false, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: errorMessage });
