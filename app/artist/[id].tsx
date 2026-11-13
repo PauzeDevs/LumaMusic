@@ -5,10 +5,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { TrackRow } from "../../components/TrackRow";
-import { colors } from "../../theme/colors";
+import type { ThemePalette } from "../../theme/colors";
+import { useTheme } from "../../theme/useTheme";
 import { getYouTubeMusicArtistTracks } from "../../services/youtubeMusic";
 
 export default function ArtistScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { id, name, artwork } = useLocalSearchParams<{ id: string; name?: string; artwork?: string }>();
   const artistId = Array.isArray(id) ? id[0] : id;
   const artistName = Array.isArray(name) ? name[0] : name;
@@ -69,7 +72,7 @@ export default function ArtistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20, paddingBottom: 36 },
   back: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 12 },
@@ -86,4 +89,4 @@ const styles = StyleSheet.create({
   stateCopy: { color: colors.muted, fontSize: 11, lineHeight: 17, textAlign: "center" },
   retry: { marginTop: 5, paddingHorizontal: 17, paddingVertical: 9, borderRadius: 18, backgroundColor: colors.accent },
   retryText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" }
-});
+}); }
