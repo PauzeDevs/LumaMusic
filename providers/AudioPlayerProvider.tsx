@@ -1,4 +1,4 @@
-import { Audio, AudioContext, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
+import { Audio, AudioContext, PlaybackNotificationManager, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { View } from "react-native";
@@ -190,13 +190,22 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [applyEffects, applyEqualizer, setPlaybackError]);
 
   const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string) => {
+    const active = playbackState === "playing" || playbackState === "buffering";
     setPlaybackStatus({
-      isPlaying: playbackState === "playing" || playbackState === "buffering",
+      isPlaying: active,
       isBuffering: playbackState === "buffering",
       playbackPosition: Math.max(0, position || 0),
       playbackDuration: Math.max(0, duration || 0),
       playbackError: null
     });
+    const track = usePlayerStore.getState().currentTrack;
+    if (track) {
+      void PlaybackNotificationManager.show({
+        state: active ? "playing" : "paused",
+        elapsedTime: Math.max(0, position || 0),
+        duration: Math.max(0, duration || 0)
+      }).catch(() => undefined);
+    }
   }, [setPlaybackStatus]);
 
   const disconnectGraph = useCallback(() => {
@@ -248,7 +257,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           startupTimeoutRef.current = null;
           const latest = usePlayerStore.getState();
           if (requestId !== playbackRequestSequence.current || latest.currentTrack?.id !== track.id || !latest.isBuffering) return;
-          player.pause();
+          audioRef.current?.pause();
           latest.setPlaybackError("Audio stream did not start within 20 seconds. The stream may be unavailable or blocked. Tap Play to retry.");
         }, 20_000);
         // Warm the next playlist stream while this song is already playing.
@@ -306,14 +315,13 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
-      if (status.playing) {
-        player.pause();
-      } else if (status.error || !status.isLoaded) {
-        // A failed/expired YouTube stream cannot reliably resume in-place.
-        // Resolve a fresh URL and replace the failed source on an explicit Play tap.
+      if (state.isPlaying) {
+        audioRef.current?.pause();
+      } else if (state.playbackError || !audioRef.current) {
+        // Expired streams are resolved again instead of trying to resume a dead URL.
         void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
       } else {
-        player.play();
+        void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       }
       return;
     }
@@ -324,7 +332,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
     if (status.playing) player.pause();
     else if (state.currentTrack) player.play();
-  }, [player, status.playing, status.error, status.isLoaded, playTrackSafely]);
+  }, [player, playTrackSafely]);
 
   const playNext = useCallback(async () => {
     const state = usePlayerStore.getState();
@@ -333,10 +341,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.repeatMode === "one") {
       // Restart the already-loaded source instead of resolving the stream again.
       // Re-resolving at the end of every song can fail or leave repeat-one silent.
-      if (isExternalTrack(state.currentTrack)) {
-        await player.seekTo(0);
-        player.play();
-      } else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
+      if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
         audioRef.current?.seekToTime(0);
         void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       } else {
@@ -420,14 +425,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       if (isPlayable(candidate)) { await playTrackSafely(candidate, state.queue, index); return; }
     }
     if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
-    else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
+    else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
     else await player.seekTo(0);
   }, [playTrackSafely, player]);
 
   const setPlaybackRate = useCallback((rate: number) => {
     const safeRate = Math.max(0.5, Math.min(2, rate));
     setPlaybackRateState(safeRate);
-  }, [player, setPlaybackRateState]);
+  }, [setPlaybackRateState]);
 
   const setSleepTimer = useCallback((minutes: number | null) => {
     if (sleepTimerRef.current) { clearTimeout(sleepTimerRef.current); sleepTimerRef.current = null; }
@@ -456,6 +461,48 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
     void playNext();
   }, [playNext, setSleepTimerMinutesState]);
+
+  useEffect(() => {
+    const playListener = PlaybackNotificationManager.addEventListener("playbackNotificationPlay", () => {
+      void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+    });
+    const pauseListener = PlaybackNotificationManager.addEventListener("playbackNotificationPause", () => audioRef.current?.pause());
+    const nextListener = PlaybackNotificationManager.addEventListener("playbackNotificationNextTrack", () => { void playNext(); });
+    const previousListener = PlaybackNotificationManager.addEventListener("playbackNotificationPreviousTrack", () => { void playPrevious(); });
+    const seekListener = PlaybackNotificationManager.addEventListener("playbackNotificationSeekTo", (event) => audioRef.current?.seekToTime(event.value));
+    const forwardListener = PlaybackNotificationManager.addEventListener("playbackNotificationSkipForward", (event) => {
+      audioRef.current?.seekToTime(usePlayerStore.getState().playbackPosition + event.value);
+    });
+    const backwardListener = PlaybackNotificationManager.addEventListener("playbackNotificationSkipBackward", (event) => {
+      audioRef.current?.seekToTime(Math.max(0, usePlayerStore.getState().playbackPosition - event.value));
+    });
+    return () => {
+      playListener.remove();
+      pauseListener.remove();
+      nextListener.remove();
+      previousListener.remove();
+      seekListener.remove();
+      forwardListener.remove();
+      backwardListener.remove();
+      void PlaybackNotificationManager.hide().catch(() => undefined);
+    };
+  }, [playNext, playPrevious]);
+
+  useEffect(() => {
+    if (!currentTrack) {
+      void PlaybackNotificationManager.hide().catch(() => undefined);
+      return;
+    }
+    void PlaybackNotificationManager.show({
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      album: "LumaMusic",
+      ...(currentTrack.artwork ? { artwork: currentTrack.artwork } : {}),
+      duration: Math.max(0, currentTrack.durationMs / 1000),
+      elapsedTime: 0,
+      state: "paused"
+    }).catch(() => undefined);
+  }, [currentTrack?.id]);
 
   useEffect(() => {
     // Expo Audio can keep didJustFinish=true briefly while the next source is loading.
