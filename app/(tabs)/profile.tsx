@@ -1,7 +1,8 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "../../theme/colors";
+import type { ThemePalette } from "../../theme/colors";
+import { useTheme } from "../../theme/useTheme";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { GlassSurface } from "../../components/GlassSurface";
 import { PlaylistStack } from "../../components/PlaylistStack";
@@ -19,6 +20,8 @@ const settings = [
 ] as const;
 
 export default function ProfileScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -94,7 +97,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20, paddingBottom: 34 },
   topline: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
@@ -128,4 +131,4 @@ const styles = StyleSheet.create({
   settingSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
   footerCard: { marginTop: 25, alignItems: "center", gap: 9, padding: 18, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.025)" },
   footer: { color: colors.subtle, fontSize: 10, textAlign: "center", lineHeight: 17 }
-});
+}); }
