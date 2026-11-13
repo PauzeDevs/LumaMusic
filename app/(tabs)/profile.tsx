@@ -11,8 +11,10 @@ import { useLibraryStore } from "../../store/library";
 import { router } from "expo-router";
 
 const settings = [
+  { icon: "stats-chart-outline", title: "Listening Stats", subtitle: "Your Replay, listening time and top tracks" },
   { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
   { icon: "notifications-outline", title: "Notifications", subtitle: "New music and updates" },
+  { icon: "extension-puzzle-outline", title: "Modules", subtitle: "Add features and build your own look" },
   { icon: "color-palette-outline", title: "Appearance", subtitle: "Colours, motion and listening layout" },
   { icon: "musical-notes-outline", title: "Playback", subtitle: "Playback, progress and sound controls" },
   { icon: "shield-checkmark-outline", title: "Privacy", subtitle: "Your data and listening activity" },
@@ -61,7 +63,9 @@ export default function ProfileScreen() {
         <GlassSurface style={styles.settings} contentStyle={styles.settingsContent}>
           {settings.map((item, index) => (
             <Pressable key={item.title} onPress={() => {
-              if (item.title === "Playback") {
+              if (item.title === "Listening Stats") {
+                router.push("/stats");
+              } else if (item.title === "Playback") {
                 router.push("/audio-settings");
               } else if (item.title === "Privacy") {
                 Alert.alert("Clear local library?", "This removes liked songs, listening history and local playlists from this device.", [
@@ -72,6 +76,8 @@ export default function ProfileScreen() {
                 router.push("/account");
               } else if (item.title === "Notifications") {
                 Alert.alert("Notifications", "Push notifications are not enabled in this build. No notification permission has been requested.");
+              } else if (item.title === "Modules") {
+                router.push("/modules");
               } else if (item.title === "Appearance") {
                 router.push("/appearance");
               } else {
