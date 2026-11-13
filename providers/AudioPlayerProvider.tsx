@@ -68,6 +68,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const localSourceSequence = useRef(0);
   const playbackRequestSequence = useRef(0);
   const handledFinishedState = useRef(false);
+  const automaticRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const graphRef = useRef<AudioGraph | null>(null);
@@ -233,6 +234,20 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     try { await playTrack(track, queue, queueIndex); }
     catch (error) { setPlaybackError(error instanceof Error ? error.message : "Unable to open this track."); }
   }, [playTrack, setPlaybackError]);
+
+  useEffect(() => {
+    const track = currentTrack;
+    if (automaticRecovery.current.trackId !== (track?.id ?? null)) {
+      automaticRecovery.current = { trackId: track?.id ?? null, attempts: 0 };
+    }
+    if (!status.error || !isExternalTrack(track) || status.isBuffering) return;
+    if (automaticRecovery.current.attempts >= 1) return;
+
+    // Retry one failed external stream automatically. The bounded attempt count
+    // prevents a persistent 403/network failure from creating an infinite loop.
+    automaticRecovery.current.attempts += 1;
+    void playTrackSafely(track, usePlayerStore.getState().queue, usePlayerStore.getState().currentQueueIndex);
+  }, [status.error, status.isBuffering, currentTrack?.id, playTrackSafely]);
 
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
