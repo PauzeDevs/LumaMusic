@@ -22,11 +22,11 @@ const CACHE_TTL = 6 * 60 * 60 * 1000;
 const MISS_TTL = 10 * 60 * 1000;
 const cache = new Map<string, { expiresAt: number; value: LyricsState }>();
 const inFlight = new Map<string, Promise<LyricsState>>();
-const timestampPattern = /\\[(\\d{1,2}):(\\d{2})(?:\\.(\\d{1,3}))?\\]/g;
+const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
 
 export function parseLrc(value: string): LyricLine[] {
   const lines: LyricLine[] = [];
-  for (const row of value.split(/\\r?\\n/)) {
+  for (const row of value.split(/\r?\n/)) {
     const timestamps = [...row.matchAll(timestampPattern)];
     const text = row.replace(timestampPattern, "").trim();
     if (!text) continue;
@@ -45,7 +45,7 @@ export function parseLrc(value: string): LyricLine[] {
 }
 
 function normalize(value: string): string {
-  return value.toLocaleLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  return value.toLocaleLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function recordMatches(record: LrclibRecord, track: MusicTrack): boolean {
@@ -65,7 +65,7 @@ function toLyricsState(record: LrclibRecord): LyricsState {
   const synced = record.syncedLyrics?.trim();
   const plain = record.plainLyrics?.trim();
   const lines = synced ? parseLrc(synced) : plain
-    ? plain.split(/\\r?\\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text)
+    ? plain.split(/\r?\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text)
     : [];
   if (!lines.length) return { status: "not_found" };
   return {
