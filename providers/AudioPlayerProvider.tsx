@@ -67,6 +67,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const [localSource, setLocalSource] = useState<{ uri: string; instance: number } | null>(null);
   const localSourceSequence = useRef(0);
   const playbackRequestSequence = useRef(0);
+  const handledFinishedState = useRef(false);
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const graphRef = useRef<AudioGraph | null>(null);
@@ -353,10 +354,22 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [playNext, setSleepTimerMinutesState]);
 
   useEffect(() => {
-    if (!status.didJustFinish || isLocalTrack(currentTrack)) return;
-    if (usePlayerStore.getState().sleepTimerMinutes === -1) { player.pause(); setSleepTimerMinutesState(null); return; }
+    // Expo Audio can keep didJustFinish=true briefly while the next source is loading.
+    // Reacting to currentTrack changes as well causes a cascade that skips through
+    // the queue and looks like the app is randomly selecting songs.
+    if (!status.didJustFinish) {
+      handledFinishedState.current = false;
+      return;
+    }
+    if (handledFinishedState.current || isLocalTrack(currentTrack)) return;
+    handledFinishedState.current = true;
+    if (usePlayerStore.getState().sleepTimerMinutes === -1) {
+      player.pause();
+      setSleepTimerMinutesState(null);
+      return;
+    }
     void playNext();
-  }, [status.didJustFinish, currentTrack?.id, playNext, player, setSleepTimerMinutesState]);
+  }, [status.didJustFinish, playNext, player, setSleepTimerMinutesState]);
 
   const value: AudioEngineValue = {
     playTrack, togglePlayback, playNext, playPrevious, seekTo, setPlaybackRate, setSleepTimer,
