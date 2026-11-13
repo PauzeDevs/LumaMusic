@@ -57,9 +57,14 @@ function makeImpulseResponse(context: AudioContext, preset: Exclude<ReverbPreset
   }
   return impulse;
 }
-function AudioStatusBridge({ onStatus }: { onStatus: (position: number, duration: number, state: string) => void }) {
+function AudioStatusBridge({ onStatus, sourceInstance, trackId }: {
+  onStatus: (position: number, duration: number, state: string, sourceInstance: number, trackId: string) => void;
+  sourceInstance: number;
+  trackId: string;
+}) {
   const status = useAudioTagContext();
-  useEffect(() => onStatus(status.currentTime, status.duration, status.playbackState), [status.currentTime, status.duration, status.playbackState, onStatus]);
+  useEffect(() => onStatus(status.currentTime, status.duration, status.playbackState, sourceInstance, trackId),
+    [status.currentTime, status.duration, status.playbackState, sourceInstance, trackId, onStatus]);
   return null;
 }
 
@@ -184,7 +189,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
   }, [applyEffects, applyEqualizer, setPlaybackError]);
 
-  const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string) => {
+  const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string, sourceInstance: number, trackId: string) => {
+    const latestTrack = usePlayerStore.getState().currentTrack;
+    // Ignore late status events from an audio element that has already been replaced.
+    if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
     const active = playbackState === "playing";
     if (active && startupTimeoutRef.current) {
       clearTimeout(startupTimeoutRef.current);
@@ -469,8 +477,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     await player.seekTo(target);
   }, [player]);
 
-  const onLocalAudioEnded = useCallback(() => {
-    if (usePlayerStore.getState().sleepTimerMinutes === -1) {
+  const onLocalAudioEnded = useCallback((sourceInstance: number, trackId: string) => {
+    const latest = usePlayerStore.getState();
+    if (sourceInstance !== localSourceSequence.current || latest.currentTrack?.id !== trackId) return;
+    if (latest.sleepTimerMinutes === -1) {
       audioRef.current?.pause();
       setSleepTimerMinutesState(null);
       return;
@@ -562,12 +572,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
             playbackRate={playbackRate}
             onLoad={onLocalAudioLoad}
             onError={(error) => {
+              const latest = usePlayerStore.getState();
+              if (localSource.instance !== localSourceSequence.current || latest.currentTrack?.id !== currentTrack?.id) return;
               setPlaybackError(error.message);
               setPlaybackStatus({ isPlaying: false, isBuffering: false, playbackPosition: 0, playbackDuration: 0, playbackError: error.message });
             }}
-            onEnded={onLocalAudioEnded}
+            onEnded={() => onLocalAudioEnded(localSource.instance, currentTrack?.id ?? "")}
           >
-            <AudioStatusBridge onStatus={onLocalAudioStatus} />
+            <AudioStatusBridge onStatus={onLocalAudioStatus} sourceInstance={localSource.instance} trackId={currentTrack?.id ?? ""} />
           </Audio>
         </View>
       ) : null}
