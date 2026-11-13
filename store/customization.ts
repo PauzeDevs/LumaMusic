@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { AccentTheme, SurfaceStyle } from "./preferences";
+import type { AccentTheme, PlayerStyle, SurfaceStyle } from "./preferences";
 
-export type CustomLook = { id: string; name: string; accent: AccentTheme; surface: SurfaceStyle };
+export type CustomLook = { id: string; name: string; accent: AccentTheme; surface: SurfaceStyle; playerStyle?: PlayerStyle };
 type CustomizationState = {
   installedModules: string[];
   customLooks: CustomLook[];
