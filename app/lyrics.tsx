@@ -6,9 +6,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
 import { getLyrics, type LyricsState } from "../services/lyrics";
 import { usePlayerStore } from "../store/player";
-import { colors } from "../theme/colors";
+import type { ThemePalette } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 
 export default function LyricsScreen() {
+  const { colors, blurTint } = useTheme();
+  const styles = createStyles(colors);
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -80,7 +83,7 @@ export default function LyricsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 20 },
   topBar: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.075)" },
@@ -114,4 +117,4 @@ const styles = StyleSheet.create({
   backToPlayer: { flexDirection: "row", alignItems: "center", gap: 5 },
   backText: { color: colors.muted, fontSize: 11, fontWeight: "600" },
   syncLabel: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.6 }
-});
+}); }
