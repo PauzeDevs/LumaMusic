@@ -114,9 +114,10 @@ export default function ModulesScreen() {
             <Text style={styles.moduleMeta}>{id in sourceNames ? sourceNames[id].status : "On · Installed locally"}</Text>
             <Text style={styles.moduleFoot}>{id in sourceNames ? sourceNames[id].detail : "Interface"}  |  {id in sourceNames ? sourceNames[id].version : "v1.0"}</Text>
           </View>
-          <Pressable onPress={() => move(id, index === installed.length - 1 ? -1 : 1)} disabled={installed.length < 2} style={styles.dragHandle} accessibilityRole="button" accessibilityLabel="Move module in list">
-            <Ionicons name="menu" size={22} color={colors.muted} />
-          </Pressable>
+          <View style={styles.orderControls}>
+            <Pressable onPress={() => move(id, -1)} disabled={index === 0} style={styles.orderButton} accessibilityRole="button" accessibilityLabel={`Move ${item.name} up`}><Ionicons name="chevron-up" size={17} color={index === 0 ? colors.subtle : colors.muted} /></Pressable>
+            <Pressable onPress={() => move(id, 1)} disabled={index === installed.length - 1} style={styles.orderButton} accessibilityRole="button" accessibilityLabel={`Move ${item.name} down`}><Ionicons name="chevron-down" size={17} color={index === installed.length - 1 ? colors.subtle : colors.muted} /></Pressable>
+          </View>
           {id === "youtube-music" || id === "local-library" ? null : <Pressable onPress={() => remove(id)} style={styles.removeButton}><Ionicons name="close" size={17} color={colors.muted} /></Pressable>}
         </GlassSurface>;
       })}
@@ -174,7 +175,7 @@ function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
   moduleName: { color: c.text, fontSize: 14, fontWeight: "800" }, moduleMeta: { color: c.muted, fontSize: 10, lineHeight: 14, marginTop: 3 }, moduleFoot: { color: c.subtle, fontSize: 9, marginTop: 4 },
   action: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 18, backgroundColor: c.accent }, actionInstalled: { backgroundColor: isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.06)" },
   actionText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800" }, actionTextInstalled: { color: c.text },
-  dragHandle: { width: 30, height: 42, alignItems: "center", justifyContent: "center" }, orderControls: { gap: 3 }, orderButton: { width: 27, height: 24, alignItems: "center", justifyContent: "center" },
+  dragHandle: { width: 30, height: 42, alignItems: "center", justifyContent: "center" }, orderControls: { gap: 2, paddingLeft: 3 }, orderButton: { width: 28, height: 22, borderRadius: 7, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.055)" : "rgba(0,0,0,0.035)" },
   corePill: { paddingHorizontal: 7, paddingVertical: 5, borderRadius: 8, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }, coreText: { color: c.subtle, fontSize: 8, fontWeight: "900", letterSpacing: 1 },
   removeButton: { width: 28, height: 30, alignItems: "center", justifyContent: "center" },
   comingSoon: { color: c.subtle, fontSize: 10, lineHeight: 16, marginBottom: 23, marginTop: 2 },
