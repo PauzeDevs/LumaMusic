@@ -36,6 +36,9 @@ function parseDelimited(input: string, delimiter: string): string[][] {
     }
   }
 
+  // An unmatched quote makes the remaining rows ambiguous; reject the
+  // delimited parse rather than silently importing a corrupted final field.
+  if (quoted) return [];
   row.push(cell.trim());
   if (row.some((value) => value.length > 0)) rows.push(row);
   return rows;
