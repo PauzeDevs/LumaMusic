@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../theme/colors";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { GlassSurface } from "../../components/GlassSurface";
+import { PlaylistStack } from "../../components/PlaylistStack";
 import { usePlayerStore } from "../../store/player";
 import { useLibraryStore } from "../../store/library";
 import { router } from "expo-router";
@@ -20,6 +21,8 @@ const settings = [
 export default function ProfileScreen() {
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const localPlaylists = useLibraryStore((state) => state.playlists);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
@@ -39,10 +42,18 @@ export default function ProfileScreen() {
           <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
-            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + " · Opened in external player" : "Pick a track and let the room fill up."}</Text>
+            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + (isPlaying ? " · Playing in LumaMusic" : " · In LumaMusic player") : "Pick a track and let the room fill up."}</Text>
           </View>
-          <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? "OPEN" : "IDLE"}</Text></View>
+          <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? (isPlaying ? "PLAYING" : "PAUSED") : "IDLE"}</Text></View>
         </View>
+        <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Your playlists</Text><Text style={styles.sectionMeta}>{localPlaylists.length} SAVED</Text></View>
+        <PlaylistStack items={localPlaylists.map((playlist) => ({
+          id: playlist.id,
+          title: playlist.name,
+          subtitle: playlist.tracks.length + " tracks · On this device",
+          artwork: playlist.tracks[0]?.artwork,
+          onPress: () => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })
+        }))} />
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Preferences</Text><Text style={styles.sectionMeta}>PERSONALISE</Text></View>
         <GlassSurface style={styles.settings} contentStyle={styles.settingsContent}>
           {settings.map((item, index) => (

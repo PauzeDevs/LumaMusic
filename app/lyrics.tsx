@@ -14,6 +14,8 @@ export default function LyricsScreen() {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
+  const lineOffsets = useRef<number[]>([]);
+  const isSynced = lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null);
   const activeIndex = useMemo(() => {
     if (lyrics.status !== "available") return -1;
     let active = -1;
@@ -30,7 +32,10 @@ export default function LyricsScreen() {
   }, [track?.id]);
 
   useEffect(() => {
-    if (activeIndex >= 0) scrollRef.current?.scrollTo({ y: Math.max(0, activeIndex * 66 - 170), animated: true });
+    if (activeIndex >= 0) {
+      const lineTop = lineOffsets.current[activeIndex];
+      if (lineTop !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, lineTop - 150), animated: true });
+    }
   }, [activeIndex]);
 
   const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
@@ -49,19 +54,19 @@ export default function LyricsScreen() {
       {track ? <View style={styles.trackCard}>
         <Artwork uri={track.artwork} size={54} radius={12} />
         <View style={styles.trackCopy}><Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.artist}>{track.artist}</Text></View>
-        <View style={styles.livePill}><View style={[styles.liveDot, { opacity: isPlaying ? 1 : 0.45 }]} /><Text style={styles.liveText}>{isPlaying ? "LIVE" : "PAUSED"}</Text></View>
+        <View style={styles.livePill}><View style={[styles.liveDot, { opacity: isPlaying ? 1 : 0.45 }]} /><Text style={styles.liveText}>{isSynced ? (isPlaying ? "SYNCED" : "PAUSED") : "PLAIN"}</Text></View>
       </View> : null}
 
       <View style={styles.lyricsSurface}>
         {lyrics.status === "loading" ? <View style={styles.centerState}><ActivityIndicator color={colors.accent} /><Text style={styles.stateTitle}>Finding your lyrics</Text><Text style={styles.stateBody}>Matching this recording with the lyrics catalogue.</Text></View> : null}
-        {lyrics.status === "unconfigured" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="musical-notes" size={25} color={colors.accent} /></View><Text style={styles.stateTitle}>Lyrics are getting ready</Text><Text style={styles.stateBody}>Synced lyrics will appear when a licensed provider is connected. No scraped or guessed lyrics.</Text></View> : null}
+        {lyrics.status === "unconfigured" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="musical-notes" size={25} color={colors.accent} /></View><Text style={styles.stateTitle}>Lyrics are getting ready</Text><Text style={styles.stateBody}>LumaMusic checks the free LRCLIB catalogue for synced or plain lyrics. Some tracks may not be available yet.</Text></View> : null}
         {lyrics.status === "not_found" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="text-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Lyrics unavailable</Text><Text style={styles.stateBody}>There are no licensed lyrics available for this track yet.</Text></View> : null}
         {lyrics.status === "restricted" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="lock-closed-outline" size={24} color={colors.muted} /></View><Text style={styles.stateTitle}>Not available here</Text><Text style={styles.stateBody}>Lyrics for this recording cannot be displayed in your region.</Text></View> : null}
         {lyrics.status === "error" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="cloud-offline-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Couldn't load lyrics</Text><Text style={styles.stateBody}>Check your connection and try again.</Text><Pressable onPress={retry} style={styles.retryButton}><Text style={styles.retryText}>Try again</Text></Pressable></View> : null}
         {lyrics.status === "available" ? <>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricList} showsVerticalScrollIndicator={false}>
             <View style={styles.topFadeSpace} />
-            {lyrics.lines.map((line, index) => <Text key={`${line.time ?? "plain"}-${index}`} style={[styles.lyricLine, index === activeIndex ? styles.activeLine : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Text>)}
+            {lyrics.lines.map((line, index) => <Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? styles.activeLine : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Text>)}
             <View style={styles.bottomFadeSpace} />
           </ScrollView>
           <View style={styles.providerFooter}>
@@ -99,7 +104,7 @@ const styles = StyleSheet.create({
   lyricList: { paddingHorizontal: 24, alignItems: "flex-start" },
   topFadeSpace: { height: 170 },
   bottomFadeSpace: { height: 220 },
-  lyricLine: { color: "rgba(255,255,255,0.27)", fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
+  lyricLine: { width: "100%", color: "rgba(255,255,255,0.27)", fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
   activeLine: { color: "#FFFFFF", fontSize: 27, lineHeight: 36, textShadowColor: "rgba(198,167,255,0.22)", textShadowRadius: 18 },
   pastLine: { color: "rgba(255,255,255,0.14)" },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
