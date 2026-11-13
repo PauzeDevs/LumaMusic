@@ -1,6 +1,6 @@
 # LumaMusic Technical Architecture
 
-**Status:** YouTube Music discovery migration in progress. Native streaming remains a separate milestone.
+**Status:** YouTube Music discovery and best-effort in-app stream playback are implemented; reliability and device QA remain active work.
 
 ## Architecture overview
 
@@ -21,7 +21,7 @@ This is an unofficial integration. YouTube Music does not publish this endpoint 
 
 ## Playback boundary
 
-The app's Expo Audio engine remains available as the native playback abstraction. YouTube Music search results currently have no native stream URL in LumaMusic, so selecting one hands playback to the official YouTube Music app or website. In-app stream extraction, playback synchronization, background streaming and lock-screen control for these tracks are not implemented or claimed.
+`AudioPlayerProvider` owns the native Expo Audio player, queue transitions, local-file playback, playback status, seeking and bounded stream recovery. `youtubePlayback.ts` resolves direct audio formats through several InnerTube client profiles and uses the Android NewPipe module as a fallback. Stream URLs are cached in memory only until their expiry window. This resolver is unofficial and best-effort: a successful metadata response does not guarantee that the media URL will play.
 
 Any future native playback provider must use a playback method authorized for the intended use, respect access controls and provider terms, and avoid unauthorized downloading, caching, re-hosting or redistribution.
 
@@ -49,7 +49,7 @@ Any future native playback provider must use a playback method authorized for th
 
 ## Validation gates
 
-1. **Discovery:** verify track parsing and search on Android/iOS.
-2. **Playback:** select an authorized native playback method before wiring stream URLs into Expo Audio.
-3. **Audio QA:** validate background, lock-screen, interruption, Bluetooth and queue behavior on physical devices.
-4. **Release:** update privacy/attribution disclosures and complete rights review before release.
+1. **Discovery:** verify track parsing, search errors, rate limits and response changes on Android/iOS.
+2. **Playback:** validate resolver responses, stream expiry, retries and format compatibility.
+3. **Audio QA:** validate background, lock-screen, interruptions, Bluetooth, seeking and queue behaviour on physical devices.
+4. **Release:** review provider terms, privacy/attribution disclosures and distribution rights before release.
