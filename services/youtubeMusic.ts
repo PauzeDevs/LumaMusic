@@ -357,14 +357,29 @@ function mapRelease(item: Obj): MusicRelease | null {
 export async function getYouTubeMusicArtistReleases(artistId: string, limit = 30): Promise<MusicRelease[]> {
   const browseId = artistId.trim();
   if (!browseId.startsWith("UC")) return [];
-  const payload = await innerTubePost(BROWSE_URL, { browseId });
-  const cards = collectRenderers(payload, "musicTwoRowItemRenderer");
-  const responsiveCards = collectRenderers(payload, "musicResponsiveListItemRenderer");
-  return uniqueById([...cards, ...responsiveCards]
-    .map(mapRelease)
-    .filter((item): item is MusicRelease => Boolean(item)))
-    .filter((item) => item.browseId.startsWith("MPRE") || item.browseId.startsWith("OLAK") || item.browseId.startsWith("M"))
-    .slice(0, limit);
+  const collected: MusicRelease[] = [];
+  const seenTokens = new Set<string>();
+  let payload = await innerTubePost(BROWSE_URL, { browseId });
+
+  // Artist pages can split discography shelves across continuation responses.
+  // Follow those pages so older albums, EPs and singles are not silently omitted.
+  for (let page = 0; page < 6; page += 1) {
+    const cards = [
+      ...collectRenderers(payload, "musicTwoRowItemRenderer"),
+      ...collectRenderers(payload, "musicResponsiveListItemRenderer")
+    ];
+    collected.push(...cards
+      .map(mapRelease)
+      .filter((item): item is MusicRelease => Boolean(item))
+      .filter((item) => /^(MPRE|OLAK|M)/.test(item.browseId)));
+
+    const token = continuationTokens(payload).find((candidate) => !seenTokens.has(candidate));
+    if (!token || uniqueById(collected).length >= limit) break;
+    seenTokens.add(token);
+    payload = await innerTubePost(BROWSE_URL, { continuation: token });
+  }
+
+  return uniqueById(collected).slice(0, limit);
 }
 
 /** Loads all playable tracks from an album, EP or single browse page. */
