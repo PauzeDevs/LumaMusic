@@ -17,7 +17,7 @@ function formatTime(seconds: number) {
 }
 
 export default function NowPlayingScreen() {
-  const { colors, blurTint } = useTheme();
+  const { colors, blurTint, isDark } = useTheme();
   const styles = createStyles(colors);
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -139,7 +139,7 @@ export default function NowPlayingScreen() {
             <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
         </View>
       </View>
-      <View style={styles.bottomGlass}><BlurView tint={blurTint} intensity={60} style={StyleSheet.absoluteFill} /><View style={styles.bottom}>
+      <View style={styles.bottomGlass}><BlurView tint={blurTint} intensity={92} style={StyleSheet.absoluteFill} /><View pointerEvents="none" style={styles.bottomSheen} /><View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
@@ -160,7 +160,7 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
-  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: "rgba(255,255,255,0.065)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.82)" },
   headerCopy: { position: "absolute", left: 52, right: 52, top: 0, bottom: 0, alignItems: "center", justifyContent: "center", gap: 3 },
   overline: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
   headerTitle: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: "600", includeFontPadding: false, textAlign: "center" },
@@ -176,7 +176,7 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   externalPlayback: { marginTop: 24, minHeight: 92, alignItems: "center", justifyContent: "center", gap: 10 },
   externalPlaybackHeader: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
   externalPlaybackText: { color: colors.muted, fontSize: 10 },
-  externalDurationPanel: { alignItems: "center", gap: 3, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  externalDurationPanel: { alignItems: "center", gap: 3, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 14, backgroundColor: isDark ? "rgba(255,255,255,0.065)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: colors.border },
   externalDurationLabel: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
   externalDuration: { color: colors.text, fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
   externalPlaybackHint: { color: colors.subtle, fontSize: 9, textAlign: "center" },
@@ -197,11 +197,12 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
-  play: { width: 68, height: 68, borderRadius: 34, backgroundColor: "#F0F2F5", alignItems: "center", justifyContent: "center" },
+  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: isDark ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 18 },
-  extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottomGlass: { borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", backgroundColor: "rgba(20,22,27,0.65)", marginBottom: 6 },
+  bottomGlass: { borderRadius: 23, overflow: "hidden", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)", marginBottom: 6, shadowColor: "#000", shadowOpacity: isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+  bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)" },
   bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 8 },
   bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
   bottomText: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "center", includeFontPadding: false, flexShrink: 0, width: "100%" },
