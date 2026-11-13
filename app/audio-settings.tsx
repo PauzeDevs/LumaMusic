@@ -155,7 +155,7 @@ export default function AudioSettingsScreen() {
 
 function makeStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#09090B" },
-  dotLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  dotLayer: { ...StyleSheet.absoluteFill, overflow: "hidden" },
   dot: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.075)" },
   header: { flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
   back: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#202024", alignItems: "center", justifyContent: "center" },
