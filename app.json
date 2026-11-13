@@ -36,7 +36,8 @@
             "mediaPlayback"
           ]
         }
-      ]
+      ],
+      "./plugins/withLumaNewPipeDesugaring"
     ],
     "ios": {
       "supportsTablet": true,
