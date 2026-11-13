@@ -81,6 +81,29 @@ function collectRenderers(root: any, rendererName: string, output: Obj[] = []): 
   return output;
 }
 
+function continuationTokens(root: any, output: string[] = []): string[] {
+  if (!root || typeof root !== "object") return output;
+  if (Array.isArray(root)) { root.forEach((item) => continuationTokens(item, output)); return output; }
+  const token = root.continuation ?? root.nextContinuationData?.continuation ?? root.continuationEndpoint?.continuationCommand?.token;
+  if (typeof token === "string" && token.length > 0) output.push(token);
+  Object.values(root).forEach((value) => { if (value && typeof value === "object") continuationTokens(value, output); });
+  return output;
+}
+
+async function browseTracksWithContinuation(initialPayload: Obj, limit: number): Promise<MusicTrack[]> {
+  const collected: MusicTrack[] = [];
+  const seenTokens = new Set<string>();
+  let payload = initialPayload;
+  for (let page = 0; page < 5; page += 1) {
+    const rows = collectRenderers(payload, "musicResponsiveListItemRenderer");
+    collected.push(...rows.map(mapTrack).filter((item): item is MusicTrack => Boolean(item)));
+    const token = continuationTokens(payload).find((candidate) => !seenTokens.has(candidate));
+    if (!token || collected.length >= limit) break;
+    seenTokens.add(token);
+    payload = await innerTubePost(BROWSE_URL, { continuation: token });
+  }
+  return uniqueById(collected).slice(0, limit);
+}
 function uniqueById<T extends { id: string }>(items: T[]): T[] {
   return items.filter((item, index) => items.findIndex((candidate) => candidate.id === item.id) === index);
 }
@@ -294,11 +317,7 @@ export async function getYouTubeMusicArtistTracks(artistId: string, limit = 30):
   const browseId = artistId.trim();
   if (!browseId.startsWith("UC")) return [];
   const payload = await innerTubePost(BROWSE_URL, { browseId });
-  const renderers = collectRenderers(payload, "musicResponsiveListItemRenderer");
-  const tracks = renderers
-    .map(mapTrack)
-    .filter((item): item is MusicTrack => Boolean(item));
-  return uniqueById(tracks).slice(0, limit);
+  return browseTracksWithContinuation(payload, limit);
 }
 
 export type MusicRelease = {
@@ -353,8 +372,5 @@ export async function getYouTubeMusicReleaseTracks(releaseBrowseId: string, limi
   const browseId = releaseBrowseId.trim();
   if (!browseId) return [];
   const payload = await innerTubePost(BROWSE_URL, { browseId });
-  const tracks = collectRenderers(payload, "musicResponsiveListItemRenderer")
-    .map(mapTrack)
-    .filter((item): item is MusicTrack => Boolean(item));
-  return uniqueById(tracks).slice(0, limit);
+  return browseTracksWithContinuation(payload, limit);
 }
