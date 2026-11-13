@@ -78,7 +78,7 @@ export default function NowPlayingScreen() {
       <BlurView tint="dark" intensity={32} style={styles.ambientBlur} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.headerButton}><Ionicons name="chevron-down" size={24} color={colors.text} /></Pressable>
-        <View style={styles.headerCopy}><Text style={styles.overline}>NOW PLAYING</Text><Text style={styles.headerTitle}>{isLocalPlayback ? "Local audio" : "Luma Music"}</Text></View>
+        <View style={styles.headerCopy}><Text style={styles.overline}>PLAYING</Text><Text style={styles.headerTitle}>LumaMusic</Text></View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   progressThumb: { position: "absolute", width: 12, height: 12, borderRadius: 6, backgroundColor: colors.text, top: -4, marginLeft: -6, borderWidth: 2, borderColor: colors.accent },
   progressThumbClassic: { width: 14, height: 14, borderRadius: 7, top: -3, marginLeft: -7 },
   timeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
-  time: { color: colors.subtle, fontSize: 10, fontVariant: ["tabular-nums"] },
+  time: { color: colors.subtle, fontSize: 12, lineHeight: 16, minWidth: 44, flexShrink: 0, fontVariant: ["tabular-nums"] },
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
