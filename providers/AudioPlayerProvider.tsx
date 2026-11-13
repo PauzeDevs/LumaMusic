@@ -223,6 +223,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           artist: track.artist,
           albumTitle: "LumaMusic",
           ...(track.artwork ? { artworkUrl: track.artwork } : {})
+        }, {
+          showSeekBackward: true,
+          showSeekForward: true
         });
         player.play();
         // Do not leave the UI spinning forever if the resolved stream never starts.
