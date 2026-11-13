@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - Fix/Vision2.0LunaMusic
+      - fix/LunaMusic
+      - main
   pull_request:
     branches:
-      - Fix/Vision2.0LunaMusic
+      - main
+      - fix/LunaMusic
   workflow_dispatch:
 
 permissions:
