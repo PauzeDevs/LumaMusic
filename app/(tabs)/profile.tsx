@@ -22,7 +22,7 @@ const settings = [
 ] as const;
 
 export default function ProfileScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = createStyles(colors);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const currentTrack = usePlayerStore((state) => state.currentTrack);
@@ -104,7 +104,7 @@ export default function ProfileScreen() {
 }
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "transparent" },
+  safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20, paddingBottom: 34 },
   topline: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
@@ -121,19 +121,19 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 11, marginTop: 4 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
   sectionMeta: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
-  nowCard: { backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
-  nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
+  nowCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
+  nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: colors.surfaceSoft, alignItems: "center", justifyContent: "center" },
   nowTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   nowSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
-  statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: "rgba(255,255,255,0.06)" },
-  statusPillActive: { backgroundColor: "rgba(255,255,255,0.1)" },
+  statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.surfaceSoft },
+  statusPillActive: { backgroundColor: colors.surfaceSoft },
   statusText: { color: colors.mint, fontSize: 8, fontWeight: "800", letterSpacing: 1 },
-  settings: { borderRadius: 22, paddingHorizontal: 14, paddingVertical: 2, backgroundColor: "#101012", borderWidth: 1, borderColor: "rgba(255,255,255,0.075)", shadowColor: "#000000", shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  settings: { borderRadius: 22, paddingHorizontal: 14, paddingVertical: 2, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, shadowColor: "#000000", shadowOpacity: isDark ? 0.28 : 0.09, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   setting: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.065)" },
   last: { borderBottomWidth: 0 },
-  settingIcon: { width: 43, height: 43, borderRadius: 15, backgroundColor: "#1B1B20", borderWidth: 1, borderColor: "rgba(240,68,85,0.13)", alignItems: "center", justifyContent: "center" },
+  settingIcon: { width: 43, height: 43, borderRadius: 15, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   settingTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   settingSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
-  footerCard: { marginTop: 25, alignItems: "center", gap: 9, padding: 20, borderRadius: 20, backgroundColor: "#0D0D0F", borderWidth: 1, borderColor: "rgba(255,255,255,0.035)" },
+  footerCard: { marginTop: 25, alignItems: "center", gap: 9, padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   footer: { color: colors.subtle, fontSize: 10, textAlign: "center", lineHeight: 17 }
 }); }
