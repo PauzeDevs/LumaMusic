@@ -25,6 +25,7 @@ export default function NowPlayingScreen() {
   const playbackPosition = usePlayerStore((s) => s.playbackPosition);
   const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const playbackError = usePlayerStore((s) => s.playbackError);
+  const streamQuality = usePlayerStore((s) => s.streamQuality);
   const playbackRate = usePlayerStore((s) => s.playbackRate);
   const sleepTimerMinutes = usePlayerStore((s) => s.sleepTimerMinutes);
   const isShuffled = usePlayerStore((s) => s.isShuffled);
@@ -146,6 +147,7 @@ export default function NowPlayingScreen() {
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
             <Text numberOfLines={1} style={styles.artist}>{track.artist}</Text>
+            {streamQuality && streamQuality.label !== "Unknown" ? <View style={styles.qualityBadge}><Text style={styles.qualityText}>{streamQuality.label}{streamQuality.bitrateKbps ? ` · ${streamQuality.bitrateKbps} kbps` : ""}</Text></View> : null}
           </View>
           <Pressable style={styles.like} onPress={() => toggleLike(track)}>
             <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={colors.accent} />
