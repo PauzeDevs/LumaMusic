@@ -7,6 +7,7 @@
   <p>
     <a href="https://github.com/PauzeDevs/LumaMusic">Source code</a> ·
     <a href="https://lumamusic.devs.surf">Project website</a> ·
+    <a href="https://pauze.is-a.dev/support/">Support / Donate</a> ·
     <a href="LICENSE">EPL-2.0 License</a>
   </p>
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-informational" alt="Android and iOS" />
@@ -26,6 +27,10 @@
 <p align="center">
   <sub>Home · Now Playing · Listening Stats</sub>
 </p>
+
+## Support the project
+
+Enjoying LumaMusic? You can optionally support its development, tools, and future experiments through the [Pauze support page](https://pauze.is-a.dev/support/). Contributions are voluntary and go directly through UPI. Every bit of support is appreciated, but never required to use the project.
 
 ## What it does
 
