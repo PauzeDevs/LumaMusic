@@ -3,7 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { useTheme } from "../theme/useTheme";
 
-type Props = { children: ReactNode; style?: StyleProp<ViewStyle>; contentStyle?: StyleProp<ViewStyle>; intensity?: number };
+type Props = { children: ReactNode; style?: StyleProp<ViewStyle>; contentStyle?: StyleProp<ViewStyle> };
 export function GlassSurface({ children, style, contentStyle }: Props) {
   const { colors, isDark } = useTheme();
   return <View style={[styles.shell, { borderColor: colors.border, backgroundColor: isDark ? "rgba(38,38,42,0.20)" : "rgba(255,255,255,0.20)" }, style]}>
