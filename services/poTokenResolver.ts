@@ -92,7 +92,7 @@ export function handlePoTokenWebViewMessage(message: TokenMessage) {
   notifyDemand();
 }
 
-export async function resolveYouTubePoTokens(videoId: string): Promise<YouTubePoTokens | null> {
+export async function resolveYouTubePoTokens(videoId: string, timeoutMs = 12_000): Promise<YouTubePoTokens | null> {
   if (Platform.OS !== "android" || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
 
   const cached = tokenCache.get(videoId);
