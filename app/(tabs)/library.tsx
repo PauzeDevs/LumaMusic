@@ -110,7 +110,7 @@ export default function LibraryScreen() {
             <Pressable style={styles.downloads} onPress={() => void importLocalAudio()}><View style={styles.downloadIcon}><Ionicons name="download-outline" size={19} color={colors.mint} /></View><View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>Local music</Text><Text style={styles.shortcutSub}>{localTracks.length ? localTracks.length + " imported · Add more" : "Import audio files from your device"}</Text></View><Ionicons name="chevron-forward" size={17} color={colors.muted} /></Pressable>
           </View></ScrollReveal>
         </>}
-        renderItem={({ item }) => item.kind === "content" ? item.content : <TrackRow track={item.track} index={item.index} showIndex queue={item.queue} />}
+        renderItem={({ item }) => item.kind === "content" ? <>{item.content}</> : <TrackRow track={item.track} index={item.index} showIndex queue={item.queue} />}
         ListFooterComponent={<Text style={styles.note}>Favourites, listening history and local playlists are saved on this device. Import a playlist export to bring collections across services.</Text>}
       />
       <Modal visible={createVisible} transparent animationType="fade" onRequestClose={() => setCreateVisible(false)}>
