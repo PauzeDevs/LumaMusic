@@ -1,20 +1,20 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  # APK builds are intentionally manual. Normal pushes run code checks only.
-  workflow_dispatch:
+  # A push to main builds both Android ABIs and publishes a GitHub nightly release.
+  push:
+    branches:
+      - main
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: lumamusic-android-apk-${{ github.ref }}
-  cancel-in-progress: true
+  group: lumamusic-android-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
-    # APKs are generated only from main, including manual workflow dispatches.
-    if: github.ref == 'refs/heads/main'
     name: Build release APK (${{ matrix.label }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -56,11 +56,11 @@ jobs:
         run: npx expo prebuild --platform android --no-install
 
       - name: Configure target architecture
-        run: printf '\nreactNativeArchitectures=%s\n' "${{ matrix.abi }}" >> android/gradle.properties
+        run: printf '\\nreactNativeArchitectures=%s\\n' "${{ matrix.abi }}" >> android/gradle.properties
 
       - name: Build optimized release APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace --info
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Rename APK
         run: |
@@ -75,3 +75,60 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  release:
+    name: Publish Luna Music Nightly - Stable
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download both architecture APKs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: lumamusic-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: luna-music-nightly-stable-${{ github.run_number }}
+          name: Luna Music Nightly - Stable
+          prerelease: true
+          files: |
+            dist/LumaMusic-arm64-v8a.apk
+            dist/LumaMusic-armeabi-v7a.apk
+          body: |
+            # LumaMusic | Release Notes
+
+            **Update: Liquid Glass UI & Stability Improvements**
+
+            This release brings a refreshed LumaMusic experience with a refined visual system, improved Android compatibility, and a more complete artist catalogue.
+
+            ### 🐛 Bugs Fixed
+            - **Android Liquid Glass compatibility:** Fixed the app attempting to load an iOS-only native Liquid Glass component on Android. Android now uses a safe fallback instead.
+            - **Theme consistency in Account:** Fixed the Account screen using hard-coded dark styling instead of respecting the selected appearance and accent colour.
+            - **Theme consistency in Playlists:** Fixed the Playlist screen not properly following the user's selected appearance and accent.
+            - **Theme consistency in Liked Songs:** Updated the screen to respect the active theme.
+            - **Artwork fallback:** Improved handling of missing or failed album artwork, displaying a themed fallback instead of leaving broken artwork.
+
+            ### ✨ Improvements
+            - **Visual refresh:** Introduced a deeper matte interface, refined typography, velvet-red accents, and updated surfaces.
+            - **Liquid Glass controls:** Improved shared glass surfaces and made them respect Liquid Glass, Frosted, Clear, and Dark Matte preferences.
+            - **Navigation redesign:** Refined the floating tab bar and mini-player.
+            - **Track rows and cards:** Improved spacing, styling, and visual consistency.
+            - **Audio Lab:** Refined the header and added LumaMusic branding.
+            - **Artist pages:** Expanded artist track and release retrieval, with a higher pagination limit.
+            - **Discography:** Added improved horizontal release shelves for albums, EPs, and singles.
+            - **All tracks:** Replaced the limited “Popular tracks” section with an expanded “All tracks” catalogue.
+
+            ### ⚙️ Compatibility
+            - Improved Android handling of the iOS-only native Liquid Glass component.
+            - Preserved platform-specific rendering behaviour.
+
+            ### Important
+            This release includes code-level compatibility and UI fixes. Native rendering, touch behaviour, and device-specific performance still require real-device verification. This update does not claim to fix every known playback or equalizer issue.
+
+            ---
+            **Developed by PauzeX Developments**  
+            [Website](https://lumamusic.devs.surf) · [Support the project](https://pauze.is-a.dev/support/) · [GitHub](https://github.com/PauzeDevs/LumaMusic)
+
+            *Thank you for using LumaMusic. Keep listening.*
