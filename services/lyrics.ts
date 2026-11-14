@@ -22,6 +22,7 @@ const CACHE_TTL = 6 * 60 * 60 * 1000;
 const MISS_TTL = 10 * 60 * 1000;
 const ERROR_TTL = 30 * 1000;
 const cache = new Map<string, { expiresAt: number; value: LyricsState }>();
+const MAX_LYRICS_CACHE_ENTRIES = 32;
 const inFlight = new Map<string, Promise<LyricsState>>();
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
 
