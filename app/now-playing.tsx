@@ -231,7 +231,8 @@ export default function NowPlayingScreen() {
 
 function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent", paddingHorizontal: 22 },
-  ambient: { ...StyleSheet.absoluteFillObject, opacity: 0.28 },
+  empty: { color: colors.text, textAlign: "center", fontSize: 15, fontWeight: "600" },
+  ambient: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, opacity: 0.28 },
   topBar: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   topButton: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(0,0,0,0.055)" },
   playingFrom: { flex: 1, alignItems: "center", paddingHorizontal: 14, gap: 2 },
