@@ -1,8 +1,33 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { PanResponder, View } from "react-native";
-export function useNowPlayingSeeking(duration:number,seekTo:(position:number)=>unknown){
- const [width,setWidth]=useState(0),[left,setLeft]=useState(0); const progressRef=useRef<View>(null);
- const seekX=(x:number)=>{if(width<=0||duration<=0)return;void seekTo(duration*Math.max(0,Math.min(1,(x-left)/width)));};
- const progressPanResponder=useMemo(()=>PanResponder.create({onStartShouldSetPanResponder:()=>true,onMoveShouldSetPanResponder:()=>true,onPanResponderGrant:(_e,g)=>seekX(g.x0),onPanResponderMove:(_e,g)=>seekX(g.moveX)}),[width,left,duration,seekTo]);
- const onProgressLayout=()=>progressRef.current?.measureInWindow((x,_y,w)=>{setLeft(x);setWidth(w);});
- return {progressRef,progressPanResponder,onProgressLayout}; }
+
+export function useNowPlayingSeeking(
+  duration: number,
+  seekTo: (position: number) => unknown
+) {
+  const [progressWidth, setProgressWidth] = useState(0);
+  const [progressLeft, setProgressLeft] = useState(0);
+  const progressRef = useRef<View>(null);
+
+  const seekFromScreenX = useCallback((screenX: number) => {
+    if (progressWidth <= 0 || duration <= 0) return;
+    const fraction = Math.max(0, Math.min(1, (screenX - progressLeft) / progressWidth));
+    void seekTo(duration * fraction);
+  }, [progressWidth, progressLeft, duration, seekTo]);
+
+  const progressPanResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (_event, gesture) => seekFromScreenX(gesture.x0),
+    onPanResponderMove: (_event, gesture) => seekFromScreenX(gesture.moveX)
+  }), [seekFromScreenX]);
+
+  const onProgressLayout = useCallback(() => {
+    progressRef.current?.measureInWindow((x, _y, width) => {
+      setProgressLeft(x);
+      setProgressWidth(width);
+    });
+  }, []);
+
+  return { progressRef, progressPanResponder, onProgressLayout };
+}
