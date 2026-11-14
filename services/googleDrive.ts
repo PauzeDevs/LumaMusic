@@ -1,17 +1,21 @@
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import type { MusicTrack } from "../types/music";
 import type { LocalPlaylist } from "../store/library";
+import type { ListeningDay } from "../store/listeningStats";
+import type { PreferencesSnapshot } from "../store/preferences";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.appdata";
 const BACKUP_FILE_NAME = "lumamusic-library-v1.json";
 
 export type LumaLibraryBackup = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   updatedAt: number;
   likedTracks: MusicTrack[];
   recentTracks: MusicTrack[];
   localTracks: MusicTrack[];
   playlists: LocalPlaylist[];
+  preferences?: PreferencesSnapshot;
+  listeningStats?: Record<string, ListeningDay>;
 };
 
 type DriveFile = { id: string; name: string; modifiedTime?: string };
@@ -81,24 +85,53 @@ export async function uploadLibraryBackup(backup: LumaLibraryBackup): Promise<vo
   if (!response.ok) throw new Error(`Could not save your LumaMusic backup (${response.status}).`);
 }
 
-export function makeLibraryBackup(library: {
-  likedTracks: MusicTrack[];
-  recentTracks: MusicTrack[];
-  localTracks: MusicTrack[];
-  playlists: LocalPlaylist[];
-}): LumaLibraryBackup {
-  return { schemaVersion: 1, updatedAt: Date.now(), ...library };
+export function makeLibraryBackup(
+  library: {
+    likedTracks: MusicTrack[];
+    recentTracks: MusicTrack[];
+    localTracks: MusicTrack[];
+    playlists: LocalPlaylist[];
+  },
+  preferences: PreferencesSnapshot,
+  listeningStats: Record<string, ListeningDay>
+): LumaLibraryBackup {
+  // Local file URIs point into one device's private storage. Never copy those
+  // stale paths to another device; local audio must be re-imported there.
+  const cloudTracks = (tracks: MusicTrack[]) => tracks.filter((track) => track.source !== "local");
+  return {
+    schemaVersion: 2,
+    updatedAt: Date.now(),
+    likedTracks: cloudTracks(library.likedTracks),
+    recentTracks: cloudTracks(library.recentTracks),
+    localTracks: [],
+    playlists: library.playlists.map((playlist) => ({
+      ...playlist,
+      tracks: cloudTracks(playlist.tracks)
+    })),
+    preferences,
+    listeningStats
+  };
 }
 
 export function isLibraryBackup(value: unknown): value is LumaLibraryBackup {
   if (!value || typeof value !== "object") return false;
   const backup = value as Partial<LumaLibraryBackup>;
-  return backup.schemaVersion === 1 &&
+  const validLibrary =
+    (backup.schemaVersion === 1 || backup.schemaVersion === 2) &&
     typeof backup.updatedAt === "number" &&
     Array.isArray(backup.likedTracks) &&
     Array.isArray(backup.recentTracks) &&
     Array.isArray(backup.localTracks) &&
     Array.isArray(backup.playlists);
+  if (!validLibrary) return false;
+  if (backup.schemaVersion === 1) return true;
+  return Boolean(
+    backup.preferences &&
+    typeof backup.preferences === "object" &&
+    backup.listeningStats &&
+    typeof backup.listeningStats === "object" &&
+    !Array.isArray(backup.listeningStats)
+  );
 }
 
 export async function disconnectGoogleAccount(): Promise<void> {
