@@ -434,7 +434,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     // Retry one failed external stream automatically. The bounded attempt count
     // prevents a persistent 403/network failure from creating an infinite loop.
     automaticRecovery.current.attempts += 1;
-    void playTrackSafely(track, usePlayerStore.getState().queue, usePlayerStore.getState().currentQueueIndex);
+    void playTrackSafely(track, usePlayerStore.getState().queue, usePlayerStore.getState().currentQueueIndex, usePlayerStore.getState().playbackPosition);
   }, [status.error, status.isBuffering, storeIsBuffering, currentTrack?.id, playTrackSafely]);
 
   const togglePlayback = useCallback(() => {
@@ -609,7 +609,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const playListener = PlaybackNotificationManager.addEventListener("playbackNotificationPlay", () => {
       const state = usePlayerStore.getState();
       if (state.currentTrack && (state.playbackError || !audioRef.current)) {
-        void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
+        void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex, state.playbackPosition);
       } else {
         void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       }
