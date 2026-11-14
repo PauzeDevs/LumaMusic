@@ -1,5 +1,3 @@
-import { BlurView } from "expo-blur";
-import { useGlassBlurTarget } from "./GlassBlurTarget";
 import { StyleSheet, View } from "react-native";
 import type { LiquidGlassViewProps } from "./LiquidGlassView";
 import { useTheme } from "../../../theme/useTheme";
@@ -7,25 +5,17 @@ import { useTheme } from "../../../theme/useTheme";
 /**
  * Android glass treatment.
  *
- * Dimezis BlurView captures and blurs the content behind this surface. The
- * layered highlights, tinted body and fine rim recreate the depth/reflections
- * of Liquid Glass without relying on iOS-only APIs.
+ * Use a native-view-only composition here. The previous implementation mounted
+ * expo-blur's BlurView against a root BlurTargetView during app startup. This
+ * static treatment avoids that native blur/render-node lifecycle entirely while
+ * preserving the translucent glass highlights and rim.
  */
 export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewProps) {
-  const { blurTint, isDark } = useTheme();
-  const blurTarget = useGlassBlurTarget();
+  const { isDark } = useTheme();
   const radius = Math.max(0, cornerRadius);
 
   return (
     <View pointerEvents="none" style={[styles.clip, { borderRadius: radius }, style]}>
-      <BlurView
-        intensity={92}
-        tint={blurTint}
-        blurTarget={blurTarget ?? undefined}
-        blurMethod={blurTarget ? "dimezisBlurViewSdk31Plus" : "none"}
-        blurReductionFactor={2}
-        style={StyleSheet.absoluteFill}
-      />
       <View
         style={[
           StyleSheet.absoluteFill,
