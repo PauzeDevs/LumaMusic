@@ -1,6 +1,6 @@
 import { Audio, AudioContext, PlaybackNotificationManager, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import { View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
@@ -79,6 +79,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const automaticRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const impulseCacheRef = useRef<Map<Exclude<ReverbPreset, "off">, ReturnType<AudioContext["createBuffer"]>>>(new Map());
   const graphRef = useRef<AudioGraph | null>(null);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -130,7 +131,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         graph.wet.gain.setValueAtTime(0, context.currentTime);
         graph.dry.gain.setValueAtTime(1, context.currentTime);
       } else {
-        graph.convolver.buffer = makeImpulseResponse(context, preset);
+        let impulse = impulseCacheRef.current.get(preset);
+        if (!impulse) {
+          impulse = makeImpulseResponse(context, preset);
+          impulseCacheRef.current.set(preset, impulse);
+        }
+        graph.convolver.buffer = impulse;
         const wetLevel = preset === "room" ? 0.16 : preset === "studio" ? 0.22 : 0.34;
         graph.wet.gain.setValueAtTime(wetLevel, context.currentTime);
         graph.dry.gain.setValueAtTime(1 - wetLevel * 0.35, context.currentTime);
@@ -188,6 +194,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       });
       graphRef.current = null;
     }
+    impulseCacheRef.current.clear();
     void audioContextRef.current?.close().catch(() => undefined);
   }, []);
 
@@ -654,10 +661,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     void playNext();
   }, [status.didJustFinish, playNext, player, setSleepTimerMinutesState]);
 
-  const value: AudioEngineValue = {
+  const value = useMemo<AudioEngineValue>(() => ({
     playTrack, togglePlayback, playNext, playPrevious, seekTo, setPlaybackRate, setSleepTimer,
     toggleShuffle: toggleShuffleState, cycleRepeat: cycleRepeatState
-  };
+  }), [playTrack, togglePlayback, playNext, playPrevious, seekTo, setPlaybackRate, setSleepTimer, toggleShuffleState, cycleRepeatState]);
 
   return (
     <AudioEngineContext.Provider value={value}>

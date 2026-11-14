@@ -1,6 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
-import { useRef, useState } from "react";
+import { Alert, Animated, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ import { useLibraryStore } from "../../store/library";
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const scrollY = useRef(new Animated.Value(0)).current;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
@@ -70,79 +71,48 @@ export default function LibraryScreen() {
     queryKey: ["youtubeMusic", "library-discovery-playlists", 6],
     queryFn: () => getFeaturedPlaylists(6)
   });
+  type LibraryItem = { kind: "content"; id: string; content: ReactNode } | { kind: "track"; id: string; track: (typeof likedTracks)[number]; index: number; queue: typeof likedTracks };
+  const listItems = useMemo<LibraryItem[]>(() => {
+    const items: LibraryItem[] = [];
+    if (localTracks.length) {
+      items.push({ kind: "content", id: "local-heading", content: <View style={styles.section}><SectionHeading title="Local audio" action="Add files" onPress={() => void importLocalAudio()} /></View> });
+      localTracks.forEach((track, index) => items.push({ kind: "track", id: "local:" + track.id, track, index, queue: localTracks as typeof likedTracks }));
+    }
+    items.push({ kind: "content", id: "stats", content: <GlassSurface style={styles.statsCard} contentStyle={styles.statsContent}>
+      <View style={styles.stat}><Text style={styles.statValue}>{recentTracks.length}</Text><Text style={styles.statLabel}>RECENT TRACKS</Text></View><View style={styles.statDivider} /><View style={styles.stat}><Text style={styles.statValue}>{likedTracks.length}</Text><Text style={styles.statLabel}>LIKED SONGS</Text></View><View style={styles.statDivider} /><View style={styles.stat}><Text style={styles.statValue}>{localPlaylists.length}</Text><Text style={styles.statLabel}>PLAYLISTS</Text></View>
+    </GlassSurface> });
+    items.push({ kind: "content", id: "playlists", content: <View style={styles.section}><SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} /><PlaylistStack items={localPlaylists.map((playlist) => ({ id: playlist.id, title: playlist.name, subtitle: playlist.tracks.length + " tracks · On this device", artwork: playlist.tracks[0]?.artwork, onPress: () => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } }) }))} emptyText="Build your own collections. They stay on this device." /></View> });
+    items.push({ kind: "content", id: "discovery", content: <View style={styles.section}><SectionHeading title="Discover playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />{playlistsLoading ? <Text style={styles.note}>Finding playlists…</Text> : null}{playlistsError ? <Text style={styles.note}>Could not load playlists right now.</Text> : null}{!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.note}>No public playlists are available right now.</Text> : null}<PlaylistStack items={playlists.map((playlist) => ({ id: playlist.id, title: playlist.title, subtitle: playlist.subtitle, artwork: playlist.artwork, onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } }) : undefined }))} emptyText="No public playlists are available right now." /></View> });
+    items.push({ kind: "content", id: "liked-heading", content: <View style={styles.section}><SectionHeading title="Liked songs" /></View> });
+    likedTracks.forEach((track, index) => items.push({ kind: "track", id: "liked:" + track.id, track, index, queue: likedTracks }));
+    items.push({ kind: "content", id: "recent-heading", content: <View style={styles.section}><SectionHeading title="Recently played" /></View> });
+    recentTracks.forEach((track, index) => items.push({ kind: "track", id: "recent:" + track.id, track, index, queue: recentTracks as typeof likedTracks }));
+    if (!recentTracks.length) items.push({ kind: "content", id: "recent-empty", content: <Text style={styles.note}>Tracks you play will appear here.</Text> });
+    return items;
+  }, [localTracks, recentTracks, likedTracks, localPlaylists, playlists, playlistsLoading, playlistsError, styles]);
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={16} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
-        <ScrollReveal scrollY={scrollY}><View style={styles.top}>
-          <View>
-            <Text style={styles.eyebrow}>YOUR COLLECTION</Text>
-            <Text style={styles.title}>Your library.</Text>
-          </View>
-          <View style={styles.topActions}><Pressable style={styles.importButton} onPress={() => router.push("/import-playlist")}><Ionicons name="swap-horizontal" size={15} color={colors.accent} /><Text style={styles.importText}>Import</Text></Pressable><Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable></View>
-        </View></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><View style={styles.shortcuts}>
-          <Pressable style={styles.liked} onPress={() => router.push("/liked")} accessibilityRole="button" accessibilityLabel="Open liked songs">
-            <View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.shortcutTitle}>Liked songs</Text>
-              <Text style={styles.shortcutSub}>Your personal favourites</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={17} color="rgba(255,255,255,0.65)" />
-          </Pressable>
-          <Pressable style={styles.downloads} onPress={() => void importLocalAudio()}>
-            <View style={styles.downloadIcon}><Ionicons name="download-outline" size={19} color={colors.mint} /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.shortcutTitle}>Local music</Text>
-              <Text style={styles.shortcutSub}>{localTracks.length ? localTracks.length + " imported · Add more" : "Import audio files from your device"}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={17} color={colors.muted} />
-          </Pressable>
-        </View></ScrollReveal>
-        {localTracks.length > 0 ? <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Local audio" action="Add files" onPress={() => void importLocalAudio()} />
-          {localTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={localTracks} />)}
-        </View></ScrollReveal> : null}
-        <ScrollReveal scrollY={scrollY}><GlassSurface style={styles.statsCard} contentStyle={styles.statsContent}>
-          <View style={styles.stat}><Text style={styles.statValue}>{recentTracks.length}</Text><Text style={styles.statLabel}>RECENT TRACKS</Text></View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statValue}>{likedTracks.length}</Text><Text style={styles.statLabel}>LIKED SONGS</Text></View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statValue}>{localPlaylists.length}</Text><Text style={styles.statLabel}>PLAYLISTS</Text></View>
-        </GlassSurface></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Your playlists" action="Create" onPress={() => setCreateVisible(true)} />
-          <PlaylistStack items={localPlaylists.map((playlist) => ({
-            id: playlist.id,
-            title: playlist.name,
-            subtitle: playlist.tracks.length + " tracks · On this device",
-            artwork: playlist.tracks[0]?.artwork,
-            onPress: () => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })
-          }))} emptyText="Build your own collections. They stay on this device." />
-        </View></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Discover playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
-          {playlistsLoading ? <Text style={styles.note}>Finding playlists…</Text> : null}
-          {playlistsError ? <Text style={styles.note}>Could not load playlists right now.</Text> : null}
-          {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.note}>No public playlists are available right now.</Text> : null}
-          <PlaylistStack items={playlists.map((playlist) => ({
-            id: playlist.id,
-            title: playlist.title,
-            subtitle: playlist.subtitle,
-            artwork: playlist.artwork,
-            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } }) : undefined
-          }))} emptyText="No public playlists are available right now." />
-        </View></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Liked songs" />
-          {likedTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={likedTracks} />)}
-        </View></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Recently played" />
-          {recentTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={recentTracks} />)}
-          {recentTracks.length === 0 ? <Text style={styles.note}>Tracks you play will appear here.</Text> : null}
-        </View></ScrollReveal>
-        <ScrollReveal scrollY={scrollY}><Text style={styles.note}>Favourites, listening history and local playlists are saved on this device. Import a playlist export to bring collections across services.</Text></ScrollReveal>
-      </Animated.ScrollView>
+      <Animated.FlatList
+        data={listItems}
+        keyExtractor={(item) => item.id}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}
+        initialNumToRender={8} maxToRenderPerBatch={8} updateCellsBatchingPeriod={50} windowSize={7} removeClippedSubviews
+        ListHeaderComponent={<>
+          <ScrollReveal scrollY={scrollY}><View style={styles.top}><View><Text style={styles.eyebrow}>YOUR COLLECTION</Text><Text style={styles.title}>Your library.</Text></View>
+            <View style={styles.topActions}><Pressable style={styles.importButton} onPress={() => router.push("/import-playlist")}><Ionicons name="swap-horizontal" size={15} color={colors.accent} /><Text style={styles.importText}>Import</Text></Pressable><Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable></View>
+          </View></ScrollReveal>
+          <ScrollReveal scrollY={scrollY}><View style={styles.shortcuts}>
+            <Pressable style={styles.liked} onPress={() => router.push("/liked")} accessibilityRole="button" accessibilityLabel="Open liked songs"><View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View><View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>Liked songs</Text><Text style={styles.shortcutSub}>Your personal favourites</Text></View><Ionicons name="chevron-forward" size={17} color="rgba(255,255,255,0.65)" /></Pressable>
+            <Pressable style={styles.downloads} onPress={() => void importLocalAudio()}><View style={styles.downloadIcon}><Ionicons name="download-outline" size={19} color={colors.mint} /></View><View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>Local music</Text><Text style={styles.shortcutSub}>{localTracks.length ? localTracks.length + " imported · Add more" : "Import audio files from your device"}</Text></View><Ionicons name="chevron-forward" size={17} color={colors.muted} /></Pressable>
+          </View></ScrollReveal>
+        </>}
+        renderItem={({ item }) => item.kind === "content" ? <>{item.content}</> : <TrackRow track={item.track} index={item.index} showIndex queue={item.queue} />}
+        ListFooterComponent={<Text style={styles.note}>Favourites, listening history and local playlists are saved on this device. Import a playlist export to bring collections across services.</Text>}
+      />
       <Modal visible={createVisible} transparent animationType="fade" onRequestClose={() => setCreateVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>

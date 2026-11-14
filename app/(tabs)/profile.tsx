@@ -23,7 +23,7 @@ const settings = [
 
 export default function ProfileScreen() {
   const { colors, isDark } = useTheme();
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, isDark);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -103,7 +103,7 @@ export default function ProfileScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20, paddingBottom: 34 },
   topline: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },

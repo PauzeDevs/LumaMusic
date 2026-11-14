@@ -118,7 +118,12 @@ async function browseTracksWithContinuation(initialPayload: Obj, limit: number):
   return uniqueById(collected).slice(0, limit);
 }
 function uniqueById<T extends { id: string }>(items: T[]): T[] {
-  return items.filter((item, index) => items.findIndex((candidate) => candidate.id === item.id) === index);
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }
 
 async function innerTubePost(url: string, body: Obj): Promise<Obj> {

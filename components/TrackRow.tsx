@@ -1,7 +1,9 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { MusicTrack } from "../types/music";
+import type { LocalPlaylist } from "../store/library";
+
 import type { ThemePalette } from "../theme/colors";
 import { useTheme } from "../theme/useTheme";
 import { usePreferencesStore } from "../store/preferences";
@@ -10,23 +12,24 @@ import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
+const EMPTY_PLAYLISTS: LocalPlaylist[] = [];
+
 type Props = { track: MusicTrack; index?: number; showIndex?: boolean; queue?: MusicTrack[]; playlistId?: string };
 
-export function TrackRow({ track, index, showIndex = false, queue, playlistId }: Props) {
+export const TrackRow = memo(function TrackRow({ track, index, showIndex = false, queue, playlistId }: Props) {
   const { colors } = useTheme();
   const accent = colors.accent;
   const styles = createStyles(colors);
+  const [pickerVisible, setPickerVisible] = useState(false);
   const compactRows = usePreferencesStore((state) => state.compactRows);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
-  const likedTracks = useLibraryStore((state) => state.likedTracks);
-  const playlists = useLibraryStore((state) => state.playlists);
+  const isLiked = useLibraryStore((state) => state.likedTracks.some((item) => item.id === track.id));
+  const playlists = useLibraryStore((state) => pickerVisible ? state.playlists : EMPTY_PLAYLISTS);
   const toggleLike = useLibraryStore((state) => state.toggleLike);
   const addTrackToPlaylist = useLibraryStore((state) => state.addTrackToPlaylist);
   const removeTrackFromPlaylist = useLibraryStore((state) => state.removeTrackFromPlaylist);
-  const [pickerVisible, setPickerVisible] = useState(false);
   const { playTrack } = useAudioEngine();
   const isCurrent = currentTrack?.id === track.id;
-  const isLiked = likedTracks.some((item) => item.id === track.id);
 
   const handlePlay = () => {
     playTrack(track, queue ?? [track]).catch((error: unknown) => {
@@ -91,7 +94,7 @@ export function TrackRow({ track, index, showIndex = false, queue, playlistId }:
       </Modal>
     </View>
   );
-}
+});
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 9, paddingHorizontal: 8, marginBottom: 3, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.025)" },

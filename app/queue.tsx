@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
@@ -25,10 +25,8 @@ export default function QueueScreen() {
         <Pressable onPress={() => Alert.alert("Clear queue?", "This keeps the current track and removes everything after it.", [{ text: "Cancel", style: "cancel" }, { text: "Clear", style: "destructive", onPress: clearQueue }])} style={styles.clear}><Text style={styles.clearText}>Clear</Text></Pressable>
       </View>
       <Text style={styles.caption}>{queue.length} {queue.length === 1 ? "track" : "tracks"} in this queue</Text>
-      <ScrollView contentContainerStyle={styles.list}>
-        {queue.map((track, index) => {
-          const isCurrent = index === currentIndex;
-          return (
+      <FlatList data={queue} keyExtractor={(track, index) => `${track.id}-${index}`} contentContainerStyle={styles.list} initialNumToRender={10} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews renderItem={({ item: track, index }) => { const isCurrent = index === currentIndex; return (
+        
             <View key={`${track.id}-${index}`} style={[styles.row, isCurrent && styles.current]}>
               <Artwork uri={track.artwork} size={48} radius={11} />
               <Pressable style={{ flex: 1 }} onPress={() => { void playTrack(track, queue, index).then(() => router.back()).catch((error: unknown) => Alert.alert("Playback failed", error instanceof Error ? error.message : "Try again.")); }}>
@@ -41,10 +39,7 @@ export default function QueueScreen() {
                 {!isCurrent ? <Pressable onPress={() => removeQueueItemAt(index)} style={styles.action}><Ionicons name="close" size={18} color={colors.muted} /></Pressable> : null}
               </View>
             </View>
-          );
-        })}
-        {queue.length === 0 ? <Text style={styles.empty}>Your queue is empty. Find a track and start a new session.</Text> : null}
-      </ScrollView>
+          ); }} ListEmptyComponent={<Text style={styles.empty}>Your queue is empty. Find a track and start a new session.</Text>} />
     </SafeAreaView>
   );
 }
