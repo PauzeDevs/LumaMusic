@@ -82,7 +82,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const graphRef = useRef<AudioGraph | null>(null);
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  if (!audioContextRef.current) audioContextRef.current = new AudioContext({ latencyHint: "playback" });
+  const ensureAudioContext = useCallback(() => {
+    if (!audioContextRef.current) audioContextRef.current = new AudioContext({ latencyHint: "playback" });
+    return audioContextRef.current;
+  }, []);
 
   const setPlaybackStatus = usePlayerStore((state) => state.setPlaybackStatus);
   const setPlaybackError = usePlayerStore((state) => state.setPlaybackError);
@@ -336,6 +339,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         const stream = await resolveYouTubeMusicAudio(track);
         // A slower, older resolver must never replace the song the user selected most recently.
         if (requestId !== playbackRequestSequence.current) return;
+        // Allocate the native effects engine only when playback actually starts.
+        ensureAudioContext();
         // Feed the resolved YouTube URL into the native Audio API element so its
         // samples pass through the same AudioContext graph as imported local audio.
         setLocalSource({
@@ -380,13 +385,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
     if (isLocalTrack(track)) {
       player.pause();
+      ensureAudioContext();
       setLocalSource({ uri: track.localUri, instance: ++localSourceSequence.current });
       usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
       return;
     }
 
     throw new Error("This track has no supported playback source.");
-  }, [disconnectGraph, player, setPlaybackError]);
+  }, [disconnectGraph, ensureAudioContext, player, setPlaybackError]);
 
   const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number) => {
     try { await playTrack(track, queue, queueIndex); }
