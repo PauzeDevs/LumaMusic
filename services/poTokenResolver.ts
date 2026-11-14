@@ -114,7 +114,7 @@ export async function resolveYouTubePoTokens(videoId: string, timeoutMs = 12_000
       if (queuedIndex >= 0) waiting.splice(queuedIndex, 1);
       finish?.(null);
       notifyDemand();
-    }, 12_000);
+    }, Math.max(500, Math.min(timeoutMs, 12_000)));
     pendingTimers.set(requestId, timer);
   });
 }
