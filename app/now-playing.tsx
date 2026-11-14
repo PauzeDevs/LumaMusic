@@ -75,7 +75,18 @@ export default function NowPlayingScreen() {
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
   const isLocalPlayback = track?.source === "local";
   const [artworkFailed, setArtworkFailed] = useState(false);
-  useEffect(() => setArtworkFailed(false), [track?.id, track?.artwork]);
+  const [previousArtwork, setPreviousArtwork] = useState<string | null>(null);
+  const artworkCrossfade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    setArtworkFailed(false);
+    if (!track?.artwork) return;
+    setPreviousArtwork((current) => current && current !== track.artwork ? current : null);
+    artworkCrossfade.stopAnimation();
+    artworkCrossfade.setValue(0);
+    Animated.timing(artworkCrossfade, { toValue: 1, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setPreviousArtwork(null);
+    });
+  }, [track?.id, track?.artwork, artworkCrossfade]);
   const [progressWidth, setProgressWidth] = useState(0);
   const [progressLeft, setProgressLeft] = useState(0);
   const progressRef = useRef<View>(null);
@@ -128,7 +139,8 @@ export default function NowPlayingScreen() {
       </View>
       <View style={styles.main}>
         <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }] }]}>
-          {track.artwork && !artworkFailed ? <Image source={{ uri: track.artwork }} style={styles.artwork} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
+          {previousArtwork ? <Image source={{ uri: previousArtwork }} style={[styles.artwork, StyleSheet.absoluteFillObject]} /> : null}
+          {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
         </Animated.View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
