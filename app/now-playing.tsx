@@ -229,6 +229,8 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   trackInfo: { flexDirection: "row", alignItems: "center", gap: 16 },
   trackTitle: { color: colors.text, fontSize: 23, fontWeight: "800", letterSpacing: -0.6 },
   artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
+  qualityBadge: { alignSelf: "flex-start", marginTop: 7, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 7, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
+  qualityText: { color: colors.muted, fontSize: 10, fontWeight: "700", letterSpacing: 0.35 },
   like: { padding: 8 },
   progressArea: { marginTop: 28 },
   externalPlayback: { marginTop: 24, minHeight: 92, alignItems: "center", justifyContent: "center", gap: 10 },
