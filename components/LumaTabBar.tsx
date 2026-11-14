@@ -1,6 +1,5 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { BlurView } from "expo-blur";
 import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { router } from "expo-router";
 import { useTheme } from "../theme/useTheme";
@@ -17,7 +16,7 @@ const tabs = [
 type TabBarProps = { state: { index: number; routes: Array<{ name: string }> }; navigation: { navigate: (...args: any[]) => void } };
 
 export function LumaTabBar({ state, navigation }: TabBarProps) {
-  const { colors, blurTint, isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const playbackPosition = usePlayerStore((s) => s.playbackPosition);
@@ -37,7 +36,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
       const routeIndex = state.routes.findIndex((route) => route.name === tab.name);
       const focused = state.index === routeIndex;
       return <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={[styles.tab, focused && { backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.72)", borderColor: isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.9)" }]}>
-        {focused ? <BlurView tint={blurTint} intensity={55} style={StyleSheet.absoluteFill} /> : null}
+        {focused ? <LiquidGlassView cornerRadius={19} style={StyleSheet.absoluteFill} /> : null}
         <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.text : colors.subtle} />
         <Text style={[styles.label, { color: focused ? colors.text : colors.subtle }]}>{tab.label}</Text>
       </Pressable>;
