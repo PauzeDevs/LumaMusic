@@ -129,11 +129,15 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       graph.panner.pan.setValueAtTime(Math.max(-1, Math.min(1, balance)), context.currentTime);
       if (preset === "off") {
         graph.convolver.buffer = null;
+        impulseCacheRef.current.clear();
         graph.wet.gain.setValueAtTime(0, context.currentTime);
         graph.dry.gain.setValueAtTime(1, context.currentTime);
       } else {
         let impulse = impulseCacheRef.current.get(preset);
         if (!impulse) {
+          // Keep only the active reverb impulse. Caching every preset retains
+          // multiple stereo Float32 buffers for the lifetime of the player.
+          impulseCacheRef.current.clear();
           impulse = makeImpulseResponse(context, preset);
           impulseCacheRef.current.set(preset, impulse);
         }
