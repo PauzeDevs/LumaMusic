@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import SwiftUI
+import UIKit
 
 private final class LiquidGlassModel: ObservableObject {
   @Published var cornerRadius: CGFloat = 24
@@ -40,6 +41,7 @@ final class LiquidGlassExpoView: ExpoView {
     isUserInteractionEnabled = false
     hostingController = UIHostingController(rootView: LiquidGlassContent(model: model))
     hostingController.view.backgroundColor = .clear
+    hostingController.view.isUserInteractionEnabled = false
     hostingController.view.translatesAutoresizingMaskIntoConstraints = false
     addSubview(hostingController.view)
     NSLayoutConstraint.activate([
