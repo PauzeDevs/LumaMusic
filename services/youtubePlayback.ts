@@ -42,17 +42,9 @@ function cacheStream(videoId: string, stream: ResolvedYouTubeAudio) {
 }
 
 async function resolvePoTokenQuickly(videoId: string) {
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      resolveYouTubePoTokens(videoId),
-      new Promise<null>((resolve) => {
-        timeout = setTimeout(() => resolve(null), 2500);
-      })
-    ]);
-  } finally {
-    if (timeout) clearTimeout(timeout);
-  }
+  // Let the resolver own the timeout so a timed-out optional request also
+  // unmounts its heavyweight WebView instead of leaving Chromium alive.
+  return resolveYouTubePoTokens(videoId, 2500);
 }
 
 /**
