@@ -188,6 +188,19 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     // A delayed load event from a replaced audio element must not start the new source.
     if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
     if (!context || !element || graphRef.current) return;
+    // Remote YouTube streams must stay on the Audio tag's native direct-output
+    // path. react-native-audio-api 1.0.0 does not reliably support routing
+    // MediaElementAudioSourceNode streams through a live DSP graph on Android;
+    // creating that node can interrupt playback when EQ parameters change.
+    // Keep streaming playback stable and reserve the Audio Lab graph for local files.
+    if (isExternalTrack(latestTrack)) {
+      try {
+        element.play();
+      } catch (error) {
+        setPlaybackError(error instanceof Error ? error.message : "Could not start this audio stream.");
+      }
+      return;
+    }
     try {
       const source = context.createMediaElementSource(element);
       const panner = context.createStereoPanner();
