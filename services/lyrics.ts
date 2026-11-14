@@ -118,7 +118,11 @@ async function fetchLyrics(track: MusicTrack): Promise<LyricsState> {
 export function getLyrics(track: MusicTrack): Promise<LyricsState> {
   const key = `${normalize(track.title)}::${normalize(track.artist)}::${Math.round((track.durationMs ?? 0) / 1000)}`;
   const cached = cache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value);
+  if (cached && cached.expiresAt > Date.now()) {
+    cache.delete(key);
+    cache.set(key, cached);
+    return Promise.resolve(cached.value);
+  }
   if (cached) cache.delete(key);
   const pending = inFlight.get(key);
   if (pending) return pending;
