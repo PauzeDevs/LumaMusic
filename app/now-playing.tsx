@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Image, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Alert, Animated, Easing, Image, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
@@ -11,8 +11,6 @@ import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePreferencesStore } from "../store/preferences";
-import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
-import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
 import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 
