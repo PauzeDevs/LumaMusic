@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Easing, Image, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Animated, Image, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
@@ -11,6 +11,8 @@ import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePreferencesStore } from "../store/preferences";
+import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
+import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 
 function formatTime(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -36,41 +38,10 @@ export default function NowPlayingScreen() {
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
-  const styles = createStyles(colors, isDark, surfaceStyle);
+  const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
-  const artworkScale = useRef(new Animated.Value(1)).current;
-  const artworkFloat = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    artworkScale.stopAnimation();
-    artworkFloat.stopAnimation();
-    if (!isPlaying || motionStyle === "off" || animationIntensity <= 0) {
-      Animated.parallel([
-        Animated.spring(artworkScale, { toValue: 1, speed: 1.5, bounciness: 0, useNativeDriver: true }),
-        Animated.spring(artworkFloat, { toValue: 0, speed: 1.5, bounciness: 0, useNativeDriver: true })
-      ]).start();
-      return;
-    }
-    const intensity = Math.max(0, Math.min(100, animationIntensity)) / 100;
-    const scaleAmount = 0.004 + intensity * 0.008;
-    const floatAmount = 1.5 + intensity * 3;
-    const ambientMotion = Animated.loop(Animated.sequence([
-      Animated.parallel([
-        Animated.timing(artworkScale, { toValue: 1 + scaleAmount, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(artworkFloat, { toValue: -floatAmount, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-      ]),
-      Animated.parallel([
-        Animated.timing(artworkScale, { toValue: 1 - scaleAmount * 0.35, duration: 8400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(artworkFloat, { toValue: floatAmount, duration: 8400, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-      ]),
-      Animated.parallel([
-        Animated.timing(artworkScale, { toValue: 1, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(artworkFloat, { toValue: 0, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-      ])
-    ]));
-    ambientMotion.start();
-    return () => ambientMotion.stop();
-  }, [isPlaying, motionStyle, animationIntensity, artworkScale, artworkFloat]);
+  const { artworkScale, artworkFloat } = useNowPlayingArtworkMotion(isPlaying, motionStyle, animationIntensity);
   const accentColor = colors.accent;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
@@ -123,20 +94,7 @@ export default function NowPlayingScreen() {
     { text: "45 minutes", onPress: () => setSleepTimer(45) },
     { text: "1 hour", onPress: () => setSleepTimer(60) },
     { text: "End of this track", onPress: () => setSleepTimer(-1) },
-    ...(sleepTimerMinutes !== null ? [{ text: "Cancel timer", style: "destructive" as const, onPress: () => setSleepTimer(null) }] : []),
-    { text: "Close", style: "cancel" as const }
-    ]);
-  };
-
-  return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 44 : surfaceStyle === "frosted" ? 72 : surfaceStyle === "clear" ? 88 : 0} style={styles.ambientBlur} />
-      <View style={styles.header}>
-        <View style={styles.headerLeading}>
-          <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Go back">
-            <Ionicons name="chevron-back" size={22} color={colors.text} />
-          </Pressable>
-          <View style={styles.brand}><Image source={require("../assets/lumamusic-icon.png")} style={styles.brandLogo} /><Text style={styles.brandName}>LumaMusic</Text></View>
+    ...(sleepTimerMinutes !== null ? [{ text: "Cancel timer", style: "destructive" as const, onPress: () => set  const { progressRef, progressPanResponder, onProgressLayout } = useNowPlayingSeeking(duration, seekTo);={require("../assets/lumamusic-icon.png")} style={styles.brandLogo} /><Text style={styles.brandName}>LumaMusic</Text></View>
         </View>
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
@@ -160,7 +118,7 @@ export default function NowPlayingScreen() {
               styles.progressTrack,
               progressBarStyle === "classic" && styles.progressTrackClassic,
               progressBarStyle === "waveform" && styles.progressTrackWaveform
-            ]} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
+            ]} onLayout={onProgressLayout} {...progressPanResponder.panHandlers}>
               {progressBarStyle === "waveform" ? (
                 <View style={styles.waveformBars}>
                   {Array.from({ length: 42 }, (_, index) => {
@@ -212,7 +170,7 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
