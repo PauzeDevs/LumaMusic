@@ -152,14 +152,15 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
  * Resolves a playable audio stream directly through YouTube's InnerTube /player API.
  * Keeps InnerTube as the primary resolver and falls back to NewPipe on Android only if all InnerTube clients fail.
  */
-export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<ResolvedYouTubeAudio> {
+export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
   const videoId = extractYouTubeVideoId(track);
   if (!videoId) {
     throw new Error("Missing YouTube video ID for this track.");
   }
 
   // Check if we already have a non-expired stream URL cached (with 5-min safety buffer)
-  const cached = getCachedStream(videoId);
+  if (forceRefresh) streamCache.delete(videoId);
+  const cached = forceRefresh ? null : getCachedStream(videoId);
   if (cached) return cached;
 
   const errors: string[] = [];
