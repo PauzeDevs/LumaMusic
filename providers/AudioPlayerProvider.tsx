@@ -78,6 +78,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const handledFinishedState = useRef(false);
   const fetchingAutoplayQueue = useRef(false);
   const automaticRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
+  const earlyEndRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const impulseCacheRef = useRef<Map<Exclude<ReverbPreset, "off">, ReturnType<AudioContext["createBuffer"]>>>(new Map());
@@ -331,7 +332,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     graphRef.current = null;
   }, []);
 
-  const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number, resumePosition?: number) => {
+  const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number, resumePosition?: number, forceStreamRefresh = false) => {
     pendingResumePositionRef.current = Number.isFinite(resumePosition) && resumePosition !== undefined && resumePosition > 0 ? resumePosition : null;
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
     const requestId = ++playbackRequestSequence.current;
@@ -352,7 +353,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       setLocalSource(null);
       usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
       try {
-        const stream = await resolveYouTubeMusicAudio(track);
+        const stream = await resolveYouTubeMusicAudio(track, forceStreamRefresh);
         const bitrateKbps = stream.bitrate && stream.bitrate > 0 ? Math.round(stream.bitrate / 1000) : null;
         // YouTube Music streams are lossy codecs; only label HD when the actual
         // selected stream reports a high bitrate. Never infer lossless from bitrate.
@@ -418,8 +419,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     throw new Error("This track has no supported playback source.");
   }, [disconnectGraph, ensureAudioContext, player, setPlaybackError]);
 
-  const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number, resumePosition?: number) => {
-    try { await playTrack(track, queue, queueIndex, resumePosition); }
+  const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number, resumePosition?: number, forceStreamRefresh = false) => {
+    try { await playTrack(track, queue, queueIndex, resumePosition, forceStreamRefresh); }
     catch (error) { setPlaybackError(error instanceof Error ? error.message : "Unable to open this track."); }
   }, [playTrack, setPlaybackError]);
 
@@ -596,14 +597,49 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   const onLocalAudioEnded = useCallback((sourceInstance: number, trackId: string) => {
     const latest = usePlayerStore.getState();
-    if (sourceInstance !== localSourceSequence.current || latest.currentTrack?.id !== trackId) return;
+    const track = latest.currentTrack;
+    if (sourceInstance !== localSourceSequence.current || track?.id !== trackId) return;
     if (latest.sleepTimerMinutes === -1) {
       audioRef.current?.pause();
       setSleepTimerMinutesState(null);
       return;
     }
+
+    if (isExternalTrack(track)) {
+      if (earlyEndRecovery.current.trackId !== track.id) {
+        earlyEndRecovery.current = { trackId: track.id, attempts: 0 };
+      }
+      const catalogueDuration = Math.max(0, track.durationMs / 1000);
+      const expectedDuration = Math.max(catalogueDuration, latest.playbackDuration || 0);
+      const currentPosition = Math.max(0, latest.playbackPosition || 0);
+      // A native ended event is not proof that a YouTube track completed. Compare
+      // against catalogue duration as well as stream metadata to catch truncated
+      // direct URLs (for example, a 3-minute song ending around 1:50).
+      const remaining = expectedDuration - currentPosition;
+      const earlyEndThreshold = Math.max(12, expectedDuration * 0.08);
+      if (expectedDuration > 0 && remaining > earlyEndThreshold) {
+        if (earlyEndRecovery.current.attempts < 1) {
+          earlyEndRecovery.current.attempts += 1;
+          const resumeAt = Math.max(0, currentPosition - 2);
+          void playTrackSafely(track, latest.queue, latest.currentQueueIndex, resumeAt, true);
+        } else {
+          audioRef.current?.pause();
+          const message = "The audio stream ended before the track finished. LumaMusic tried a fresh stream, but it ended early again. Tap Play to retry.";
+          setPlaybackStatus({
+            isPlaying: false,
+            isBuffering: false,
+            playbackPosition: currentPosition,
+            playbackDuration: expectedDuration,
+            playbackError: message
+          });
+          setPlaybackError(message);
+        }
+        return;
+      }
+    }
+
     void playNext();
-  }, [playNext, setSleepTimerMinutesState]);
+  }, [playNext, playTrackSafely, setPlaybackError, setPlaybackStatus, setSleepTimerMinutesState]);
 
   useEffect(() => {
     const playListener = PlaybackNotificationManager.addEventListener("playbackNotificationPlay", () => {
