@@ -15,6 +15,30 @@ const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false
 
 // Cache resolved stream URLs in memory so replaying or seeking doesn't re-fetch before expiration
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
+const MAX_STREAM_CACHE_ENTRIES = 40;
+
+function getCachedStream(videoId: string) {
+  const cached = streamCache.get(videoId);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now() + 5 * 60 * 1000) {
+    streamCache.delete(videoId);
+    return null;
+  }
+  // Refresh insertion order so frequently replayed tracks remain in the cache.
+  streamCache.delete(videoId);
+  streamCache.set(videoId, cached);
+  return cached;
+}
+
+function cacheStream(videoId: string, stream: ResolvedYouTubeAudio) {
+  streamCache.delete(videoId);
+  streamCache.set(videoId, stream);
+  while (streamCache.size > MAX_STREAM_CACHE_ENTRIES) {
+    const oldestKey = streamCache.keys().next().value;
+    if (!oldestKey) break;
+    streamCache.delete(oldestKey);
+  }
+}
 
 async function resolvePoTokenQuickly(videoId: string) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -135,10 +159,8 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
   }
 
   // Check if we already have a non-expired stream URL cached (with 5-min safety buffer)
-  const cached = streamCache.get(videoId);
-  if (cached && cached.expiresAt > Date.now() + 5 * 60 * 1000) {
-    return cached;
-  }
+  const cached = getCachedStream(videoId);
+  if (cached) return cached;
 
   const errors: string[] = [];
   // Race the profiles and use the first successful playable stream.
@@ -222,7 +244,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
     resolvedStream = null as unknown as ResolvedYouTubeAudio;
   }
   if (resolvedStream) {
-    streamCache.set(videoId, resolvedStream);
+    cacheStream(videoId, resolvedStream);
     return resolvedStream;
   }
 
@@ -253,7 +275,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
           ? parsedExpiry
           : Date.now() + 30 * 60 * 1000
       };
-      streamCache.set(videoId, resolved);
+      cacheStream(videoId, resolved);
       return resolved;
     }
   } catch (error) {
