@@ -36,7 +36,7 @@ export default function NowPlayingScreen() {
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
-  const styles = createStyles(colors, isDark, surfaceStyle);
+  const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
   const artworkScale = useRef(new Animated.Value(1)).current;
@@ -212,7 +212,7 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
