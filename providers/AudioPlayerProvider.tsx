@@ -98,22 +98,45 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const equalizerEnabled = usePreferencesStore((state) => state.equalizerEnabled);
   const equalizerBands = usePreferencesStore((state) => state.equalizerBands);
 
+  const bypassEffectsGraph = useCallback(() => {
+    const graph = graphRef.current;
+    const context = audioContextRef.current;
+    if (!graph || !context) return;
+    // Disconnect nodes independently so one native failure cannot prevent the
+    // direct source-to-output fallback from being attempted.
+    try { graph.source.disconnect(); } catch { /* Continue to the direct route. */ }
+    try { graph.source.connect(context.destination); } catch { /* Native engine may already be unavailable. */ }
+    try { graph.panner.disconnect(); } catch { /* Best-effort cleanup. */ }
+    try { graph.convolver.disconnect(); } catch { /* Best-effort cleanup. */ }
+    try { graph.dry.disconnect(); } catch { /* Best-effort cleanup. */ }
+    try { graph.wet.disconnect(); } catch { /* Best-effort cleanup. */ }
+    graph.filters.forEach((filter) => {
+      try { filter.disconnect(); } catch { /* Best-effort cleanup. */ }
+    });
+    graphRef.current = null;
+  }, []);
+
   const applyEffects = useCallback((balance: number, preset: ReverbPreset) => {
     const graph = graphRef.current;
     const context = audioContextRef.current;
     if (!graph || !context) return;
-    graph.panner.pan.setValueAtTime(Math.max(-1, Math.min(1, balance)), context.currentTime);
-    if (preset === "off") {
-      graph.convolver.buffer = null;
-      graph.wet.gain.setValueAtTime(0, context.currentTime);
-      graph.dry.gain.setValueAtTime(1, context.currentTime);
-      return;
+    try {
+      graph.panner.pan.setValueAtTime(Math.max(-1, Math.min(1, balance)), context.currentTime);
+      if (preset === "off") {
+        graph.convolver.buffer = null;
+        graph.wet.gain.setValueAtTime(0, context.currentTime);
+        graph.dry.gain.setValueAtTime(1, context.currentTime);
+      } else {
+        graph.convolver.buffer = makeImpulseResponse(context, preset);
+        const wetLevel = preset === "room" ? 0.16 : preset === "studio" ? 0.22 : 0.34;
+        graph.wet.gain.setValueAtTime(wetLevel, context.currentTime);
+        graph.dry.gain.setValueAtTime(1 - wetLevel * 0.35, context.currentTime);
+      }
+      if (context.state !== "running") void context.resume().catch(() => bypassEffectsGraph());
+    } catch {
+      bypassEffectsGraph();
     }
-    graph.convolver.buffer = makeImpulseResponse(context, preset);
-    const wetLevel = preset === "room" ? 0.16 : preset === "studio" ? 0.22 : 0.34;
-    graph.wet.gain.setValueAtTime(wetLevel, context.currentTime);
-    graph.dry.gain.setValueAtTime(1 - wetLevel * 0.35, context.currentTime);
-  }, []);
+  }, [bypassEffectsGraph]);
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: "doNotMix" })
@@ -134,10 +157,15 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const graph = graphRef.current;
     const context = audioContextRef.current;
     if (!graph || !context) return;
-    graph.filters.forEach((filter, index) => {
-      filter.gain.setValueAtTime(enabled ? (bands[index] ?? 0) : 0, context.currentTime);
-    });
-  }, []);
+    try {
+      graph.filters.forEach((filter, index) => {
+        filter.gain.setValueAtTime(enabled ? (bands[index] ?? 0) : 0, context.currentTime);
+      });
+      if (context.state !== "running") void context.resume().catch(() => bypassEffectsGraph());
+    } catch {
+      bypassEffectsGraph();
+    }
+  }, [bypassEffectsGraph]);
 
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
   useEffect(() => applyEqualizer(equalizerEnabled, equalizerBands), [equalizerEnabled, equalizerBands, applyEqualizer]);
@@ -186,11 +214,26 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       graphRef.current = { source, panner, convolver, dry, wet, filters };
       applyEffects(usePreferencesStore.getState().spatialBalance, usePreferencesStore.getState().reverbPreset);
       applyEqualizer(usePreferencesStore.getState().equalizerEnabled, usePreferencesStore.getState().equalizerBands);
-      void context.resume().then(() => element.play()).catch((error: unknown) => setPlaybackError(error instanceof Error ? error.message : "Could not start this local audio file."));
+      void context.resume().then(() => {
+        // Start playback even if the native context resumed into a non-running state.
+        if (context.state === "running") return element.play();
+        bypassEffectsGraph();
+        return element.play();
+      }).catch((error: unknown) => {
+        bypassEffectsGraph();
+        // AudioTagHandle.play() is synchronous and returns void in this API.
+        // Retry on the direct route, catching only a synchronous native failure.
+        try {
+          element.play();
+        } catch (playError) {
+          setPlaybackError(playError instanceof Error ? playError.message :
+            error instanceof Error ? error.message : "Could not start this audio stream.");
+        }
+      });
     } catch (error) {
       setPlaybackError(error instanceof Error ? error.message : "Could not connect the audio effects engine.");
     }
-  }, [applyEffects, applyEqualizer, setPlaybackError]);
+  }, [applyEffects, applyEqualizer, bypassEffectsGraph, setPlaybackError]);
 
   const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string, sourceInstance: number, trackId: string) => {
     const latestTrack = usePlayerStore.getState().currentTrack;
