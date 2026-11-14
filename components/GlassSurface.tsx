@@ -4,7 +4,7 @@ import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { useTheme } from "../theme/useTheme";
 
 type Props = { children: ReactNode; style?: StyleProp<ViewStyle>; contentStyle?: StyleProp<ViewStyle>; intensity?: number };
-export function GlassSurface({ children, style, contentStyle, intensity = 72 }: Props) {
+export function GlassSurface({ children, style, contentStyle }: Props) {
   const { colors, isDark } = useTheme();
   return <View style={[styles.shell, { borderColor: colors.border, backgroundColor: isDark ? "rgba(38,38,42,0.20)" : "rgba(255,255,255,0.20)" }, style]}>
     <LiquidGlassView cornerRadius={24} style={StyleSheet.absoluteFill} />
