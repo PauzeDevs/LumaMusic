@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Easing, Image, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Animated, Easing, Image, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
@@ -11,6 +11,8 @@ import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePreferencesStore } from "../store/preferences";
+import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
+import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 
 function formatTime(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -39,38 +41,7 @@ export default function NowPlayingScreen() {
   const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
-  const artworkScale = useRef(new Animated.Value(1)).current;
-  const artworkFloat = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    artworkScale.stopAnimation();
-    artworkFloat.stopAnimation();
-    if (!isPlaying || motionStyle === "off" || animationIntensity <= 0) {
-      Animated.parallel([
-        Animated.spring(artworkScale, { toValue: 1, speed: 1.5, bounciness: 0, useNativeDriver: true }),
-        Animated.spring(artworkFloat, { toValue: 0, speed: 1.5, bounciness: 0, useNativeDriver: true })
-      ]).start();
-      return;
-    }
-    const intensity = Math.max(0, Math.min(100, animationIntensity)) / 100;
-    const scaleAmount = 0.004 + intensity * 0.008;
-    const floatAmount = 1.5 + intensity * 3;
-    const ambientMotion = Animated.loop(Animated.sequence([
-      Animated.parallel([
-        Animated.timing(artworkScale, { toValue: 1 + scaleAmount, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(artworkFloat, { toValue: -floatAmount, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-      ]),
-      Animated.parallel([
-        Animated.timing(artworkScale, { toValue: 1 - scaleAmount * 0.35, duration: 8400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(artworkFloat, { toValue: floatAmount, duration: 8400, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-      ]),
-      Animated.parallel([
-        Animated.timing(artworkScale, { toValue: 1, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(artworkFloat, { toValue: 0, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-      ])
-    ]));
-    ambientMotion.start();
-    return () => ambientMotion.stop();
-  }, [isPlaying, motionStyle, animationIntensity, artworkScale, artworkFloat]);
+  const { artworkScale, artworkFloat } = useNowPlayingArtworkMotion(isPlaying, motionStyle, animationIntensity);
   const accentColor = colors.accent;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
@@ -90,20 +61,7 @@ export default function NowPlayingScreen() {
       if (finished) setPreviousArtwork(null);
     });
   }, [track?.id, track?.artwork, artworkCrossfade]);
-  const [progressWidth, setProgressWidth] = useState(0);
-  const [progressLeft, setProgressLeft] = useState(0);
-  const progressRef = useRef<View>(null);
-  const seekFromScreenX = (screenX: number) => {
-    if (progressWidth <= 0 || duration <= 0) return;
-    const fraction = Math.max(0, Math.min(1, (screenX - progressLeft) / progressWidth));
-    void seekTo(duration * fraction);
-  };
-  const progressPanResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (_event, gesture) => seekFromScreenX(gesture.x0),
-    onPanResponderMove: (_event, gesture) => seekFromScreenX(gesture.moveX)
-  }), [progressWidth, progressLeft, duration, seekTo]);
+  const { progressRef, progressPanResponder, onProgressLayout } = useNowPlayingSeeking(duration, seekTo);
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
@@ -160,7 +118,7 @@ export default function NowPlayingScreen() {
               styles.progressTrack,
               progressBarStyle === "classic" && styles.progressTrackClassic,
               progressBarStyle === "waveform" && styles.progressTrackWaveform
-            ]} onLayout={(event) => { setProgressWidth(event.nativeEvent.layout.width); progressRef.current?.measureInWindow((x) => setProgressLeft(x)); }} {...progressPanResponder.panHandlers}>
+            ]} onLayout={onProgressLayout} {...progressPanResponder.panHandlers}>
               {progressBarStyle === "waveform" ? (
                 <View style={styles.waveformBars}>
                   {Array.from({ length: 42 }, (_, index) => {
