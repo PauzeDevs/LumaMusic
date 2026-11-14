@@ -45,6 +45,8 @@ export default function NowPlayingScreen() {
   const entrance = useRef(new Animated.Value(0)).current;
   const artworkOpacity = useRef(new Animated.Value(1)).current;
   const artworkLift = useRef(new Animated.Value(0)).current;
+  const artworkFloat = useRef(new Animated.Value(0)).current;
+  const artworkScale = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -75,6 +77,39 @@ export default function NowPlayingScreen() {
       Animated.timing(artworkLift, { toValue: 0, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: true })
     ]).start();
   }, [track?.id, track?.artwork, motionStyle, animationIntensity, artworkOpacity, artworkLift]);
+
+  useEffect(() => {
+    artworkFloat.stopAnimation();
+    artworkScale.stopAnimation();
+
+    if (!isPlaying || motionStyle === "off" || animationIntensity <= 0) {
+      Animated.parallel([
+        Animated.spring(artworkFloat, { toValue: 0, speed: 1.5, bounciness: 0, useNativeDriver: true }),
+        Animated.spring(artworkScale, { toValue: 1, speed: 1.5, bounciness: 0, useNativeDriver: true })
+      ]).start();
+      return;
+    }
+
+    const intensity = Math.max(0, Math.min(1, animationIntensity));
+    const distance = (motionStyle === "subtle" ? 3 : 5) * intensity;
+    const scaleAmount = 0.006 * intensity;
+    const floatLoop = Animated.loop(Animated.sequence([
+      Animated.parallel([
+        Animated.timing(artworkFloat, { toValue: -distance, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(artworkScale, { toValue: 1 + scaleAmount, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      ]),
+      Animated.parallel([
+        Animated.timing(artworkFloat, { toValue: distance, duration: 6400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(artworkScale, { toValue: 1 - scaleAmount, duration: 6400, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      ]),
+      Animated.parallel([
+        Animated.timing(artworkFloat, { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(artworkScale, { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      ])
+    ]));
+    floatLoop.start();
+    return () => floatLoop.stop();
+  }, [isPlaying, motionStyle, animationIntensity, artworkFloat, artworkScale]);
 
   const progress = duration > 0 ? Math.min(1, Math.max(0, playbackPosition / duration)) : 0;
   useEffect(() => {
@@ -144,7 +179,7 @@ export default function NowPlayingScreen() {
       </View>
 
       <Animated.View style={[styles.content, entranceStyle]}>
-        <Animated.View style={[styles.artworkShell, { opacity: artworkOpacity, transform: [{ translateY: artworkLift }] }]}>
+        <Animated.View style={[styles.artworkShell, { opacity: artworkOpacity, transform: [{ translateY: Animated.add(artworkLift, artworkFloat) }, { scale: artworkScale }] }]}>
           {track.artwork && !artworkFailed
             ? <Image source={{ uri: track.artwork }} style={styles.artwork} resizeMode="cover" onError={() => setArtworkFailed(true)} />
             : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={76} color={colors.accent} /></View>}
