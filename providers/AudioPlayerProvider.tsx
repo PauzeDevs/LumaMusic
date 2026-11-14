@@ -657,6 +657,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       }
     }
 
+    if (isExternalTrack(track)) {
+      // A confirmed natural completion starts a new recovery window for repeat-one
+      // and future replays of the same track.
+      earlyEndRecovery.current = { trackId: track.id, attempts: 0 };
+    }
     void playNext();
   }, [playNext, playTrackSafely, setPlaybackError, setPlaybackStatus, setSleepTimerMinutesState]);
 
