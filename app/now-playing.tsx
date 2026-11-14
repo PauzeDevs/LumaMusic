@@ -36,7 +36,7 @@ export default function NowPlayingScreen() {
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
-  const styles = createStyles(colors, isDark, surfaceStyle);
+  const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
   const artworkScale = useRef(new Animated.Value(1)).current;
@@ -212,7 +212,7 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
@@ -224,17 +224,17 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   headerCopy: { position: "absolute", left: 52, right: 52, top: 0, bottom: 0, alignItems: "center", justifyContent: "center", gap: 3 },
   overline: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
   headerTitle: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: "600", includeFontPadding: false, textAlign: "center" },
-  main: { flex: 1, minHeight: 0, justifyContent: "space-evenly" },
-  artFrame: { width: artworkSize, maxWidth: "100%", alignSelf: "center", flexShrink: 0, aspectRatio: 1, borderRadius: 28, overflow: "hidden", backgroundColor: "#15171B", marginBottom: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 26, shadowOffset: { width: 0, height: 14 }, elevation: 12 },
+  main: { flex: 1, minHeight: 0, justifyContent: "space-around", paddingTop: 8, paddingBottom: 12 },
+  artFrame: { width: artworkSize, maxWidth: "100%", alignSelf: "center", flexShrink: 0, aspectRatio: 1, borderRadius: 8, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 14, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: isDark ? 0.28 : 0.10, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   artwork: { width: "100%", height: "100%" },
   artworkFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
-  trackInfo: { flexDirection: "row", alignItems: "center", gap: 16 },
-  trackTitle: { color: colors.text, fontSize: 23, fontWeight: "800", letterSpacing: -0.6 },
-  artist: { color: colors.muted, fontSize: 14, marginTop: 5 },
+  trackInfo: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
+  trackTitle: { color: colors.text, fontSize: 21, lineHeight: 27, fontWeight: "800", letterSpacing: -0.55 },
+  artist: { color: colors.muted, fontSize: 13, marginTop: 4 },
   qualityBadge: { alignSelf: "flex-start", marginTop: 7, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 7, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
   qualityText: { color: colors.muted, fontSize: 10, fontWeight: "700", letterSpacing: 0.35 },
   like: { padding: 8 },
-  progressArea: { marginTop: 28 },
+  progressArea: { marginTop: 20 },
   externalPlayback: { marginTop: 24, minHeight: 92, alignItems: "center", justifyContent: "center", gap: 10 },
   externalPlaybackHeader: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
   externalPlaybackText: { color: colors.muted, fontSize: 10 },
@@ -242,7 +242,7 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   externalDurationLabel: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
   externalDuration: { color: colors.text, fontSize: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
   externalPlaybackHint: { color: colors.subtle, fontSize: 9, textAlign: "center" },
-  progressTrack: { height: 4, borderRadius: 4, backgroundColor: "#292C38", overflow: "visible", position: "relative" },
+  progressTrack: { height: 5, borderRadius: 5, backgroundColor: colors.border, overflow: "visible", position: "relative" },
   progressTrackClassic: { height: 8, borderRadius: 8 },
   progressTrackWaveform: { height: 34, backgroundColor: "transparent", justifyContent: "center" },
   waveformBars: { width: "100%", height: 34, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
@@ -258,15 +258,15 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   timeRight: { textAlign: "right", alignSelf: "flex-end" },
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
-  controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
-  play: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.13)" : "rgba(20,20,24,0.12)", alignItems: "center", justifyContent: "center", shadowColor: "#000000", shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
-  playFace: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(20,20,24,0.07)", alignItems: "center", justifyContent: "center" },
-  extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 12, flexShrink: 0 },
+  controls: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", marginTop: 26, paddingHorizontal: 8 },
+  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", shadowColor: "#000000", shadowOpacity: isDark ? 0.18 : 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  playFace: { width: 58, height: 58, borderRadius: 29, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  extraControls: { flexDirection: "row", justifyContent: "center", gap: 10, marginTop: 14, flexShrink: 0 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottomGlass: { flexShrink: 0, borderRadius: 23, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.18)" : "rgba(255,255,255,0.2)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.68)" : "rgba(255,255,255,0.68)") : (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+  bottomGlass: { flexShrink: 0, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.18)" : "rgba(255,255,255,0.2)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.68)" : "rgba(255,255,255,0.68)") : (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
   bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: surfaceStyle === "liquid" ? (isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)") : "transparent" },
-  bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 8 },
+  bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 8 },
   bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
   bottomText: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "center", includeFontPadding: false, flexShrink: 0, width: "100%" },
   disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, paddingBottom: 10 },
