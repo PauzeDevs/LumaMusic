@@ -1,148 +1,148 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
 import { useEffect, useRef, useState } from "react";
+import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GlassSurface } from "../../components/GlassSurface";
-
+import { BlurView } from "expo-blur";
+import { useTheme } from "../../theme/useTheme";
+import { useSiriRefresh, SiriRefreshOverlay } from "../../components/SiriRefresh";
+import { useAudioEngine } from "../../providers/AudioPlayerProvider";
+import { useLibraryStore } from "../../store/library";
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import type { ThemePalette } from "../../theme/colors";
-import { useTheme } from "../../theme/useTheme";
-import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
-import { PlaylistStack } from "../../components/PlaylistStack";
-import { SectionHeading } from "../../components/SectionHeading";
-import { TrackRow } from "../../components/TrackRow";
-import { ScrollReveal } from "../../components/ScrollReveal";
-import { useAudioEngine } from "../../providers/AudioPlayerProvider";
+import type { MusicTrack } from "../../types/music";
 
 export default function ListenScreen() {
-  const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const { colors, blurTint, isDark } = useTheme();
+  const styles = createStyles(colors, isDark);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [heroArtworkFailed, setHeroArtworkFailed] = useState(false);
-  const { data: tracks = [], isLoading: loading, error, refetch: loadTrending } = useQuery({
-    queryKey: ["youtubeMusic", "trending", 20],
-    queryFn: () => getDiscoveryTracks(20)
-  });
-  const { data: playlists = [], isLoading: playlistsLoading, error: playlistsError } = useQuery({
-    queryKey: ["youtubeMusic", "trending-playlists", 8],
-    queryFn: () => getFeaturedPlaylists(8)
-  });
+  const recentTracks = useLibraryStore((state) => state.recentTracks);
+  const [heroFailed, setHeroFailed] = useState(false);
+  const heroFade = useRef(new Animated.Value(1)).current;
+  const { data: tracks = [], isLoading, error, refetch } = useQuery({ queryKey: ["youtubeMusic", "trending", 20], queryFn: () => getDiscoveryTracks(20) });
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({ queryKey: ["youtubeMusic", "trending-playlists", 8], queryFn: () => getFeaturedPlaylists(8) });
+  const heroTrack = recentTracks[0] ?? tracks[0];
+  const horizontalRecent = recentTracks.length ? recentTracks : tracks.slice(0, 10);
 
-  useEffect(() => setHeroArtworkFailed(false), [tracks[0]?.artwork]);
+  useEffect(() => {
+    setHeroFailed(false);
+    heroFade.setValue(0);
+    Animated.timing(heroFade, { toValue: 1, duration: 650, useNativeDriver: true }).start();
+  }, [heroTrack?.id, heroTrack?.artwork, heroFade]);
 
-  const startListening = () => {
-    if (!tracks.length) {
-      Alert.alert("Music is loading", error instanceof Error ? error.message : "Try again when discovery has loaded.");
-      return;
-    }
-    void playTrack(tracks[0], tracks).catch((err: unknown) => {
-      Alert.alert("Couldn't start playback", err instanceof Error ? err.message : "Please try another track.");
-    });
+  const play = (track: MusicTrack, queue: MusicTrack[]) => {
+    void playTrack(track, queue).catch(() => {});
   };
 
-  return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={8} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
-        <ScrollReveal scrollY={scrollY}><View style={styles.topline}>
-          <View>
-            <Text style={styles.eyebrow}>YOUR SOUND, YOUR SPACE</Text>
-            <Text style={styles.greeting}>{new Date().getHours() < 12 ? "Good morning." : new Date().getHours() < 18 ? "Good afternoon." : "Good evening."}</Text>
-          </View>
-          <Pressable style={styles.avatar} onPress={() => router.push("/(tabs)/profile")}>
-            <Text style={styles.avatarText}>P</Text>
+  return <SafeAreaView style={styles.safe} edges={["top"]}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}>
+      <View style={styles.header}>
+        <View style={styles.brand}>
+          <Image source={require("../../assets/lumamusic-icon.png")} style={styles.logo} />
+          <Text style={styles.brandName}>LumaMusic</Text>
+        </View>
+        <Pressable onPress={() => router.push("/(tabs)/profile")} style={styles.menuButton}>
+          <Ionicons name="menu" size={27} color={colors.text} />
+        </Pressable>
+      </View>
+
+      <View style={styles.hero}>
+        {heroTrack?.artwork && !heroFailed
+          ? <Animated.Image source={{ uri: heroTrack.artwork }} style={[styles.heroImage, { opacity: heroFade }]} onError={() => setHeroFailed(true)} />
+          : <View style={styles.heroFallback}><Ionicons name="musical-notes" size={54} color={colors.accent} /></View>}
+        <View style={styles.heroShade} />
+        <View style={styles.heroTop}>
+          <View style={styles.liveTag}><View style={styles.dot} /><Text style={styles.tagText}>YOUR DAILY SOUNDTRACK</Text></View>
+          <Ionicons name="sparkles" size={21} color="#FFFFFF" />
+        </View>
+        <View style={styles.heroCopy}>
+          <Text style={styles.kicker}>{recentTracks.length ? "PICK UP WHERE YOU LEFT OFF" : "MADE FOR YOUR ROTATION"}</Text>
+          <Text numberOfLines={2} style={styles.heroTitle}>{heroTrack?.title ?? "Find your next favourite."}</Text>
+          <Text numberOfLines={1} style={styles.heroArtist}>{heroTrack?.artist ?? "A soundtrack for right now"}</Text>
+          <Pressable onPress={() => heroTrack ? play(heroTrack, recentTracks.length ? recentTracks : tracks) : router.push("/(tabs)/search")} style={styles.viewButton}>
+            <Text style={styles.viewText}>{heroTrack ? "Listen now" : "Explore music"}</Text>
+            <Ionicons name="arrow-forward" size={17} color="#101014" />
           </Pressable>
-        </View></ScrollReveal>
+        </View>
+      </View>
 
-        <ScrollReveal scrollY={scrollY} delay={25}><GlassSurface style={styles.searchPrompt} contentStyle={styles.searchPromptContent}><Pressable style={styles.searchPromptInner} onPress={() => router.push("/(tabs)/search")}>
-          <Ionicons name="search" size={19} color={colors.muted} />
-          <Text style={styles.searchText}>Songs, artists, moods...</Text>
-          <Ionicons name="options-outline" size={18} color={colors.subtle} />
-        </Pressable></GlassSurface></ScrollReveal>
+      <View style={styles.section}>
+        <View style={styles.sectionHeading}>
+          <Text style={styles.sectionTitle}>Recently Played</Text>
+          <Pressable onPress={() => router.push("/(tabs)/library")} style={styles.seeAll}><Text style={styles.seeAllText}>See all</Text><Ionicons name="chevron-forward" size={16} color={colors.muted} /></Pressable>
+        </View>
+        {horizontalRecent.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
+          {horizontalRecent.slice(0, 12).map((track, index) => <Pressable key={track.id} onPress={() => play(track, horizontalRecent)} style={({ pressed }) => [styles.albumCard, { opacity: pressed ? 0.82 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
+            {track.artwork ? <Image source={{ uri: track.artwork }} style={styles.albumArt} /> : <View style={styles.albumFallback}><Ionicons name="musical-notes" size={30} color={colors.accent} /></View>}
+            <Text numberOfLines={1} style={styles.albumTitle}>{track.title}</Text>
+            <Text numberOfLines={1} style={styles.albumArtist}>{track.artist}</Text>
+          </Pressable>)}
+        </ScrollView> : <Text style={styles.emptyText}>{isLoading ? "Finding music for you…" : "Your recently played tracks will appear here."}</Text>}
+      </View>
 
-        <ScrollReveal scrollY={scrollY} delay={45}><View style={styles.hero}>
-          {tracks[0]?.artwork && !heroArtworkFailed ? <Image source={{ uri: tracks[0].artwork }} style={styles.heroImage} onError={() => setHeroArtworkFailed(true)} /> : <View style={styles.heroPlaceholder}><Ionicons name="musical-notes" size={42} color={colors.accent} /></View>}
-          <View style={styles.heroShade} />
-          <View style={styles.heroContent}>
-            <View style={styles.heroTag}><View style={styles.dot} /><Text style={styles.heroTagText}>DISCOVER SOMETHING NEW</Text></View>
-            <Text style={styles.heroTitle}>Find your{ "\n" }next frequency.</Text>
-            <Text style={styles.heroSub}>A softer place to land.</Text>
-            <Pressable style={styles.heroButton} onPress={startListening}>
-              <Ionicons name="play" size={15} color="#101018" />
-              <Text style={styles.heroButtonText}>Start listening</Text>
-            </Pressable>
-          </View>
-        </View></ScrollReveal>
+      <View style={styles.section}>
+        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Made for you</Text><Pressable onPress={() => router.push("/(tabs)/search")}><Text style={styles.seeAllText}>Explore</Text></Pressable></View>
+        {playlistsLoading ? <Text style={styles.emptyText}>Curating your mix…</Text> : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
+          {playlists.slice(0, 10).map((playlist) => <Pressable key={playlist.id} onPress={() => playlist.sourcePlaylistId && router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } })} style={styles.playlistCard}>
+            {playlist.artwork ? <Image source={{ uri: playlist.artwork }} style={styles.albumArt} /> : <View style={styles.albumFallback}><Ionicons name="albums" size={30} color={colors.accent} /></View>}
+            <Text numberOfLines={1} style={styles.albumTitle}>{playlist.title}</Text><Text numberOfLines={1} style={styles.albumArtist}>{playlist.subtitle ?? "Playlist"}</Text>
+          </Pressable>)}
+        </ScrollView>}
+      </View>
 
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Featured playlists" action="Search" onPress={() => router.push("/(tabs)/search")} />
-          {playlistsLoading ? <Text style={styles.message}>Loading playlists…</Text> : null}
-          {playlistsError ? <Text style={styles.errorText}>Could not load playlists right now.</Text> : null}
-          {!playlistsLoading && !playlistsError && playlists.length === 0 ? <Text style={styles.message}>No public playlists are available right now.</Text> : null}
-          <PlaylistStack items={playlists.map((playlist) => ({
-            id: playlist.id,
-            title: playlist.title,
-            subtitle: playlist.subtitle,
-            artwork: playlist.artwork,
-            onPress: () => playlist.sourcePlaylistId ? router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } }) : undefined
-          }))} emptyText="No featured playlists right now." />
-        </View></ScrollReveal>
-
-        <ScrollReveal scrollY={scrollY}><View style={styles.section}>
-          <SectionHeading title="Fresh discoveries" action="Refresh" onPress={() => { void loadTrending(); }} />
-          {loading ? <Text style={styles.message}>Finding fresh tracks…</Text> : null}
-          {error ? (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorText}>{error instanceof Error ? error.message : "Could not load music discovery."}</Text>
-              <Pressable onPress={() => { void loadTrending(); }}><Text style={styles.retry}>Try again</Text></Pressable>
-            </View>
-          ) : null}
-          {!loading && !error && tracks.length === 0 ? <Text style={styles.message}>No tracks are available right now.</Text> : null}
-          {!loading && !error ? tracks.slice(0, 6).map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />) : null}
-        </View></ScrollReveal>
-
-        <ScrollReveal scrollY={scrollY}><View style={styles.sourceNote}>
-          <Ionicons name="sparkles-outline" size={15} color={colors.accent} />
-          <Text style={styles.sourceText}>Music discovery for your next favourite.</Text>
-        </View></ScrollReveal>
-      </Animated.ScrollView>
-      <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
-    </SafeAreaView>
-  );
+      <View style={styles.section}>
+        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Discover something new</Text><Pressable onPress={() => { void refetch(); }}><Ionicons name="refresh" size={18} color={colors.muted} /></Pressable></View>
+        {error ? <Text style={styles.emptyText}>Could not load recommendations. Pull down to try again.</Text> : tracks.slice(0, 6).map((track) => <Pressable key={track.id} onPress={() => play(track, tracks)} style={styles.trackRow}>
+          {track.artwork ? <Image source={{ uri: track.artwork }} style={styles.trackArt} /> : <View style={styles.trackArtFallback}><Ionicons name="musical-notes" color={colors.accent} size={18} /></View>}
+          <View style={styles.trackCopy}><Text numberOfLines={1} style={styles.albumTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.albumArtist}>{track.artist}</Text></View>
+          <Ionicons name="ellipsis-horizontal" size={19} color={colors.muted} />
+        </Pressable>)}
+      </View>
+    </ScrollView>
+    <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
+  </SafeAreaView>;
 }
 
-function createStyles(colors: ThemePalette) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20, paddingBottom: 28 },
-  topline: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, marginBottom: 22 },
-  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 2 },
-  greeting: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -1.1, marginTop: 6 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(116,55,83,0.32)", borderWidth: 1, borderColor: "rgba(255,105,135,0.42)", alignItems: "center", justifyContent: "center" },
-  avatarText: { color: colors.accent, fontWeight: "800", fontSize: 15 },
-  searchPrompt: { height: 58, borderRadius: 20, marginBottom: 24, borderColor: "rgba(255,255,255,0.22)", backgroundColor: "rgba(72,52,67,0.34)" },
-  searchPromptContent: { flex: 1 },
-  searchPromptInner: { flex: 1, paddingHorizontal: 15, flexDirection: "row", alignItems: "center", gap: 10 },
-  searchText: { color: colors.muted, fontSize: 13, flex: 1 },
-  hero: { height: 286, borderRadius: 30, overflow: "hidden", marginBottom: 32, backgroundColor: "#21131C", borderWidth: 1, borderColor: "rgba(255,255,255,0.24)" },
-  heroImage: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%", opacity: 0.78 },
-  heroPlaceholder: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
-  heroShade: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(10,5,12,0.52)" },
-  heroContent: { flex: 1, padding: 22, justifyContent: "flex-end" },
-  heroTag: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 12 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
-  heroTagText: { color: "#FFE2E9", fontSize: 9, fontWeight: "800", letterSpacing: 1.7 },
-  heroTitle: { color: "#FFFFFF", fontSize: 32, lineHeight: 35, fontWeight: "800", letterSpacing: -1.1 },
-  heroSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 8 },
-  heroButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "rgba(255,245,248,0.94)", paddingHorizontal: 16, paddingVertical: 11, borderRadius: 22, marginTop: 17, borderWidth: 1, borderColor: "rgba(255,255,255,0.65)" },
-  heroButtonText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
-  section: { marginBottom: 30 },
-  message: { color: colors.muted, fontSize: 12, paddingVertical: 18 },
-  errorCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, gap: 10 },
-  errorText: { color: colors.muted, fontSize: 12, paddingVertical: 12 },
-  retry: { color: colors.accent, fontSize: 12, fontWeight: "700" },
-  sourceNote: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 14, borderTopWidth: 1, borderTopColor: colors.border },
-  sourceText: { color: colors.subtle, fontSize: 11 }
+  content: { paddingBottom: 24 },
+  header: { height: 82, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.border },
+  brand: { flexDirection: "row", alignItems: "center", gap: 12 },
+  logo: { width: 46, height: 46, borderRadius: 14 },
+  brandName: { color: colors.text, fontSize: 25, fontWeight: "900", letterSpacing: -1.1 },
+  menuButton: { width: 54, height: 54, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.045)", borderWidth: 1, borderColor: colors.border },
+  hero: { height: 440, marginBottom: 34, overflow: "hidden", backgroundColor: colors.surfaceElevated },
+  heroImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  heroFallback: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
+  heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.43)" },
+  heroTop: { position: "absolute", top: 24, left: 22, right: 22, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  liveTag: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(0,0,0,0.38)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
+  tagText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800", letterSpacing: 1.5 },
+  heroCopy: { position: "absolute", left: 22, right: 22, bottom: 27 },
+  kicker: { color: "rgba(255,255,255,0.78)", fontSize: 10, fontWeight: "800", letterSpacing: 1.7, marginBottom: 8 },
+  heroTitle: { color: "#FFFFFF", fontSize: 32, lineHeight: 37, fontWeight: "900", letterSpacing: -1.15 },
+  heroArtist: { color: "rgba(255,255,255,0.78)", fontSize: 15, fontWeight: "600", marginTop: 7 },
+  viewButton: { alignSelf: "flex-start", marginTop: 18, borderRadius: 24, paddingHorizontal: 19, paddingVertical: 12, backgroundColor: "rgba(255,255,255,0.96)", flexDirection: "row", alignItems: "center", gap: 12 },
+  viewText: { color: "#101014", fontSize: 13, fontWeight: "800" },
+  section: { marginBottom: 31 },
+  sectionHeading: { paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15 },
+  sectionTitle: { color: colors.text, fontSize: 22, fontWeight: "900", letterSpacing: -0.6 },
+  seeAll: { flexDirection: "row", alignItems: "center", gap: 2 },
+  seeAllText: { color: colors.muted, fontSize: 12, fontWeight: "700" },
+  horizontal: { paddingHorizontal: 20, gap: 14 },
+  albumCard: { width: 154 },
+  playlistCard: { width: 154 },
+  albumArt: { width: 154, height: 154, borderRadius: 22, backgroundColor: colors.surfaceElevated },
+  albumFallback: { width: 154, height: 154, borderRadius: 22, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  albumTitle: { color: colors.text, fontSize: 13, fontWeight: "800", marginTop: 9 },
+  albumArtist: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  emptyText: { color: colors.muted, fontSize: 12, paddingHorizontal: 20, paddingVertical: 16 },
+  trackRow: { marginHorizontal: 20, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  trackArt: { width: 48, height: 48, borderRadius: 9 },
+  trackArtFallback: { width: 48, height: 48, borderRadius: 9, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  trackCopy: { flex: 1 }
 }); }
