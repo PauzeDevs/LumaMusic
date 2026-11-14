@@ -49,6 +49,23 @@ function GainSlider({ label, value, onChange, accent, muted, styles }: { label: 
   </View>;
 }
 
+type SourceQualityInfo = { title: string; detail: string; format: string; status: string; note: string };
+
+function getSourceQuality(track: ReturnType<typeof usePlayerStore.getState> extends never ? never : import("../types/music").MusicTrack | null): SourceQualityInfo {
+  if (!track) return { title: "No active source", detail: "Play a track to inspect its source.", format: "UNKNOWN", status: "WAITING", note: "Quality information appears when a source is active." };
+  if (track.source === "youtube_music") return { title: "Provider stream", detail: "Lossless delivery is not confirmed.", format: "YOUTUBE MUSIC", status: "NOT VERIFIED", note: "The current streaming resolver does not expose a verified codec, bitrate, bit depth, or sample rate. LumaMusic will not label this stream lossless." };
+  if (track.source === "local" && track.localUri) {
+    const cleanUri = track.localUri.split(/[?#]/)[0];
+    const extension = cleanUri.includes(".") ? cleanUri.split(".").pop()!.toLowerCase() : "";
+    const losslessFormats = ["flac", "wav", "aiff", "aif", "ape", "wv", "tta", "dsf", "dff"];
+    const lossyFormats = ["mp3", "aac", "ogg", "opus", "m4a", "wma"];
+    if (losslessFormats.includes(extension)) return { title: "Lossless-capable format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), status: "FORMAT DETECTED", note: "The file extension suggests a lossless format, but the actual codec, bit depth, sample rate, and integrity have not been read from the file yet. Hi-Res is not assumed." };
+    if (lossyFormats.includes(extension)) return { title: "Lossy format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), status: "FORMAT DETECTED", note: "This extension normally indicates a lossy format. The exact codec profile and bitrate are not exposed by the current player." };
+    return { title: "Local audio file", detail: "Audio format not identified.", format: extension ? extension.toUpperCase() : "UNKNOWN", status: "UNKNOWN", note: "The current player does not expose codec or stream metadata for this file." };
+  }
+  return { title: "Source metadata unavailable", detail: "No verified audio format information.", format: track.source.toUpperCase(), status: "UNKNOWN", note: "The current source does not expose enough metadata to classify its audio quality." };
+}
+
 export default function AudioSettingsScreen() {
   const { colors } = useTheme();
   const stylesForScreen = useMemo(() => makeStyles(colors), [colors]);
@@ -141,11 +158,17 @@ export default function AudioSettingsScreen() {
 
       <View style={stylesForScreen.featureCard}>
         <View style={stylesForScreen.cardHeader}>
-          <View style={stylesForScreen.cardIcon}><Ionicons name="disc-outline" size={21} color="#85858D" /></View>
-          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>04 · SOURCE QUALITY</Text><Text style={stylesForScreen.cardTitle}>Lossless audio</Text></View>
-          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>SOURCE DEPENDENT</Text></View>
+          <View style={stylesForScreen.cardIcon}><Ionicons name="disc-outline" size={21} color={colors.accent} /></View>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>04 · SOURCE QUALITY</Text><Text style={stylesForScreen.cardTitle}>Audio quality</Text></View>
+          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>{getSourceQuality(currentTrack).status}</Text></View>
         </View>
-        <Text style={stylesForScreen.cardSub}>Audio quality is determined by the provider's stream. LumaMusic won't label a stream lossless unless the source actually supplies lossless audio.</Text>
+        <Text style={stylesForScreen.cardSub}>{getSourceQuality(currentTrack).title} · {getSourceQuality(currentTrack).detail}</Text>
+        <View style={stylesForScreen.qualityMetaRow}>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>FORMAT</Text><Text style={stylesForScreen.qualityMetaValue}>{getSourceQuality(currentTrack).format}</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CODEC</Text><Text style={stylesForScreen.qualityMetaValue}>Not exposed</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>BITRATE / RATE</Text><Text style={stylesForScreen.qualityMetaValue}>Unknown</Text></View>
+        </View>
+        <Text style={stylesForScreen.sourceNote}>{getSourceQuality(currentTrack).note}</Text>
       </View>
 
       <View style={stylesForScreen.footer}><Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} /><Text style={stylesForScreen.footerText}>Your Audio Lab preferences are saved automatically.</Text></View>
@@ -165,6 +188,9 @@ function makeStyles(colors: ThemePalette) { return StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 21, paddingBottom: 38 },
   hero: { color: "#FFFFFF", fontSize: 37, lineHeight: 39, fontWeight: "900", letterSpacing: -1.6 },
   intro: { color: "#9A9AA2", fontSize: 13, lineHeight: 20, marginTop: 10, marginBottom: 23, maxWidth: 320 },
+  qualityMetaRow: { flexDirection: "row", gap: 8, marginTop: 16 },
+  qualityMeta: { flex: 1, minWidth: 0, backgroundColor: "#222226", borderRadius: 12, padding: 10 },
+  qualityMetaValue: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", marginTop: 5 },
   featureCard: { backgroundColor: "#171719", borderRadius: 25, borderWidth: 1, borderColor: "#303035", padding: 18, marginBottom: 15, overflow: "hidden" },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 11 },
   cardIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: "#252529", alignItems: "center", justifyContent: "center" },

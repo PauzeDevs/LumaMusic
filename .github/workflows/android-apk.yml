@@ -1,9 +1,7 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  push:
-    branches:
-      - main
+  # APK builds are intentionally manual. Normal pushes run code checks only.
   workflow_dispatch:
 
 permissions:
