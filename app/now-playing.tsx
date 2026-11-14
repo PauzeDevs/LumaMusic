@@ -100,8 +100,8 @@ export default function NowPlayingScreen() {
       </View>
       <View style={styles.main}>
         <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }] }]}>
-          {previousArtwork ? <Image source={{ uri: previousArtwork }} style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
-          {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
+          {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
+          {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
         </Animated.View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>

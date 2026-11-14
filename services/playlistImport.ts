@@ -33,7 +33,12 @@ function parseDelimited(input: string, delimiter: string): string[][] {
       cell = "";
     } else {
       cell += char;
+      if (cell.length > 4096) {
+        throw new Error("A playlist field is too long. Please check the CSV and try again.");
+      }
     }
+    // Stop parsing once enough rows have been collected to find 100 tracks.
+    if (!quoted && (char === "\n" || char === "\r") && rows.length >= 500) break;
   }
 
   // An unmatched quote makes the remaining rows ambiguous; reject the
@@ -57,6 +62,9 @@ function parseLooseLine(value: string): ImportedPlaylistEntry | null {
 }
 
 export function parsePlaylistExport(raw: string): ImportedPlaylistEntry[] {
+  if (raw.length > 512 * 1024) {
+    throw new Error("This playlist export is too large. Please keep the CSV under 512 KB.");
+  }
   const input = raw.replace(/^\uFEFF/, "").trim();
   if (!input) return [];
 
@@ -77,7 +85,7 @@ export function parsePlaylistExport(raw: string): ImportedPlaylistEntry[] {
       artist: artistIndex >= 0 ? (row[artistIndex] ?? "").trim() : ""
     })).filter((entry) => entry.title.length > 0);
   } else {
-    entries = input.split(/\r?\n/).map(parseLooseLine).filter((entry): entry is ImportedPlaylistEntry => Boolean(entry));
+    entries = input.split(/\r?\n/, 501).map(parseLooseLine).filter((entry): entry is ImportedPlaylistEntry => Boolean(entry));
   }
 
   const seen = new Set<string>();

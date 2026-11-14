@@ -8,7 +8,7 @@ import PoTokenWebViewHost from "../components/PoTokenWebViewHost";
 import { GlassBlurTarget } from "../modules/liquid-glass/src/GlassBlurTarget";
 import { useTheme } from "../theme/useTheme";
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false } } });
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, gcTime: 2 * 60_000, retry: 1, refetchOnWindowFocus: false } } });
 function ThemedNavigator() {
   const { colors, isDark } = useTheme();
   return <GlassBlurTarget><View style={{ flex: 1, backgroundColor: colors.background }}>

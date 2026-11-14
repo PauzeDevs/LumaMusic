@@ -11,7 +11,7 @@ export function Artwork({ uri, size, radius = 16 }: ArtworkProps) {
   return <View style={[styles.frame, { width: size, height: size, borderRadius: radius, backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
     {failed || !uri ? <View style={[styles.fallback, { backgroundColor: colors.surfaceSoft }]}>
       <Ionicons name="musical-notes" size={Math.max(18, size * 0.28)} color={colors.accent} />
-    </View> : <Image source={{ uri }} onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: radius }} />}
+    </View> : <Image source={{ uri }} resizeMethod="resize" resizeMode="cover" onError={() => setFailed(true)} style={{ width: size, height: size, borderRadius: radius }} />}
   </View>;
 }
 const styles = StyleSheet.create({

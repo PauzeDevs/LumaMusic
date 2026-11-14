@@ -81,7 +81,7 @@ export function handlePoTokenWebViewMessage(message: TokenMessage) {
     const videoId = message.requestId.split(":")[0];
     tokenCache.set(videoId, tokens);
     // Keep this cache bounded for long listening sessions.
-    if (tokenCache.size > 32) {
+    if (tokenCache.size > 8) {
       const oldestKey = tokenCache.keys().next().value;
       if (oldestKey) tokenCache.delete(oldestKey);
     }
@@ -92,7 +92,7 @@ export function handlePoTokenWebViewMessage(message: TokenMessage) {
   notifyDemand();
 }
 
-export async function resolveYouTubePoTokens(videoId: string): Promise<YouTubePoTokens | null> {
+export async function resolveYouTubePoTokens(videoId: string, timeoutMs = 12_000): Promise<YouTubePoTokens | null> {
   if (Platform.OS !== "android" || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
 
   const cached = tokenCache.get(videoId);
@@ -114,7 +114,7 @@ export async function resolveYouTubePoTokens(videoId: string): Promise<YouTubePo
       if (queuedIndex >= 0) waiting.splice(queuedIndex, 1);
       finish?.(null);
       notifyDemand();
-    }, 12_000);
+    }, Math.max(500, Math.min(timeoutMs, 12_000)));
     pendingTimers.set(requestId, timer);
   });
 }
