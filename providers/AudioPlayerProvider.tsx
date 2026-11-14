@@ -1,6 +1,6 @@
 import { Audio, AudioContext, PlaybackNotificationManager, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import { View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
@@ -661,10 +661,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     void playNext();
   }, [status.didJustFinish, playNext, player, setSleepTimerMinutesState]);
 
-  const value: AudioEngineValue = {
+  const value = useMemo<AudioEngineValue>(() => ({
     playTrack, togglePlayback, playNext, playPrevious, seekTo, setPlaybackRate, setSleepTimer,
     toggleShuffle: toggleShuffleState, cycleRepeat: cycleRepeatState
-  };
+  }), [playTrack, togglePlayback, playNext, playPrevious, seekTo, setPlaybackRate, setSleepTimer, toggleShuffleState, cycleRepeatState]);
 
   return (
     <AudioEngineContext.Provider value={value}>
