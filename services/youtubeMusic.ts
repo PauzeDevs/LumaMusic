@@ -46,11 +46,17 @@ function browseIdFor(item: Obj): string {
 
 function upgradeThumbnail(rawUrl: string, videoId?: string): string {
   if (!rawUrl) {
-    return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "";
+    return videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "";
   }
+
+  // YouTube Music frequently returns several thumbnail sizes for the same
+  // artwork. Select the largest source first, then request a large square
+  // rendition from Google's image CDN instead of stretching a tiny preview.
   return rawUrl
-    .replace(/=w\d+-h\d+/g, "=w544-h544")
-    .replace(/=s\d+/g, "=s544");
+    .replace(/=w\d+-h\d+/g, "=w1000-h1000")
+    .replace(/=s\d+/g, "=s1000")
+    .replace(/=w\d+/g, "=w1000")
+    .replace(/-rw/g, "-rw");
 }
 
 function thumbnailUrl(value: any): string {
@@ -61,7 +67,13 @@ function thumbnailUrl(value: any): string {
     value?.thumbnails
   ];
   const thumbnails = candidates.find((items) => Array.isArray(items) && items.length > 0) ?? [];
-  return thumbnails[thumbnails.length - 1]?.url ?? "";
+  const largest = thumbnails.reduce((best: Obj | null, current: Obj) => {
+    if (!current?.url) return best;
+    const score = (Number(current.width) || 0) * (Number(current.height) || 0);
+    const bestScore = best ? (Number(best.width) || 0) * (Number(best.height) || 0) : -1;
+    return score >= bestScore ? current : best;
+  }, null);
+  return largest?.url ?? "";
 }
 
 function imageFor(item: Obj, videoId?: string): string {
