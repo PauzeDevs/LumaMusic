@@ -29,7 +29,7 @@ function notifyDemand() {
 export function subscribePoTokenDemand(listener: (active: boolean) => void) {
   demandListeners.add(listener);
   listener(pending.size > 0);
-  return () => demandListeners.delete(listener);
+  return () => { demandListeners.delete(listener); };
 }
 
 function flushQueue() {
