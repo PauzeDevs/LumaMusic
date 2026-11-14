@@ -5,8 +5,8 @@ export type ThemePalette = {
 };
 
 export const darkColors: ThemePalette = {
-  background: "#080809", surface: "#121214", surfaceElevated: "#1B1B1F",
-  surfaceSoft: "#242428", border: "rgba(255,255,255,0.09)", text: "#F5F5F7",
+  background: "#050506", surface: "#0B0B0D", surfaceElevated: "#111114",
+  surfaceSoft: "#19191D", border: "rgba(255,255,255,0.075)", text: "#F5F5F7",
   muted: "#A1A1AA", subtle: "#73737C", accent: "#F04455", accentStrong: "#D92D43",
   mint: "#B9C5C0", pink: "#D8A2AA", orange: "#D6B58A", danger: "#FF453A"
 };
