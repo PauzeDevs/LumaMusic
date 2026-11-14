@@ -87,7 +87,7 @@ export default function AccountScreen() {
   const syncNow = async () => {
     setBusy(true);
     try {
-      const backup = makeLibraryBackup(useLibraryStore.getState());
+      const backup = makeLibraryBackup(useLibraryStore.getState(), usePreferencesStore.getState(), useListeningStatsStore.getState().days);
       await uploadLibraryBackup(backup);
       setLastSync(new Date().toLocaleString());
       Alert.alert("Library backed up", "Your LumaMusic library is safely stored in your hidden Google Drive app data.");
