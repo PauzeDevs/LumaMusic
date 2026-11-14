@@ -8,13 +8,30 @@ import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.stream.AudioStream
-import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
 private class LumaNewPipeDownloader : Downloader() {
+  private fun readBoundedResponse(input: InputStream): String {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(16 * 1024)
+    var totalBytes = 0
+    input.use { stream ->
+      while (true) {
+        val count = stream.read(buffer)
+        if (count < 0) break
+        totalBytes += count
+        if (totalBytes > MAX_RESPONSE_BYTES) {
+          throw IOException("YouTube extractor response exceeded the 8 MB safety limit.")
+        }
+        output.write(buffer, 0, count)
+      }
+    }
+    return output.toString(Charsets.UTF_8.name())
+  }
   override fun execute(request: Request): Response {
     val connection = (URL(request.url()).openConnection() as HttpURLConnection)
     try {
@@ -34,10 +51,12 @@ private class LumaNewPipeDownloader : Downloader() {
       }
 
       val code = connection.responseCode
+      val contentLength = connection.getHeaderFieldLong("Content-Length", -1L)
+      if (contentLength > MAX_RESPONSE_BYTES) {
+        throw IOException("YouTube extractor response exceeded the 8 MB safety limit.")
+      }
       val stream: InputStream? = if (code >= 400) connection.errorStream else connection.inputStream
-      val responseBody = stream?.use { input ->
-        BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use { it.readText() }
-      } ?: ""
+      val responseBody = stream?.let(::readBoundedResponse) ?: ""
 
       val responseHeaders = connection.headerFields
         .filterKeys { it != null }
@@ -57,6 +76,7 @@ private class LumaNewPipeDownloader : Downloader() {
   }
 
   companion object {
+    private const val MAX_RESPONSE_BYTES = 8L * 1024L * 1024L
     const val USER_AGENT =
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
   }
