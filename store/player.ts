@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { MusicTrack } from "../types/music";
 
 export type RepeatMode = "off" | "all" | "one";
+export type StreamQuality = { label: "Standard" | "HD" | "Unknown"; bitrateKbps: number | null; codec: string | null };
 
 type PlayerState = {
   currentTrack: MusicTrack | null;
@@ -11,6 +12,7 @@ type PlayerState = {
   playbackPosition: number;
   playbackDuration: number;
   playbackError: string | null;
+  streamQuality: StreamQuality | null;
   playbackRate: number;
   sleepTimerMinutes: number | null;
   queue: MusicTrack[];
@@ -19,6 +21,7 @@ type PlayerState = {
   setTrack: (track: MusicTrack, queue?: MusicTrack[], queueIndex?: number) => void;
   setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
   setPlaybackError: (error: string | null) => void;
+  setStreamQuality: (quality: StreamQuality | null) => void;
   setPlaybackRate: (rate: number) => void;
   setSleepTimerMinutes: (minutes: number | null) => void;
   removeFromQueue: (trackId: string) => void;
@@ -37,6 +40,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   playbackPosition: 0,
   playbackDuration: 0,
   playbackError: null,
+  streamQuality: null,
   playbackRate: 1,
   sleepTimerMinutes: null,
   queue: [],
@@ -57,11 +61,13 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       isBuffering: true,
       playbackPosition: 0,
       playbackDuration: track.durationMs / 1000,
-      playbackError: null
+      playbackError: null,
+      streamQuality: null
     });
   },
   setPlaybackStatus: (status) => set(status),
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
+  setStreamQuality: (streamQuality) => set({ streamQuality }),
   setPlaybackRate: (playbackRate) => {
     if (!Number.isFinite(playbackRate)) return;
     set({ playbackRate: Math.max(0.5, Math.min(2, playbackRate)) });
