@@ -2,7 +2,7 @@ import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TrackRow } from "../../components/TrackRow";
 import { Artwork } from "../../components/Artwork";
@@ -10,6 +10,7 @@ import { getYouTubeMusicPlaylistTracks } from "../../services/youtubeMusic";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
 import { useTheme } from "../../theme/useTheme";
+import type { MusicTrack } from "../../types/music";
 
 export default function PlaylistScreen() {
   const { colors } = useTheme();
@@ -48,6 +49,33 @@ export default function PlaylistScreen() {
     ]);
   };
 
+  const tracks: MusicTrack[] = localPlaylist?.tracks ?? remoteTracks;
+  const loading = remotePlaylist && remoteTracksQuery.isLoading;
+  const failed = remotePlaylist && remoteTracksQuery.isError;
+
+  const emptyContent = localPlaylist ? (
+    <View style={makeStyles(colors).empty}>
+      <Ionicons name="add-circle-outline" size={30} color={colors.subtle} />
+      <Text style={makeStyles(colors).emptyTitle}>Your playlist is empty</Text>
+      <Text style={makeStyles(colors).emptyCopy}>Search for tracks, then tap the add icon beside a song to save it here.</Text>
+      <Pressable style={makeStyles(colors).secondaryButton} onPress={() => router.push("/(tabs)/search")}><Text style={makeStyles(colors).secondaryText}>Find tracks</Text></Pressable>
+    </View>
+  ) : loading ? (
+    <Text style={makeStyles(colors).emptyCopy}>Fetching playlist tracks…</Text>
+  ) : failed ? (
+    <View style={makeStyles(colors).empty}>
+      <Ionicons name="cloud-offline-outline" size={30} color={colors.subtle} />
+      <Text style={makeStyles(colors).emptyTitle}>Playlist unavailable</Text>
+      <Text style={makeStyles(colors).emptyCopy}>The catalogue didn't return this playlist. Check your connection and try opening it again later.</Text>
+    </View>
+  ) : (
+    <View style={makeStyles(colors).empty}>
+      <Ionicons name="musical-notes-outline" size={30} color={colors.subtle} />
+      <Text style={makeStyles(colors).emptyTitle}>No tracks found</Text>
+      <Text style={makeStyles(colors).emptyCopy}>This playlist may be private, unavailable, or unsupported by the catalogue.</Text>
+    </View>
+  );
+
   return (
     <SafeAreaView style={makeStyles(colors).safe} edges={["top", "bottom"]}>
       <View style={makeStyles(colors).header}>
@@ -57,46 +85,42 @@ export default function PlaylistScreen() {
           <Pressable onPress={confirmDelete} style={makeStyles(colors).headerAction}><Ionicons name="trash-outline" size={18} color={colors.muted} /></Pressable>
         </View> : null}
       </View>
-      {localPlaylist ? (
-        <ScrollView contentContainerStyle={makeStyles(colors).content}>
-          <View style={makeStyles(colors).hero}>
-            <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>
-            <Text style={makeStyles(colors).title}>{localPlaylist.name}</Text>
-            <Text style={makeStyles(colors).copy}>{localPlaylist.tracks.length} tracks · Stored on this device</Text>
-            <Pressable disabled={localPlaylist.tracks.length === 0} style={[makeStyles(colors).primaryButton, localPlaylist.tracks.length === 0 && makeStyles(colors).disabled]} onPress={playAll}>
-              <Ionicons name="play" size={16} color="#17111F" /><Text style={makeStyles(colors).primaryText}>Play all</Text>
-            </Pressable>
-          </View>
-          <View style={makeStyles(colors).sectionHeader}><Text style={makeStyles(colors).sectionTitle}>Tracks</Text><Text style={makeStyles(colors).count}>{localPlaylist.tracks.length}</Text></View>
-          {localPlaylist.tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={localPlaylist.tracks} playlistId={localPlaylist.id} />)}
-          {localPlaylist.tracks.length === 0 ? (
-            <View style={makeStyles(colors).empty}>
-              <Ionicons name="add-circle-outline" size={30} color={colors.subtle} />
-              <Text style={makeStyles(colors).emptyTitle}>Your playlist is empty</Text>
-              <Text style={makeStyles(colors).emptyCopy}>Search for tracks, then tap the add icon beside a song to save it here.</Text>
-              <Pressable style={makeStyles(colors).secondaryButton} onPress={() => router.push("/(tabs)/search")}><Text style={makeStyles(colors).secondaryText}>Find tracks</Text></Pressable>
+      <FlatList<MusicTrack>
+        data={tracks}
+        keyExtractor={(track) => track.id}
+        renderItem={({ item, index }) => <TrackRow track={item} index={index} showIndex queue={tracks} playlistId={localPlaylist?.id} />}
+        contentContainerStyle={makeStyles(colors).content}
+        ListHeaderComponent={
+          <View>
+            <View style={makeStyles(colors).hero}>
+              {localPlaylist ? <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>
+                : remoteArtwork ? <Artwork uri={remoteArtwork} size={112} radius={22} />
+                : <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>}
+              <Text style={makeStyles(colors).title}>{localPlaylist?.name ?? remoteTitle}</Text>
+              <Text style={makeStyles(colors).copy}>
+                {localPlaylist
+                  ? localPlaylist.tracks.length + " tracks · Stored on this device"
+                  : loading ? "Loading tracks from the music catalogue…"
+                  : failed ? "Couldn't load this playlist right now."
+                  : tracks.length + " tracks · Available in LumaMusic"}
+              </Text>
+              <Pressable disabled={tracks.length === 0} style={[makeStyles(colors).primaryButton, tracks.length === 0 && makeStyles(colors).disabled]} onPress={playAll}>
+                <Ionicons name="play" size={16} color="#17111F" /><Text style={makeStyles(colors).primaryText}>Play all</Text>
+              </Pressable>
             </View>
-          ) : null}
-        </ScrollView>
-      ) : (
-        <ScrollView contentContainerStyle={makeStyles(colors).content}>
-          <View style={makeStyles(colors).hero}>
-            {remoteArtwork ? <Artwork uri={remoteArtwork} size={112} radius={22} /> : <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>}
-            <Text style={makeStyles(colors).title}>{remoteTitle}</Text>
-            <Text style={makeStyles(colors).copy}>{remoteTracksQuery.isLoading ? "Loading tracks from the music catalogue…" : remoteTracksQuery.isError ? "Couldn't load this playlist right now." : remoteTracks.length + " tracks · Available in LumaMusic"}</Text>
-            <Pressable disabled={remoteTracks.length === 0} style={[makeStyles(colors).primaryButton, remoteTracks.length === 0 && makeStyles(colors).disabled]} onPress={playAll}>
-              <Ionicons name="play" size={16} color="#17111F" /><Text style={makeStyles(colors).primaryText}>Play all</Text>
-            </Pressable>
+            {!localPlaylist && loading ? null : !localPlaylist && failed ? null : tracks.length > 0 ? (
+              <View style={makeStyles(colors).sectionHeader}><Text style={makeStyles(colors).sectionTitle}>Tracks</Text><Text style={makeStyles(colors).count}>{tracks.length}</Text></View>
+            ) : null}
           </View>
-          {remoteTracksQuery.isLoading ? <Text style={makeStyles(colors).emptyCopy}>Fetching playlist tracks…</Text> : null}
-          {remoteTracksQuery.isError ? <View style={makeStyles(colors).empty}><Ionicons name="cloud-offline-outline" size={30} color={colors.subtle} /><Text style={makeStyles(colors).emptyTitle}>Playlist unavailable</Text><Text style={makeStyles(colors).emptyCopy}>The catalogue didn't return this playlist. Check your connection and try opening it again later.</Text></View> : null}
-          {!remoteTracksQuery.isLoading && !remoteTracksQuery.isError && remoteTracks.length > 0 ? <View>
-            <View style={makeStyles(colors).sectionHeader}><Text style={makeStyles(colors).sectionTitle}>Tracks</Text><Text style={makeStyles(colors).count}>{remoteTracks.length}</Text></View>
-            {remoteTracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={remoteTracks} />)}
-          </View> : null}
-          {!remoteTracksQuery.isLoading && !remoteTracksQuery.isError && remoteTracks.length === 0 ? <View style={makeStyles(colors).empty}><Ionicons name="musical-notes-outline" size={30} color={colors.subtle} /><Text style={makeStyles(colors).emptyTitle}>No tracks found</Text><Text style={makeStyles(colors).emptyCopy}>This playlist may be private, unavailable, or unsupported by the catalogue.</Text></View> : null}
-        </ScrollView>
-      )}
+        }
+        ListEmptyComponent={emptyContent}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={50}
+        windowSize={7}
+        removeClippedSubviews
+        showsVerticalScrollIndicator={false}
+      />
       <Modal visible={renameVisible} transparent animationType="fade" onRequestClose={() => setRenameVisible(false)}>
         <View style={makeStyles(colors).modalBackdrop}>
           <View style={makeStyles(colors).modalCard}>
