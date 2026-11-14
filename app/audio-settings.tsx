@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { ThemePalette } from "../theme/colors";
+import type { MusicTrack } from "../types/music";
 import { useTheme } from "../theme/useTheme";
 
 const BANDS = [
@@ -51,7 +52,7 @@ function GainSlider({ label, value, onChange, accent, muted, styles }: { label: 
 
 type SourceQualityInfo = { title: string; detail: string; format: string; status: string; note: string };
 
-function getSourceQuality(track: ReturnType<typeof usePlayerStore.getState> extends never ? never : import("../types/music").MusicTrack | null): SourceQualityInfo {
+function getSourceQuality(track: MusicTrack | null): SourceQualityInfo {
   if (!track) return { title: "No active source", detail: "Play a track to inspect its source.", format: "UNKNOWN", status: "WAITING", note: "Quality information appears when a source is active." };
   if (track.source === "youtube_music") return { title: "Provider stream", detail: "Lossless delivery is not confirmed.", format: "YOUTUBE MUSIC", status: "NOT VERIFIED", note: "The current streaming resolver does not expose a verified codec, bitrate, bit depth, or sample rate. LumaMusic will not label this stream lossless." };
   if (track.source === "local" && track.localUri) {
