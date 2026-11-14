@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { BlurView } from "expo-blur";
+import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { useTheme } from "../theme/useTheme";
 
 type Props = { children: ReactNode; style?: StyleProp<ViewStyle>; contentStyle?: StyleProp<ViewStyle>; intensity?: number };
 export function GlassSurface({ children, style, contentStyle, intensity = 72 }: Props) {
-  const { colors, blurTint, isDark } = useTheme();
-  return <View style={[styles.shell, { borderColor: colors.border, backgroundColor: isDark ? "rgba(38,38,42,0.58)" : "rgba(255,255,255,0.68)" }, style]}>
-    <BlurView tint={blurTint} intensity={intensity} style={StyleSheet.absoluteFill} />
+  const { colors, isDark } = useTheme();
+  return <View style={[styles.shell, { borderColor: colors.border, backgroundColor: isDark ? "rgba(38,38,42,0.20)" : "rgba(255,255,255,0.20)" }, style]}>
+    <LiquidGlassView cornerRadius={24} style={StyleSheet.absoluteFill} />
     <View pointerEvents="none" style={[styles.tint, { backgroundColor: isDark ? "rgba(255,255,255,0.035)" : "rgba(255,255,255,0.22)" }]} />
     <View pointerEvents="none" style={[styles.topSheen, { backgroundColor: isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.8)" }]} />
     <View style={[styles.content, contentStyle]}>{children}</View>
