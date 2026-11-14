@@ -81,7 +81,7 @@ export function handlePoTokenWebViewMessage(message: TokenMessage) {
     const videoId = message.requestId.split(":")[0];
     tokenCache.set(videoId, tokens);
     // Keep this cache bounded for long listening sessions.
-    if (tokenCache.size > 32) {
+    if (tokenCache.size > 8) {
       const oldestKey = tokenCache.keys().next().value;
       if (oldestKey) tokenCache.delete(oldestKey);
     }
