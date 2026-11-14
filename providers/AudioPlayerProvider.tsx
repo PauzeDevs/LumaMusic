@@ -293,12 +293,16 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackStatus]);
 
   const disconnectGraph = useCallback(() => {
-    graphRef.current?.source.disconnect();
-    graphRef.current?.panner.disconnect();
-    graphRef.current?.convolver.disconnect();
-    graphRef.current?.dry.disconnect();
-    graphRef.current?.wet.disconnect();
-    graphRef.current?.filters.forEach((filter) => filter.disconnect());
+    const graph = graphRef.current;
+    if (!graph) return;
+    try { graph.source.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.panner.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.convolver.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.dry.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.wet.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    graph.filters.forEach((filter) => {
+      try { filter.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    });
     graphRef.current = null;
   }, []);
 
