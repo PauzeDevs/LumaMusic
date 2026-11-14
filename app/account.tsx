@@ -6,6 +6,8 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassSurface } from "../components/GlassSurface";
 import { useLibraryStore } from "../store/library";
+import { useListeningStatsStore } from "../store/listeningStats";
+import { usePreferencesStore } from "../store/preferences";
 import { colors } from "../theme/colors";
 import {
   configureGoogleDriveSignIn,
@@ -52,21 +54,28 @@ export default function AccountScreen() {
           [
             { text: "Keep this device", style: "cancel", onPress: () => {
               const local = useLibraryStore.getState();
-              void uploadLibraryBackup(makeLibraryBackup(local)).then(() => setLastSync(new Date().toLocaleString())).catch((error) => Alert.alert("Backup failed", error instanceof Error ? error.message : "Please try again."));
+              void uploadLibraryBackup(makeLibraryBackup(local, usePreferencesStore.getState(), useListeningStatsStore.getState().days)).then(() => setLastSync(new Date().toLocaleString())).catch((error) => Alert.alert("Backup failed", error instanceof Error ? error.message : "Please try again."));
             } },
             { text: "Restore cloud library", onPress: () => {
               useLibraryStore.setState({
-                likedTracks: remote.likedTracks,
-                recentTracks: remote.recentTracks,
-                localTracks: remote.localTracks,
-                playlists: remote.playlists
+                likedTracks: remote.likedTracks.filter((track) => track.source !== "local"),
+                recentTracks: remote.recentTracks.filter((track) => track.source !== "local"),
+                // Preserve files imported on this device. Private file paths cannot
+                // be restored on a different device from cloud metadata.
+                localTracks: useLibraryStore.getState().localTracks,
+                playlists: remote.playlists.map((playlist) => ({
+                  ...playlist,
+                  tracks: playlist.tracks.filter((track) => track.source !== "local")
+                }))
               });
+              if (remote.preferences) usePreferencesStore.setState(remote.preferences);
+              if (remote.listeningStats) useListeningStatsStore.setState({ days: remote.listeningStats });
               setLastSync(new Date().toLocaleString());
             } }
           ]
         );
       } else {
-        await uploadLibraryBackup(makeLibraryBackup(useLibraryStore.getState()));
+        await uploadLibraryBackup(makeLibraryBackup(useLibraryStore.getState(), usePreferencesStore.getState(), useListeningStatsStore.getState().days));
         setLastSync(new Date().toLocaleString());
       }
     } catch (error) {
@@ -81,7 +90,7 @@ export default function AccountScreen() {
   const syncNow = async () => {
     setBusy(true);
     try {
-      const backup = makeLibraryBackup(useLibraryStore.getState());
+      const backup = makeLibraryBackup(useLibraryStore.getState(), usePreferencesStore.getState(), useListeningStatsStore.getState().days);
       await uploadLibraryBackup(backup);
       setLastSync(new Date().toLocaleString());
       Alert.alert("Library backed up", "Your LumaMusic library is safely stored in your hidden Google Drive app data.");
@@ -113,7 +122,7 @@ export default function AccountScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroIcon}><Ionicons name="cloud-done-outline" size={31} color={colors.accent} /></View>
         <Text style={styles.heroTitle}>{user ? "Your library travels with you." : "Your music. Your Google Drive."}</Text>
-        <Text style={styles.heroCopy}>Connect Google to back up playlists, liked songs, listening history and preferences. LumaMusic stores this data in Google's hidden appDataFolder, not in a visible Drive folder.</Text>
+        <Text style={styles.heroCopy}>Connect Google to back up playlists, liked songs, listening history and preferences. Local audio files stay on this device and must be re-imported on another device. Backups live in Google's hidden appDataFolder.</Text>
         <GlassSurface style={styles.accountCard} contentStyle={styles.accountCardContent}>
           <View style={styles.googleIcon}><Ionicons name="logo-google" size={21} color={colors.text} /></View>
           <View style={{ flex: 1 }}>
@@ -145,7 +154,7 @@ export default function AccountScreen() {
           <View style={styles.infoRow}><Ionicons name="phone-portrait-outline" size={18} color={colors.accent} /><Text style={styles.infoTitle}>Offline still works</Text></View>
           <Text style={styles.infoCopy}>Your existing on-device library stays available. Sync is currently started manually from this screen.</Text>
         </GlassSurface>
-        <Text style={styles.footnote}>LumaMusic stores library metadata only. Audio files are never uploaded.</Text>
+        <Text style={styles.footnote}>LumaMusic backs up streaming-library metadata, listening statistics and preferences. Local audio files are not uploaded; imported files remain on this device.</Text>
       </ScrollView>
     </SafeAreaView>
   );

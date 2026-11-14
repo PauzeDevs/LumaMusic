@@ -1,12 +1,13 @@
 import { requireNativeViewManager } from "expo-modules-core";
-import type { StyleProp, ViewStyle } from "react-native";
+import type { StyleProp, ViewProps, ViewStyle } from "react-native";
 
 export type LiquidGlassViewProps = {
   style?: StyleProp<ViewStyle>;
   cornerRadius?: number;
+  pointerEvents?: ViewProps["pointerEvents"];
 };
 
-const NativeLiquidGlassView = requireNativeView<LiquidGlassViewProps>("LiquidGlass");
+const NativeLiquidGlassView = requireNativeViewManager<LiquidGlassViewProps>("LiquidGlass");
 
 export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewProps) {
   return <NativeLiquidGlassView style={style} cornerRadius={cornerRadius} pointerEvents="none" />;

@@ -173,30 +173,69 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
     if (startupTimeoutRef.current) clearTimeout(startupTimeoutRef.current);
-    graphRef.current?.source.disconnect();
-    graphRef.current?.panner.disconnect();
-    graphRef.current?.convolver.disconnect();
-    graphRef.current?.dry.disconnect();
-    graphRef.current?.wet.disconnect();
-    void audioContextRef.current?.close();
+    const graph = graphRef.current;
+    if (graph) {
+      try { graph.source.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.panner.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.convolver.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.dry.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.wet.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      graph.filters.forEach((filter) => {
+        try { filter.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      });
+      graphRef.current = null;
+    }
+    void audioContextRef.current?.close().catch(() => undefined);
   }, []);
 
   const onLocalAudioLoad = useCallback((sourceInstance: number, trackId: string) => {
     const context = audioContextRef.current;
     const element = audioRef.current;
     const latestTrack = usePlayerStore.getState().currentTrack;
-    // A delayed load event from a replaced audio element must not start the new source.
     if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
     if (!context || !element || graphRef.current) return;
+
+    let source: MediaElementAudioSourceNode | null = null;
+    const partialNodes: Array<{ disconnect: () => void }> = [];
+    const startWithoutEffects = (cause: unknown) => {
+      // A partially-created graph must never strand the media element without
+      // an output route. Disconnect partial nodes and route its source directly.
+      partialNodes.reverse().forEach((node) => {
+        try { node.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      });
+      if (source) {
+        try { source.disconnect(); } catch { /* Reconnect below regardless. */ }
+        try { source.connect(context.destination); } catch { /* Report only if playback also fails. */ }
+      }
+      void context.resume().catch(() => undefined).then(() => {
+        try {
+          element.play();
+        } catch (playError) {
+          setPlaybackError(
+            playError instanceof Error
+              ? playError.message
+              : cause instanceof Error
+                ? cause.message
+                : "Could not start this audio stream."
+          );
+        }
+      });
+    };
+
     try {
-      const source = context.createMediaElementSource(element);
+      source = context.createMediaElementSource(element);
       const panner = context.createStereoPanner();
+      partialNodes.push(panner);
       const convolver = context.createConvolver();
+      partialNodes.push(convolver);
       const dry = context.createGain();
+      partialNodes.push(dry);
       const wet = context.createGain();
+      partialNodes.push(wet);
       const frequencies = [60, 250, 1000, 4000, 12000];
       const filters = frequencies.map((frequency, index) => {
         const filter = context.createBiquadFilter();
+        partialNodes.push(filter);
         filter.type = index === 0 ? "lowshelf" : index === frequencies.length - 1 ? "highshelf" : "peaking";
         filter.frequency.setValueAtTime(frequency, context.currentTime);
         filter.Q.setValueAtTime(1, context.currentTime);
@@ -215,14 +254,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       applyEffects(usePreferencesStore.getState().spatialBalance, usePreferencesStore.getState().reverbPreset);
       applyEqualizer(usePreferencesStore.getState().equalizerEnabled, usePreferencesStore.getState().equalizerBands);
       void context.resume().then(() => {
-        // Start playback even if the native context resumed into a non-running state.
-        if (context.state === "running") return element.play();
-        bypassEffectsGraph();
-        return element.play();
+        if (context.state !== "running") bypassEffectsGraph();
+        element.play();
       }).catch((error: unknown) => {
         bypassEffectsGraph();
-        // AudioTagHandle.play() is synchronous and returns void in this API.
-        // Retry on the direct route, catching only a synchronous native failure.
         try {
           element.play();
         } catch (playError) {
@@ -231,7 +266,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         }
       });
     } catch (error) {
-      setPlaybackError(error instanceof Error ? error.message : "Could not connect the audio effects engine.");
+      startWithoutEffects(error);
     }
   }, [applyEffects, applyEqualizer, bypassEffectsGraph, setPlaybackError]);
 
@@ -265,12 +300,16 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackStatus]);
 
   const disconnectGraph = useCallback(() => {
-    graphRef.current?.source.disconnect();
-    graphRef.current?.panner.disconnect();
-    graphRef.current?.convolver.disconnect();
-    graphRef.current?.dry.disconnect();
-    graphRef.current?.wet.disconnect();
-    graphRef.current?.filters.forEach((filter) => filter.disconnect());
+    const graph = graphRef.current;
+    if (!graph) return;
+    try { graph.source.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.panner.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.convolver.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.dry.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    try { graph.wet.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    graph.filters.forEach((filter) => {
+      try { filter.disconnect(); } catch { /* Best-effort native cleanup. */ }
+    });
     graphRef.current = null;
   }, []);
 

@@ -9,7 +9,7 @@ export type SurfaceStyle = "liquid" | "frosted" | "clear" | "matte";
 export type AppearanceMode = "system" | "light" | "dark";
 export type MotionStyle = "full" | "subtle" | "off";
 export type EqualizerBand = number;
-type PreferencesState = {
+export type PreferencesState = {
   progressBarStyle: ProgressBarStyle; spatialBalance: number; reverbPreset: ReverbPreset; equalizerEnabled: boolean; equalizerBands: EqualizerBand[];
   accentTheme: AccentTheme; appearanceMode: AppearanceMode; motionStyle: MotionStyle; compactRows: boolean;
   playerStyle: PlayerStyle; surfaceStyle: SurfaceStyle; animationIntensity: number;
@@ -19,6 +19,12 @@ type PreferencesState = {
   setAppearanceMode: (mode: AppearanceMode) => void; setMotionStyle: (style: MotionStyle) => void; setCompactRows: (compact: boolean) => void;
   setPlayerStyle: (style: PlayerStyle) => void; setSurfaceStyle: (style: SurfaceStyle) => void; setAnimationIntensity: (intensity: number) => void;
 };
+
+export type PreferencesSnapshot = Pick<PreferencesState,
+  | "progressBarStyle" | "spatialBalance" | "reverbPreset" | "equalizerEnabled" | "equalizerBands"
+  | "accentTheme" | "appearanceMode" | "motionStyle" | "compactRows"
+  | "playerStyle" | "surfaceStyle" | "animationIntensity"
+>;
 export const usePreferencesStore = create<PreferencesState>()(persist((set) => ({
   progressBarStyle: "apple", spatialBalance: 0, reverbPreset: "off", equalizerEnabled: false, equalizerBands: [0, 0, 0, 0, 0],
   accentTheme: "red", appearanceMode: "system", motionStyle: "full", compactRows: false,

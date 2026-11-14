@@ -1,5 +1,6 @@
 import type { MusicTrack } from "../types/music";
 import { resolveWithNewPipe } from "./newPipeResolver";
+import { resolveYouTubePoTokens } from "./poTokenResolver";
 
 export type ResolvedYouTubeAudio = {
   url: string;
@@ -14,6 +15,20 @@ const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false
 
 // Cache resolved stream URLs in memory so replaying or seeking doesn't re-fetch before expiration
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
+
+async function resolvePoTokenQuickly(videoId: string) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      resolveYouTubePoTokens(videoId),
+      new Promise<null>((resolve) => {
+        timeout = setTimeout(() => resolve(null), 2500);
+      })
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
 
 /**
  * InnerTube client profiles that return direct, unthrottled adaptive audio URLs
@@ -220,6 +235,12 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack): Promise<Resol
       const expiryMatch = newPipeResult.url.match(/[?&]expire=(\d+)/);
       const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
       const newPipeUrl = new URL(newPipeResult.url);
+      // PoTokens are optional and only requested for the Android extraction
+      // fallback. A slow or unavailable BotGuard WebView never blocks playback.
+      const poToken = await resolvePoTokenQuickly(videoId);
+      if (poToken && poToken.expiresAt > Date.now() + 30_000) {
+        newPipeUrl.searchParams.set("pot", poToken.contentToken);
+      }
       const resolved: ResolvedYouTubeAudio = {
         url: newPipeUrl.toString(),
         mimeType: newPipeResult.mimeType || "audio/*",
