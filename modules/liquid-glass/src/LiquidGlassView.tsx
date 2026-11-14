@@ -6,7 +6,7 @@ export type LiquidGlassViewProps = {
   cornerRadius?: number;
 };
 
-const NativeLiquidGlassView = requireNativeView<LiquidGlassViewProps>("LiquidGlass");
+const NativeLiquidGlassView = requireNativeViewManager<LiquidGlassViewProps>("LiquidGlass");
 
 export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewProps) {
   return <NativeLiquidGlassView style={style} cornerRadius={cornerRadius} pointerEvents="none" />;
