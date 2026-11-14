@@ -26,7 +26,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
   return <View style={[styles.shell, { backgroundColor: surfaceStyle === "matte" ? colors.surfaceElevated : isDark ? (surfaceStyle === "frosted" ? "rgba(18,18,22,0.78)" : "rgba(18,18,22,0.48)") : (surfaceStyle === "frosted" ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.52)"), borderColor: colors.border }]}>
     {showGlass ? <LiquidGlassView cornerRadius={30} style={[StyleSheet.absoluteFill, { opacity: surfaceStyle === "liquid" ? 0.82 : 0.48 }]} /> : null}
-    <View pointerEvents="none" style={[styles.shellSheen, { backgroundColor: isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.95)" }]} />
+    {surfaceStyle !== "matte" ? <View pointerEvents="none" style={[styles.shellSheen, { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)" }]} /> : null}
     {track ? <View style={[styles.mini, { backgroundColor: surfaceStyle === "matte" ? colors.surface : isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.28)", borderColor: colors.border }]}>
       {showGlass ? <LiquidGlassView cornerRadius={18} style={[StyleSheet.absoluteFill, { opacity: 0.62 }]} /> : null}
       <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}><Artwork uri={track.artwork} size={42} radius={10} /><View style={styles.miniCopy}><Text numberOfLines={1} style={[styles.miniTitle, { color: colors.text }]}>{track.title}</Text><Text numberOfLines={1} style={[styles.miniArtist, { color: colors.muted }]}>{track.artist}</Text></View></Pressable>
@@ -36,8 +36,8 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
     <View style={styles.tabs}>{tabs.map((tab) => {
       const routeIndex = state.routes.findIndex((route) => route.name === tab.name);
       const focused = state.index === routeIndex;
-      return <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={[styles.tab, focused && { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)", borderColor: isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.9)" }]}>
-        {focused ? <LiquidGlassView cornerRadius={19} style={StyleSheet.absoluteFill} /> : null}
+      return <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={[styles.tab, focused && { backgroundColor: surfaceStyle === "matte" ? colors.surfaceSoft : isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)", borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.9)" }]}>
+        {focused && showGlass ? <LiquidGlassView cornerRadius={19} style={StyleSheet.absoluteFill} /> : null}
         <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.text : colors.subtle} />
         <Text style={[styles.label, { color: focused ? colors.text : colors.subtle }]}>{tab.label}</Text>
       </Pressable>;
