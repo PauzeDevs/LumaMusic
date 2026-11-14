@@ -1,4 +1,5 @@
 import { BlurView } from "expo-blur";
+import { useGlassBlurTarget } from "./GlassBlurTarget";
 import { StyleSheet, View } from "react-native";
 import type { LiquidGlassViewProps } from "./LiquidGlassView";
 import { useTheme } from "../../../theme/useTheme";
@@ -12,6 +13,7 @@ import { useTheme } from "../../../theme/useTheme";
  */
 export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewProps) {
   const { blurTint, isDark } = useTheme();
+  const blurTarget = useGlassBlurTarget();
   const radius = Math.max(0, cornerRadius);
 
   return (
@@ -19,7 +21,9 @@ export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewPro
       <BlurView
         intensity={92}
         tint={blurTint}
-        experimentalBlurMethod="dimezisBlurView"
+        blurTarget={blurTarget ?? undefined}
+        blurMethod={blurTarget ? "dimezisBlurViewSdk31Plus" : "none"}
+        blurReductionFactor={2}
         style={StyleSheet.absoluteFill}
       />
       <View
@@ -31,7 +35,7 @@ export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewPro
       <View
         style={[
           styles.upperGlow,
-          { backgroundColor: isDark ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.46)" }
+          { borderTopLeftRadius: radius, borderTopRightRadius: radius, backgroundColor: isDark ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.46)" }
         ]}
       />
       <View
@@ -84,7 +88,7 @@ const styles = StyleSheet.create({
     height: "30%"
   },
   rim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderWidth: 1
   },
   innerRim: {
