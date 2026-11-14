@@ -20,7 +20,7 @@ import { useLibraryStore } from "../../store/library";
 
 export default function LibraryScreen() {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const scrollY = useRef(new Animated.Value(0)).current;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
