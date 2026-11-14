@@ -1,7 +1,7 @@
 import { Audio, AudioContext, PlaybackNotificationManager, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
-import { View } from "react-native";
+import { AppState, View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
 import { useLibraryStore } from "../store/library";
@@ -154,6 +154,25 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: "doNotMix" })
       .catch((error: unknown) => setPlaybackError(error instanceof Error ? error.message : "Could not configure audio playback."));
   }, [setPlaybackError]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") return;
+      const latest = usePlayerStore.getState();
+      if (!latest.isPlaying || (!isExternalTrack(latest.currentTrack) && !isLocalTrack(latest.currentTrack))) return;
+
+      // Android may leave the custom AudioContext suspended after another app
+      // takes foreground. Resume only when the store still considers playback
+      // active, so returning from ChatGPT never overrides an intentional pause.
+      void audioContextRef.current?.resume().then(() => {
+        const current = usePlayerStore.getState();
+        if (current.isPlaying && current.currentTrack?.id === latest.currentTrack?.id) {
+          void audioRef.current?.play();
+        }
+      }).catch(() => undefined);
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
