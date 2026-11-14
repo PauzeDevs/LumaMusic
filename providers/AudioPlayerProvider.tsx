@@ -264,9 +264,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
             Referer: "https://www.youtube.com/"
           },
           instance: ++localSourceSequence.current
-        }, {
-          showSeekBackward: true,
-          showSeekForward: true
         });
         // Do not leave the UI spinning forever if the resolved stream never starts.
         startupTimeoutRef.current = setTimeout(() => {
