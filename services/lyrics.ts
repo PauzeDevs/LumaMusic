@@ -22,6 +22,7 @@ const CACHE_TTL = 6 * 60 * 60 * 1000;
 const MISS_TTL = 10 * 60 * 1000;
 const ERROR_TTL = 30 * 1000;
 const cache = new Map<string, { expiresAt: number; value: LyricsState }>();
+const MAX_LYRICS_CACHE_ENTRIES = 32;
 const inFlight = new Map<string, Promise<LyricsState>>();
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
 
@@ -117,13 +118,22 @@ async function fetchLyrics(track: MusicTrack): Promise<LyricsState> {
 export function getLyrics(track: MusicTrack): Promise<LyricsState> {
   const key = `${normalize(track.title)}::${normalize(track.artist)}::${Math.round((track.durationMs ?? 0) / 1000)}`;
   const cached = cache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value);
+  if (cached && cached.expiresAt > Date.now()) {
+    cache.delete(key);
+    cache.set(key, cached);
+    return Promise.resolve(cached.value);
+  }
   if (cached) cache.delete(key);
   const pending = inFlight.get(key);
   if (pending) return pending;
 
   const request = fetchLyrics(track).then((value) => {
     cache.set(key, { value, expiresAt: Date.now() + (value.status === "not_found" ? MISS_TTL : value.status === "error" ? ERROR_TTL : CACHE_TTL) });
+    while (cache.size > MAX_LYRICS_CACHE_ENTRIES) {
+      const oldestKey = cache.keys().next().value;
+      if (!oldestKey) break;
+      cache.delete(oldestKey);
+    }
     return value;
   }).finally(() => inFlight.delete(key));
   inFlight.set(key, request);

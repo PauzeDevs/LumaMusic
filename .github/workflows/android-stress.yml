@@ -1,0 +1,112 @@
+name: Android Runtime Stress Test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'providers/**'
+      - 'services/**'
+      - 'store/**'
+      - 'package.json'
+      - 'app.json'
+      - '.github/workflows/android-stress.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lumamusic-android-stress-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emulator-stress:
+    name: Emulator launch, navigation and memory soak
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install JavaScript dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate Expo configuration
+        run: npx expo config --type public
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Configure emulator ABI
+        run: printf '\nreactNativeArchitectures=x86_64\n' >> android/gradle.properties
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/stress-app-debug.apk"
+
+      - name: Boot emulator and run stress test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          ram-size: 4096M
+          disk-size: 8192M
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APK="$GITHUB_WORKSPACE/stress-app-debug.apk"
+            PACKAGE="dev.pauze.lumamusic"
+            mkdir -p stress-results
+            adb install -r "$APK"
+            adb shell am force-stop "$PACKAGE"
+            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
+            sleep 45
+            adb shell pidof "$PACKAGE" | tee stress-results/initial-pid.txt
+            adb shell dumpsys meminfo "$PACKAGE" > stress-results/meminfo-launch.txt
+
+            # Exercise the app UI with bounded input events while sampling PSS.
+            # This is a generic navigation soak, not a substitute for scripted
+            # playback/Audio Lab interaction with a real music account/device.
+            adb shell monkey -p "$PACKAGE" --throttle 650 --pct-syskeys 0 --pct-appswitch 5 240 > stress-results/monkey.txt 2>&1 &
+            MONKEY_PID=$!
+
+            for sample in $(seq 1 20); do
+              sleep 30
+              if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
+                echo "App process exited during stress soak at sample $sample" | tee stress-results/failure.txt
+                adb logcat -d -t 4000 > stress-results/logcat-crash.txt
+                exit 1
+              fi
+              adb shell dumpsys meminfo "$PACKAGE" > "stress-results/meminfo-$(printf '%02d' "$sample").txt"
+              adb shell pidof "$PACKAGE" >> stress-results/pids.txt
+            done
+
+            wait "$MONKEY_PID" || true
+            adb shell dumpsys meminfo "$PACKAGE" > stress-results/meminfo-final.txt
+            adb logcat -d -t 4000 > stress-results/logcat-final.txt
+            echo "Stress soak completed: 10 minutes of UI event load with 20 memory/process samples."
+
+      - name: Upload stress-test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumamusic-android-stress-results
+          path: stress-results/
+          if-no-files-found: warn
+          retention-days: 14

@@ -82,24 +82,47 @@ function imageFor(item: Obj, videoId?: string): string {
 }
 
 function collectRenderers(root: any, rendererName: string, output: Obj[] = []): Obj[] {
-  if (!root || typeof root !== "object") return output;
-  if (Array.isArray(root)) {
-    root.forEach((item) => collectRenderers(item, rendererName, output));
-    return output;
+  // Use an explicit stack instead of recursive descent: provider payloads are
+  // untrusted and unexpectedly deep objects must not overflow the JS stack.
+  const stack: unknown[] = [root];
+  let visited = 0;
+  while (stack.length > 0 && visited < 50_000 && output.length < 2_000) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") continue;
+    visited += 1;
+    if (Array.isArray(current)) {
+      for (let index = current.length - 1; index >= 0; index -= 1) stack.push(current[index]);
+      continue;
+    }
+    const record = current as Obj;
+    if (record[rendererName] && typeof record[rendererName] === "object") output.push(record[rendererName]);
+    const values = Object.values(record);
+    for (let index = values.length - 1; index >= 0; index -= 1) {
+      if (values[index] && typeof values[index] === "object") stack.push(values[index]);
+    }
   }
-  if (root[rendererName] && typeof root[rendererName] === "object") output.push(root[rendererName]);
-  Object.values(root).forEach((value) => {
-    if (value && typeof value === "object") collectRenderers(value, rendererName, output);
-  });
   return output;
 }
 
 function continuationTokens(root: any, output: string[] = []): string[] {
-  if (!root || typeof root !== "object") return output;
-  if (Array.isArray(root)) { root.forEach((item) => continuationTokens(item, output)); return output; }
-  const token = root.continuation ?? root.nextContinuationData?.continuation ?? root.continuationEndpoint?.continuationCommand?.token;
-  if (typeof token === "string" && token.length > 0) output.push(token);
-  Object.values(root).forEach((value) => { if (value && typeof value === "object") continuationTokens(value, output); });
+  const stack: unknown[] = [root];
+  let visited = 0;
+  while (stack.length > 0 && visited < 50_000 && output.length < 100) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") continue;
+    visited += 1;
+    if (Array.isArray(current)) {
+      for (let index = current.length - 1; index >= 0; index -= 1) stack.push(current[index]);
+      continue;
+    }
+    const record = current as Obj;
+    const token = record.continuation ?? record.nextContinuationData?.continuation ?? record.continuationEndpoint?.continuationCommand?.token;
+    if (typeof token === "string" && token.length > 0) output.push(token);
+    const values = Object.values(record);
+    for (let index = values.length - 1; index >= 0; index -= 1) {
+      if (values[index] && typeof values[index] === "object") stack.push(values[index]);
+    }
+  }
   return output;
 }
 
@@ -143,7 +166,19 @@ async function innerTubePost(url: string, body: Obj): Promise<Obj> {
   if (!response.ok) {
     throw new Error("YouTube Music InnerTube request failed (" + response.status + "). Please try again.");
   }
-  return response.json() as Promise<Obj>;
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (contentLength > 5 * 1024 * 1024) {
+    throw new Error("YouTube Music returned an unusually large response. Please try again.");
+  }
+  const bodyText = await response.text();
+  if (bodyText.length > 5 * 1024 * 1024) {
+    throw new Error("YouTube Music returned an unusually large response. Please try again.");
+  }
+  try {
+    return JSON.parse(bodyText) as Obj;
+  } catch {
+    throw new Error("YouTube Music returned an invalid response. Please try again.");
+  }
 }
 
 async function searchRequest(query: string, params?: string): Promise<Obj> {
@@ -326,12 +361,12 @@ export async function getYouTubeMusicUpNextTracks(videoId: string, limit = 20): 
 /**
  * Fetches tracks inside a YouTube Music playlist via InnerTube /browse
  */
-export async function getYouTubeMusicPlaylistTracks(playlistId: string): Promise<MusicTrack[]> {
+export async function getYouTubeMusicPlaylistTracks(playlistId: string, limit = 100): Promise<MusicTrack[]> {
   const cleanId = playlistId.replace(/^youtube-playlist:/i, "").trim();
   const browseId = cleanId.startsWith("VL") ? cleanId : `VL${cleanId}`;
   const payload = await innerTubePost(BROWSE_URL, { browseId });
   const items = collectRenderers(payload, "musicResponsiveListItemRenderer");
-  return uniqueById(items.map(mapTrack).filter((item): item is MusicTrack => Boolean(item)));
+  return uniqueById(items.map(mapTrack).filter((item): item is MusicTrack => Boolean(item))).slice(0, Math.max(1, Math.min(limit, 500)));
 }
 
 export async function openTrackInYouTubeMusic(track: MusicTrack): Promise<void> {

@@ -130,11 +130,15 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       graph.panner.pan.setValueAtTime(Math.max(-1, Math.min(1, balance)), context.currentTime);
       if (preset === "off") {
         graph.convolver.buffer = null;
+        impulseCacheRef.current.clear();
         graph.wet.gain.setValueAtTime(0, context.currentTime);
         graph.dry.gain.setValueAtTime(1, context.currentTime);
       } else {
         let impulse = impulseCacheRef.current.get(preset);
         if (!impulse) {
+          // Keep only the active reverb impulse. Caching every preset retains
+          // multiple stereo Float32 buffers for the lifetime of the player.
+          impulseCacheRef.current.clear();
           impulse = makeImpulseResponse(context, preset);
           impulseCacheRef.current.set(preset, impulse);
         }
@@ -231,8 +235,16 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const partialNodes: Array<{ disconnect: () => void }> = [];
     const resumePosition = pendingResumePositionRef.current;
     pendingResumePositionRef.current = null;
+    const isCurrentSource = () =>
+      sourceInstance === localSourceSequence.current &&
+      usePlayerStore.getState().currentTrack?.id === trackId;
+
     const startElement = () => {
+      // AudioContext.resume() can settle after the user has selected another
+      // track. Never let an old load callback start or seek the new element.
+      if (!isCurrentSource()) return;
       if (resumePosition !== null && Number.isFinite(resumePosition) && resumePosition > 0) element.seekToTime(resumePosition);
+      if (!isCurrentSource()) return;
       element.play();
     };
     const startWithoutEffects = (cause: unknown) => {
@@ -246,6 +258,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         try { source.connect(context.destination); } catch { /* Report only if playback also fails. */ }
       }
       void context.resume().catch(() => undefined).then(() => {
+        if (!isCurrentSource()) return;
         try {
           startElement();
         } catch (playError) {
@@ -292,9 +305,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       applyEffects(usePreferencesStore.getState().spatialBalance, usePreferencesStore.getState().reverbPreset);
       applyEqualizer(usePreferencesStore.getState().equalizerEnabled, usePreferencesStore.getState().equalizerBands);
       void context.resume().then(() => {
+        if (!isCurrentSource()) return;
         if (context.state !== "running") bypassEffectsGraph();
         startElement();
       }).catch((error: unknown) => {
+        if (!isCurrentSource()) return;
         bypassEffectsGraph();
         try {
           startElement();
@@ -355,6 +370,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     pendingResumePositionRef.current = Number.isFinite(resumePosition) && resumePosition !== undefined && resumePosition > 0 ? resumePosition : null;
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
     const requestId = ++playbackRequestSequence.current;
+    // Invalidate any pending load/resume callbacks from the previous source
+    // immediately, including when replaying the same track ID.
+    localSourceSequence.current += 1;
     if (startupTimeoutRef.current) {
       clearTimeout(startupTimeoutRef.current);
       startupTimeoutRef.current = null;
