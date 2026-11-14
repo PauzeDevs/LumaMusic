@@ -44,7 +44,13 @@ export default function ImportPlaylistScreen() {
   const addTrackToPlaylist = useLibraryStore((state) => state.addTrackToPlaylist);
 
   const previewMatches = async () => {
-    const entries = parsePlaylistExport(rawText);
+    let entries: ImportedPlaylistEntry[];
+    try {
+      entries = parsePlaylistExport(rawText);
+    } catch (error) {
+      Alert.alert("Playlist export too large", error instanceof Error ? error.message : "Please check the CSV and try again.");
+      return;
+    }
     if (entries.length === 0) {
       Alert.alert("No tracks found", "Paste a CSV export or a track list with one song per line. Use the format Song Title - Artist.");
       return;
@@ -57,36 +63,40 @@ export default function ImportPlaylistScreen() {
     const found: Match[] = [];
     const missing: string[] = [];
 
-    for (let index = 0; index < entries.length; index += 3) {
-      const batch = entries.slice(index, index + 3);
-      const results = await Promise.all(batch.map(async (entry) => {
-        try {
-          const query = [entry.title, entry.artist].filter(Boolean).join(" ");
-          const candidates = await searchYouTubeMusicTracks(query, 6);
-          const ranked = candidates.map((track) => {
-            const titleScore = similarity(entry.title, track.title);
-            const artistScore = entry.artist ? similarity(entry.artist, track.artist) : 0.5;
-            return { track, score: titleScore * 0.82 + artistScore * 0.18 };
-          }).sort((a, b) => b.score - a.score);
-          const best = ranked[0];
-          const hasArtist = Boolean(entry.artist.trim());
-          const isConfidentMatch = Boolean(best && best.score >= 0.76 && similarity(entry.title, best.track.title) >= 0.72 && (!hasArtist || similarity(entry.artist, best.track.artist) >= 0.5));
-          return isConfidentMatch && best ? { entry, track: best.track } as Match : null;
-        } catch {
-          return null;
-        }
-      }));
-      results.forEach((result, batchIndex) => {
-        if (result) found.push(result);
-        else missing.push(batch[batchIndex].title);
-      });
-      setProgress(Math.min(entries.length, index + batch.length));
+    try {
+      for (let index = 0; index < entries.length; index += 3) {
+        const batch = entries.slice(index, index + 3);
+        const results = await Promise.all(batch.map(async (entry) => {
+          try {
+            const query = [entry.title, entry.artist].filter(Boolean).join(" ");
+            const candidates = await searchYouTubeMusicTracks(query, 6);
+            const ranked = candidates.map((track) => {
+              const titleScore = similarity(entry.title, track.title);
+              const artistScore = entry.artist ? similarity(entry.artist, track.artist) : 0.5;
+              return { track, score: titleScore * 0.82 + artistScore * 0.18 };
+            }).sort((a, b) => b.score - a.score);
+            const best = ranked[0];
+            const hasArtist = Boolean(entry.artist.trim());
+            const isConfidentMatch = Boolean(best && best.score >= 0.76 && similarity(entry.title, best.track.title) >= 0.72 && (!hasArtist || similarity(entry.artist, best.track.artist) >= 0.5));
+            return isConfidentMatch && best ? { entry, track: best.track } as Match : null;
+          } catch {
+            return null;
+          }
+        }));
+        results.forEach((result, batchIndex) => {
+          if (result) found.push(result);
+          else missing.push(batch[batchIndex].title);
+        });
+        setProgress(Math.min(entries.length, index + batch.length));
+      }
+      setMatches(found);
+      setUnmatched(missing);
+      setPreviewed(true);
+    } catch (error) {
+      Alert.alert("Import preview failed", error instanceof Error ? error.message : "Please try again with a smaller playlist export.");
+    } finally {
+      setIsMatching(false);
     }
-
-    setMatches(found);
-    setUnmatched(missing);
-    setPreviewed(true);
-    setIsMatching(false);
   };
 
   const importPlaylistLink = async () => {
