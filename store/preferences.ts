@@ -27,8 +27,8 @@ export type PreferencesSnapshot = Pick<PreferencesState,
 >;
 export const usePreferencesStore = create<PreferencesState>()(persist((set) => ({
   progressBarStyle: "apple", spatialBalance: 0, reverbPreset: "off", equalizerEnabled: false, equalizerBands: [0, 0, 0, 0, 0],
-  accentTheme: "red", appearanceMode: "system", motionStyle: "full", compactRows: false,
-  playerStyle: "standard", surfaceStyle: "liquid", animationIntensity: 65,
+  accentTheme: "red", appearanceMode: "dark", motionStyle: "full", compactRows: false,
+  playerStyle: "standard", surfaceStyle: "matte", animationIntensity: 65,
   setProgressBarStyle: (progressBarStyle) => set({ progressBarStyle }),
   setSpatialBalance: (spatialBalance) => set({ spatialBalance: Math.max(-1, Math.min(1, spatialBalance)) }),
   setReverbPreset: (reverbPreset) => set({ reverbPreset }),
