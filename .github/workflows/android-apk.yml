@@ -90,9 +90,10 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: luna-music-nightly-stable-${{ github.run_number }}
+          tag_name: luna-music-nightly-stable
           name: Luna Music Nightly - Stable
           prerelease: false
+          overwrite_files: true
           files: |
             dist/LumaMusic-arm64-v8a.apk
             dist/LumaMusic-armeabi-v7a.apk
