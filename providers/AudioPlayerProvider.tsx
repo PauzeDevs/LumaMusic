@@ -173,12 +173,19 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
     if (startupTimeoutRef.current) clearTimeout(startupTimeoutRef.current);
-    graphRef.current?.source.disconnect();
-    graphRef.current?.panner.disconnect();
-    graphRef.current?.convolver.disconnect();
-    graphRef.current?.dry.disconnect();
-    graphRef.current?.wet.disconnect();
-    void audioContextRef.current?.close();
+    const graph = graphRef.current;
+    if (graph) {
+      try { graph.source.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.panner.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.convolver.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.dry.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      try { graph.wet.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      graph.filters.forEach((filter) => {
+        try { filter.disconnect(); } catch { /* Best-effort native cleanup. */ }
+      });
+      graphRef.current = null;
+    }
+    void audioContextRef.current?.close().catch(() => undefined);
   }, []);
 
   const onLocalAudioLoad = useCallback((sourceInstance: number, trackId: string) => {
