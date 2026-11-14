@@ -73,6 +73,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const status = useAudioPlayerStatus(player);
   const [localSource, setLocalSource] = useState<{ uri: string; instance: number; headers?: Record<string, string> } | null>(null);
   const localSourceSequence = useRef(0);
+  const pendingResumePositionRef = useRef<number | null>(null);
   const playbackRequestSequence = useRef(0);
   const handledFinishedState = useRef(false);
   const fetchingAutoplayQueue = useRef(false);
@@ -141,11 +142,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         graph.wet.gain.setValueAtTime(wetLevel, context.currentTime);
         graph.dry.gain.setValueAtTime(1 - wetLevel * 0.35, context.currentTime);
       }
-      if (context.state !== "running") void context.resume().catch(() => bypassEffectsGraph());
+      if (context.state !== "running") void context.resume().catch(() => undefined);
     } catch {
-      bypassEffectsGraph();
+      // A failed parameter update must not disconnect the live media source.
+      // Keep transport running; the last successfully applied effect values remain active.
     }
-  }, [bypassEffectsGraph]);
+  }, []);
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: "doNotMix" })
@@ -170,11 +172,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       graph.filters.forEach((filter, index) => {
         filter.gain.setValueAtTime(enabled ? (bands[index] ?? 0) : 0, context.currentTime);
       });
-      if (context.state !== "running") void context.resume().catch(() => bypassEffectsGraph());
+      if (context.state !== "running") void context.resume().catch(() => undefined);
     } catch {
-      bypassEffectsGraph();
+      // Never tear down the active playback graph because a slider update failed.
     }
-  }, [bypassEffectsGraph]);
+  }, []);
 
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
   useEffect(() => applyEqualizer(equalizerEnabled, equalizerBands), [equalizerEnabled, equalizerBands, applyEqualizer]);
@@ -207,6 +209,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
     let source: MediaElementAudioSourceNode | null = null;
     const partialNodes: Array<{ disconnect: () => void }> = [];
+    const resumePosition = pendingResumePositionRef.current;
+    pendingResumePositionRef.current = null;
+    const startElement = () => {
+      if (resumePosition !== null && Number.isFinite(resumePosition) && resumePosition > 0) element.seekToTime(resumePosition);
+      element.play();
+    };
     const startWithoutEffects = (cause: unknown) => {
       // A partially-created graph must never strand the media element without
       // an output route. Disconnect partial nodes and route its source directly.
@@ -219,7 +227,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       }
       void context.resume().catch(() => undefined).then(() => {
         try {
-          element.play();
+          startElement();
         } catch (playError) {
           setPlaybackError(
             playError instanceof Error
@@ -265,11 +273,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       applyEqualizer(usePreferencesStore.getState().equalizerEnabled, usePreferencesStore.getState().equalizerBands);
       void context.resume().then(() => {
         if (context.state !== "running") bypassEffectsGraph();
-        element.play();
+        startElement();
       }).catch((error: unknown) => {
         bypassEffectsGraph();
         try {
-          element.play();
+          startElement();
         } catch (playError) {
           setPlaybackError(playError instanceof Error ? playError.message :
             error instanceof Error ? error.message : "Could not start this audio stream.");
@@ -323,7 +331,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     graphRef.current = null;
   }, []);
 
-  const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number) => {
+  const playTrack = useCallback(async (track: MusicTrack, nextQueue?: MusicTrack[], queueIndex?: number, resumePosition?: number) => {
+    pendingResumePositionRef.current = Number.isFinite(resumePosition) && resumePosition !== undefined && resumePosition > 0 ? resumePosition : null;
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
     const requestId = ++playbackRequestSequence.current;
     if (startupTimeoutRef.current) {
@@ -409,8 +418,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     throw new Error("This track has no supported playback source.");
   }, [disconnectGraph, ensureAudioContext, player, setPlaybackError]);
 
-  const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number) => {
-    try { await playTrack(track, queue, queueIndex); }
+  const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number, resumePosition?: number) => {
+    try { await playTrack(track, queue, queueIndex, resumePosition); }
     catch (error) { setPlaybackError(error instanceof Error ? error.message : "Unable to open this track."); }
   }, [playTrack, setPlaybackError]);
 
@@ -435,7 +444,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         audioRef.current?.pause();
       } else if (state.playbackError || !audioRef.current) {
         // Expired streams are resolved again instead of trying to resume a dead URL.
-        void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
+        void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex, state.playbackPosition);
       } else {
         void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       }
