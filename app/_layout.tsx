@@ -4,12 +4,14 @@ import { View } from "react-native";
 import { DotPattern } from "../components/DotPattern";
 import { StatusBar } from "expo-status-bar";
 import { AudioPlayerProvider } from "../providers/AudioPlayerProvider";
+import PoTokenWebViewHost from "../components/PoTokenWebViewHost";
+import { GlassBlurTarget } from "../modules/liquid-glass/src/GlassBlurTarget";
 import { useTheme } from "../theme/useTheme";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false } } });
 function ThemedNavigator() {
   const { colors, isDark } = useTheme();
-  return <View style={{ flex: 1, backgroundColor: colors.background }}>
+  return <GlassBlurTarget><View style={{ flex: 1, backgroundColor: colors.background }}>
     <DotPattern />
     <StatusBar style={isDark ? "light" : "dark"} />
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" }, animation: "fade_from_bottom", animationDuration: 320 }}>
@@ -25,6 +27,6 @@ function ThemedNavigator() {
       <Stack.Screen name="release/[id]" options={{ animation: "slide_from_right", animationDuration: 300 }} />
       <Stack.Screen name="playlist/[id]" options={{ animation: "slide_from_right", animationDuration: 300 }} />
     </Stack>
-  </View>;
+  </View></GlassBlurTarget>;
 }
-export default function RootLayout() { return <QueryClientProvider client={queryClient}><AudioPlayerProvider><ThemedNavigator /></AudioPlayerProvider></QueryClientProvider>; }
+export default function RootLayout() { return <QueryClientProvider client={queryClient}><AudioPlayerProvider><><PoTokenWebViewHost /><ThemedNavigator /></></AudioPlayerProvider></QueryClientProvider>; }
