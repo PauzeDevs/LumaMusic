@@ -58,12 +58,15 @@ export default function AccountScreen() {
             } },
             { text: "Restore cloud library", onPress: () => {
               useLibraryStore.setState({
-                likedTracks: remote.likedTracks,
-                recentTracks: remote.recentTracks,
+                likedTracks: remote.likedTracks.filter((track) => track.source !== "local"),
+                recentTracks: remote.recentTracks.filter((track) => track.source !== "local"),
                 // Preserve files imported on this device. Private file paths cannot
                 // be restored on a different device from cloud metadata.
                 localTracks: useLibraryStore.getState().localTracks,
-                playlists: remote.playlists
+                playlists: remote.playlists.map((playlist) => ({
+                  ...playlist,
+                  tracks: playlist.tracks.filter((track) => track.source !== "local")
+                }))
               });
               if (remote.preferences) usePreferencesStore.setState(remote.preferences);
               if (remote.listeningStats) useListeningStatsStore.setState({ days: remote.listeningStats });
