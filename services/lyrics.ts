@@ -129,6 +129,11 @@ export function getLyrics(track: MusicTrack): Promise<LyricsState> {
 
   const request = fetchLyrics(track).then((value) => {
     cache.set(key, { value, expiresAt: Date.now() + (value.status === "not_found" ? MISS_TTL : value.status === "error" ? ERROR_TTL : CACHE_TTL) });
+    while (cache.size > MAX_LYRICS_CACHE_ENTRIES) {
+      const oldestKey = cache.keys().next().value;
+      if (!oldestKey) break;
+      cache.delete(oldestKey);
+    }
     return value;
   }).finally(() => inFlight.delete(key));
   inFlight.set(key, request);
