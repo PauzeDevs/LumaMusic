@@ -1,4 +1,4 @@
-import { requireNativeView } from "expo-modules-core";
+import { requireNativeViewManager } from "expo-modules-core";
 import type { StyleProp, ViewStyle } from "react-native";
 
 export type LiquidGlassViewProps = {
