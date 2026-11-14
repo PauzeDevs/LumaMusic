@@ -102,20 +102,18 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const graph = graphRef.current;
     const context = audioContextRef.current;
     if (!graph || !context) return;
-    try {
-      // A failed DSP operation must never leave the media source disconnected
-      // from output. Fall back to a direct route so playback keeps running.
-      graph.source.disconnect();
-      graph.source.connect(context.destination);
-      graph.panner.disconnect();
-      graph.convolver.disconnect();
-      graph.dry.disconnect();
-      graph.wet.disconnect();
-      graph.filters.forEach((filter) => filter.disconnect());
-      graphRef.current = null;
-    } catch {
-      // Preserve the original playback error; the player status handler reports it.
-    }
+    // Disconnect nodes independently so one native failure cannot prevent the
+    // direct source-to-output fallback from being attempted.
+    try { graph.source.disconnect(); } catch { /* Continue to the direct route. */ }
+    try { graph.source.connect(context.destination); } catch { /* Native engine may already be unavailable. */ }
+    try { graph.panner.disconnect(); } catch { /* Best-effort cleanup. */ }
+    try { graph.convolver.disconnect(); } catch { /* Best-effort cleanup. */ }
+    try { graph.dry.disconnect(); } catch { /* Best-effort cleanup. */ }
+    try { graph.wet.disconnect(); } catch { /* Best-effort cleanup. */ }
+    graph.filters.forEach((filter) => {
+      try { filter.disconnect(); } catch { /* Best-effort cleanup. */ }
+    });
+    graphRef.current = null;
   }, []);
 
   const applyEffects = useCallback((balance: number, preset: ReverbPreset) => {
@@ -223,9 +221,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         return element.play();
       }).catch((error: unknown) => {
         bypassEffectsGraph();
-        return element.play().catch(() => {
-          setPlaybackError(error instanceof Error ? error.message : "Could not start this audio stream.");
-        });
+        // AudioTagHandle.play() is synchronous and returns void in this API.
+        // Retry on the direct route, catching only a synchronous native failure.
+        try {
+          element.play();
+        } catch (playError) {
+          setPlaybackError(playError instanceof Error ? playError.message :
+            error instanceof Error ? error.message : "Could not start this audio stream.");
+        }
       });
     } catch (error) {
       setPlaybackError(error instanceof Error ? error.message : "Could not connect the audio effects engine.");
