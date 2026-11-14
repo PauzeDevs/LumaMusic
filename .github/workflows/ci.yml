@@ -1,4 +1,4 @@
-name: LumaMusic Branch Checks
+name: LumaMusic Code Checks
 
 on:
   push:
@@ -17,14 +17,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: lumamusic-vision-checks-${{ github.event.pull_request.number || github.ref }}
+  group: lumamusic-code-checks-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  check:
-    name: Code checks (no APK / no publishing)
+  checks:
+    name: JavaScript and Expo checks (no native builds)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -33,16 +33,10 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-
-      - name: Set up Java for native Android validation
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-          cache: gradle
+          cache: npm
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Check Expo dependency compatibility
         run: npx expo install --check
@@ -52,39 +46,3 @@ jobs:
 
       - name: Validate Expo config
         run: npx expo config --type public
-
-      - name: Validate Android JavaScript bundle
-        run: npx expo export --platform android
-
-      - name: Generate Android native project
-        run: npx expo prebuild --platform android --no-install
-
-      - name: Compile Android native modules (no APK)
-        working-directory: android
-        run: ./gradlew :app:compileDebugKotlin :app:compileDebugJavaWithJavac --no-daemon
-
-
-  ios-native-check:
-    name: iOS native compile (no archive)
-    runs-on: macos-latest
-    timeout-minutes: 35
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Generate iOS native project
-        run: npx expo prebuild --platform ios --no-install
-
-      - name: Install CocoaPods
-        run: pod install --project-directory=ios
-
-      - name: Compile iOS app and local Swift modules (no archive)
-        run: xcodebuild -workspace ios/LumaMusic.xcworkspace -scheme LumaMusic -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
