@@ -8,7 +8,7 @@ import { GlassSurface } from "../components/GlassSurface";
 import { useLibraryStore } from "../store/library";
 import { useListeningStatsStore } from "../store/listeningStats";
 import { usePreferencesStore } from "../store/preferences";
-import { colors } from "../theme/colors";
+import { useTheme } from "../theme/useTheme";
 import {
   configureGoogleDriveSignIn,
   disconnectGoogleAccount,
@@ -21,6 +21,7 @@ import {
 type AccountUser = { name: string; email: string; photo: string | null };
 
 export default function AccountScreen() {
+  const { colors } = useTheme();
   const [user, setUser] = useState<AccountUser | null>(null);
   const [busy, setBusy] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -114,53 +115,53 @@ export default function AccountScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={22} color={colors.text} /></Pressable>
-        <View><Text style={styles.eyebrow}>YOUR LUMAMUSIC ID</Text><Text style={styles.title}>Account</Text></View>
+    <SafeAreaView style={makeStyles(colors).safe} edges={["top", "bottom"]}>
+      <View style={makeStyles(colors).header}>
+        <Pressable onPress={() => router.back()} style={makeStyles(colors).back}><Ionicons name="chevron-back" size={22} color={colors.text} /></Pressable>
+        <View><Text style={makeStyles(colors).eyebrow}>YOUR LUMAMUSIC ID</Text><Text style={makeStyles(colors).title}>Account</Text></View>
       </View>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroIcon}><Ionicons name="cloud-done-outline" size={31} color={colors.accent} /></View>
-        <Text style={styles.heroTitle}>{user ? "Your library travels with you." : "Your music. Your Google Drive."}</Text>
-        <Text style={styles.heroCopy}>Connect Google to back up playlists, liked songs, listening history and preferences. Local audio files stay on this device and must be re-imported on another device. Backups live in Google's hidden appDataFolder.</Text>
-        <GlassSurface style={styles.accountCard} contentStyle={styles.accountCardContent}>
-          <View style={styles.googleIcon}><Ionicons name="logo-google" size={21} color={colors.text} /></View>
+      <ScrollView contentContainerStyle={makeStyles(colors).content} showsVerticalScrollIndicator={false}>
+        <View style={makeStyles(colors).heroIcon}><Ionicons name="cloud-done-outline" size={31} color={colors.accent} /></View>
+        <Text style={makeStyles(colors).heroTitle}>{user ? "Your library travels with you." : "Your music. Your Google Drive."}</Text>
+        <Text style={makeStyles(colors).heroCopy}>Connect Google to back up playlists, liked songs, listening history and preferences. Local audio files stay on this device and must be re-imported on another device. Backups live in Google's hidden appDataFolder.</Text>
+        <GlassSurface style={makeStyles(colors).accountCard} contentStyle={makeStyles(colors).accountCardContent}>
+          <View style={makeStyles(colors).googleIcon}><Ionicons name="logo-google" size={21} color={colors.text} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{user?.name ?? "Google account"}</Text>
-            <Text style={styles.cardSub}>{user?.email ?? "Not connected"}</Text>
+            <Text style={makeStyles(colors).cardTitle}>{user?.name ?? "Google account"}</Text>
+            <Text style={makeStyles(colors).cardSub}>{user?.email ?? "Not connected"}</Text>
           </View>
-          <View style={[styles.status, user && styles.statusOn]}><Text style={styles.statusText}>{user ? "CONNECTED" : "OFFLINE"}</Text></View>
+          <View style={[makeStyles(colors).status, user && makeStyles(colors).statusOn]}><Text style={makeStyles(colors).statusText}>{user ? "CONNECTED" : "OFFLINE"}</Text></View>
         </GlassSurface>
         {user ? (
           <>
-            <Pressable disabled={busy} onPress={syncNow} style={styles.primaryButton}>
+            <Pressable disabled={busy} onPress={syncNow} style={makeStyles(colors).primaryButton}>
               {busy ? <ActivityIndicator color="#FFFFFF" /> : <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />}
-              <Text style={styles.primaryText}>{busy ? "Working..." : "Sync library now"}</Text>
+              <Text style={makeStyles(colors).primaryText}>{busy ? "Working..." : "Sync library now"}</Text>
             </Pressable>
-            <Pressable disabled={busy} onPress={disconnect} style={styles.secondaryButton}><Text style={styles.secondaryText}>Disconnect Google</Text></Pressable>
-            <Text style={styles.syncInfo}>{lastSync ? "Last synced: " + lastSync : "Connected. Your backup is ready."}</Text>
+            <Pressable disabled={busy} onPress={disconnect} style={makeStyles(colors).secondaryButton}><Text style={makeStyles(colors).secondaryText}>Disconnect Google</Text></Pressable>
+            <Text style={makeStyles(colors).syncInfo}>{lastSync ? "Last synced: " + lastSync : "Connected. Your backup is ready."}</Text>
           </>
         ) : (
-          <Pressable disabled={busy} onPress={connectGoogle} style={styles.primaryButton}>
+          <Pressable disabled={busy} onPress={connectGoogle} style={makeStyles(colors).primaryButton}>
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <Ionicons name="logo-google" size={18} color="#FFFFFF" />}
-            <Text style={styles.primaryText}>{busy ? "Connecting..." : "Continue with Google"}</Text>
+            <Text style={makeStyles(colors).primaryText}>{busy ? "Connecting..." : "Continue with Google"}</Text>
           </Pressable>
         )}
-        <GlassSurface style={styles.infoCard} contentStyle={styles.infoContent}>
-          <View style={styles.infoRow}><Ionicons name="eye-off-outline" size={18} color={colors.accent} /><Text style={styles.infoTitle}>Invisible in Drive</Text></View>
-          <Text style={styles.infoCopy}>The appDataFolder is private to LumaMusic and doesn't appear in the normal Google Drive interface.</Text>
-          <View style={styles.infoRow}><Ionicons name="lock-closed-outline" size={18} color={colors.accent} /><Text style={styles.infoTitle}>Limited permission</Text></View>
-          <Text style={styles.infoCopy}>LumaMusic requests only the drive.appdata scope. It cannot browse your documents, photos or other Drive files.</Text>
-          <View style={styles.infoRow}><Ionicons name="phone-portrait-outline" size={18} color={colors.accent} /><Text style={styles.infoTitle}>Offline still works</Text></View>
-          <Text style={styles.infoCopy}>Your existing on-device library stays available. Sync is currently started manually from this screen.</Text>
+        <GlassSurface style={makeStyles(colors).infoCard} contentStyle={makeStyles(colors).infoContent}>
+          <View style={makeStyles(colors).infoRow}><Ionicons name="eye-off-outline" size={18} color={colors.accent} /><Text style={makeStyles(colors).infoTitle}>Invisible in Drive</Text></View>
+          <Text style={makeStyles(colors).infoCopy}>The appDataFolder is private to LumaMusic and doesn't appear in the normal Google Drive interface.</Text>
+          <View style={makeStyles(colors).infoRow}><Ionicons name="lock-closed-outline" size={18} color={colors.accent} /><Text style={makeStyles(colors).infoTitle}>Limited permission</Text></View>
+          <Text style={makeStyles(colors).infoCopy}>LumaMusic requests only the drive.appdata scope. It cannot browse your documents, photos or other Drive files.</Text>
+          <View style={makeStyles(colors).infoRow}><Ionicons name="phone-portrait-outline" size={18} color={colors.accent} /><Text style={makeStyles(colors).infoTitle}>Offline still works</Text></View>
+          <Text style={makeStyles(colors).infoCopy}>Your existing on-device library stays available. Sync is currently started manually from this screen.</Text>
         </GlassSurface>
-        <Text style={styles.footnote}>LumaMusic backs up streaming-library metadata, listening statistics and preferences. Local audio files are not uploaded; imported files remain on this device.</Text>
+        <Text style={makeStyles(colors).footnote}>LumaMusic backs up streaming-library metadata, listening statistics and preferences. Local audio files are not uploaded; imported files remain on this device.</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ReturnType<typeof useTheme>["colors"]) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: { height: 66, flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20 },
   back: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceElevated, alignItems: "center", justifyContent: "center" },

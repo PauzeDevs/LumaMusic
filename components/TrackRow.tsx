@@ -94,13 +94,13 @@ export function TrackRow({ track, index, showIndex = false, queue, playlistId }:
 }
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8 },
-  compactRow: { paddingVertical: 3 },
+  row: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 9, paddingHorizontal: 8, marginBottom: 3, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.025)" },
+  compactRow: { paddingVertical: 5 },
   main: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12, minWidth: 0 },
   index: { width: 22, color: colors.subtle, fontSize: 12, fontWeight: "700" },
   copy: { flex: 1, gap: 4, minWidth: 0 },
-  title: { color: colors.text, fontSize: 14, fontWeight: "600" },
-  artist: { color: colors.muted, fontSize: 12 },
+  title: { color: colors.text, fontSize: 13, fontWeight: "700", letterSpacing: -0.15 },
+  artist: { color: colors.muted, fontSize: 11 },
   active: { color: colors.accent },
   more: { padding: 7 },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.76)", justifyContent: "center", padding: 22 },

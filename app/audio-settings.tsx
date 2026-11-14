@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -101,7 +101,7 @@ export default function AudioSettingsScreen() {
     <View pointerEvents="none" style={stylesForScreen.dotLayer}>{dots.map((dot, index) => <View key={index} style={[stylesForScreen.dot, { left: dot.left, top: dot.top }]} />)}</View>
     <View style={stylesForScreen.header}>
       <Pressable onPress={() => router.back()} style={stylesForScreen.back}><Ionicons name="chevron-back" size={23} color="#FFFFFF" /></Pressable>
-      <View style={{ flex: 1 }}><Text style={stylesForScreen.eyebrow}>LUMAMUSIC · SOUND DESIGN</Text><Text style={stylesForScreen.title}>Audio Lab</Text></View>
+      <View style={stylesForScreen.brandLockup}><Image source={require("../assets/lumamusic-icon.png")} style={stylesForScreen.brandLogo} /><View style={{ flex: 1 }}><Text style={stylesForScreen.eyebrow}>LUMAMUSIC</Text><Text style={stylesForScreen.title}>Audio Lab</Text></View></View>
       <View style={stylesForScreen.headerMark}><Ionicons name="options-outline" size={21} color="#FFFFFF" /></View>
     </View>
     <ScrollView contentContainerStyle={stylesForScreen.content} showsVerticalScrollIndicator={false}>
@@ -181,7 +181,9 @@ function makeStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#09090B" },
   dotLayer: { ...StyleSheet.absoluteFill, overflow: "hidden" },
   dot: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.075)" },
-  header: { flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 13, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
+  brandLockup: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  brandLogo: { width: 38, height: 38, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
   back: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#202024", alignItems: "center", justifyContent: "center" },
   eyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.6 },
   title: { color: "#FFFFFF", fontSize: 27, fontWeight: "900", letterSpacing: -0.8, marginTop: 2 },
@@ -192,7 +194,7 @@ function makeStyles(colors: ThemePalette) { return StyleSheet.create({
   qualityMetaRow: { flexDirection: "row", gap: 8, marginTop: 16 },
   qualityMeta: { flex: 1, minWidth: 0, backgroundColor: "#222226", borderRadius: 12, padding: 10 },
   qualityMetaValue: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", marginTop: 5 },
-  featureCard: { backgroundColor: "#171719", borderRadius: 25, borderWidth: 1, borderColor: "#303035", padding: 18, marginBottom: 15, overflow: "hidden" },
+  featureCard: { backgroundColor: "rgba(28,28,32,0.78)", borderRadius: 25, borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", padding: 18, marginBottom: 15, overflow: "hidden", shadowColor: "#000000", shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 11 },
   cardIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: "#252529", alignItems: "center", justifyContent: "center" },
   cardEyebrow: { color: "#92929A", fontSize: 8, fontWeight: "800", letterSpacing: 1.2 },

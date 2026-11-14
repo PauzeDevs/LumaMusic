@@ -95,7 +95,7 @@ async function browseTracksWithContinuation(initialPayload: Obj, limit: number):
   const collected: MusicTrack[] = [];
   const seenTokens = new Set<string>();
   let payload = initialPayload;
-  for (let page = 0; page < 5; page += 1) {
+  for (let page = 0; page < 12; page += 1) {
     const rows = collectRenderers(payload, "musicResponsiveListItemRenderer");
     collected.push(...rows.map(mapTrack).filter((item): item is MusicTrack => Boolean(item)));
     const token = continuationTokens(payload).find((candidate) => !seenTokens.has(candidate));
@@ -376,7 +376,7 @@ export async function getYouTubeMusicArtistReleases(artistId: string, limit = 30
 
   // Artist pages can split discography shelves across continuation responses.
   // Follow those pages so older albums, EPs and singles are not silently omitted.
-  for (let page = 0; page < 6; page += 1) {
+  for (let page = 0; page < 12; page += 1) {
     const cards = [
       ...collectRenderers(payload, "musicTwoRowItemRenderer"),
       ...collectRenderers(payload, "musicResponsiveListItemRenderer")
