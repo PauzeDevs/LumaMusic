@@ -60,7 +60,7 @@ export default function ProfileScreen() {
           onPress: () => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })
         }))} />
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Preferences</Text><Text style={styles.sectionMeta}>PERSONALISE</Text></View>
-        <GlassSurface style={styles.settings} contentStyle={styles.settingsContent}>
+        <View style={styles.settings}>
           {settings.map((item, index) => (
             <Pressable key={item.title} onPress={() => {
               if (item.title === "Listening Stats") {
@@ -92,7 +92,7 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={16} color={colors.subtle} />
             </Pressable>
           ))}
-        </GlassSurface>
+        </View>
         <View style={styles.footerCard}>
           <Ionicons name="musical-notes" size={16} color={colors.accent} />
           <Text style={styles.footer}>Made for the love of listening.{"\n"}LumaMusic by PauzeDevs</Text>
@@ -128,13 +128,12 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: "rgba(255,255,255,0.06)" },
   statusPillActive: { backgroundColor: "rgba(255,255,255,0.1)" },
   statusText: { color: colors.mint, fontSize: 8, fontWeight: "800", letterSpacing: 1 },
-  settings: { borderRadius: 21 },
-  settingsContent: { paddingHorizontal: 14 },
-  setting: { minHeight: 69, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)" },
+  settings: { borderRadius: 22, paddingHorizontal: 14, paddingVertical: 2, backgroundColor: "#101012", borderWidth: 1, borderColor: "rgba(255,255,255,0.075)", shadowColor: "#000000", shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  setting: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.065)" },
   last: { borderBottomWidth: 0 },
-  settingIcon: { width: 37, height: 37, borderRadius: 13, backgroundColor: "rgba(198,167,255,0.09)", borderWidth: 1, borderColor: "rgba(198,167,255,0.1)", alignItems: "center", justifyContent: "center" },
+  settingIcon: { width: 43, height: 43, borderRadius: 15, backgroundColor: "#1B1B20", borderWidth: 1, borderColor: "rgba(240,68,85,0.13)", alignItems: "center", justifyContent: "center" },
   settingTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
   settingSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
-  footerCard: { marginTop: 25, alignItems: "center", gap: 9, padding: 18, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.025)" },
+  footerCard: { marginTop: 25, alignItems: "center", gap: 9, padding: 20, borderRadius: 20, backgroundColor: "#0D0D0F", borderWidth: 1, borderColor: "rgba(255,255,255,0.035)" },
   footer: { color: colors.subtle, fontSize: 10, textAlign: "center", lineHeight: 17 }
 }); }
