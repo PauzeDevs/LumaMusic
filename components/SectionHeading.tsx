@@ -7,8 +7,8 @@ type Props = { title: string; action?: string; onPress?: () => void };
 export function SectionHeading({ title, action = "See all", onPress }: Props) {
   const { colors } = useTheme();
   const styles = StyleSheet.create({
-    row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-    title: { color: colors.text, fontSize: 20, fontWeight: "700", letterSpacing: -0.5 },
+    row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 13 },
+    title: { color: colors.text, fontSize: 19, fontWeight: "800", letterSpacing: -0.55 },
     action: { flexDirection: "row", alignItems: "center", gap: 3 },
     actionText: { color: colors.muted, fontSize: 12, fontWeight: "600" }
   });

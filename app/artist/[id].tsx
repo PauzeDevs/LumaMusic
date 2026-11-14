@@ -18,12 +18,12 @@ export default function ArtistScreen() {
   const artistArtwork = Array.isArray(artwork) ? artwork[0] : artwork;
   const tracksQuery = useQuery({
     queryKey: ["youtubeMusic", "artist", artistId],
-    queryFn: () => getYouTubeMusicArtistTracks(artistId ?? "", 40),
+    queryFn: () => getYouTubeMusicArtistTracks(artistId ?? "", 120),
     enabled: Boolean(artistId?.startsWith("UC")),
     staleTime: 60_000
   });
   const tracks = tracksQuery.data ?? [];
-  const releasesQuery = useQuery({ queryKey: ["youtubeMusic", "artistReleases", artistId], queryFn: () => getYouTubeMusicArtistReleases(artistId ?? "", 40), enabled: Boolean(artistId?.startsWith("UC")), staleTime: 5 * 60_000 });
+  const releasesQuery = useQuery({ queryKey: ["youtubeMusic", "artistReleases", artistId], queryFn: () => getYouTubeMusicArtistReleases(artistId ?? "", 120), enabled: Boolean(artistId?.startsWith("UC")), staleTime: 5 * 60_000 });
   const releases = releasesQuery.data ?? [];
   const albums = releases.filter((release) => release.kind === "album");
   const eps = releases.filter((release) => release.kind === "ep");
@@ -51,7 +51,7 @@ export default function ArtistScreen() {
         {singles.length > 0 ? <ReleaseShelf title="Singles" releases={singles} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular tracks</Text>
+          <Text style={styles.sectionTitle}>All tracks</Text>
           {!tracksQuery.isLoading && tracks.length > 0 ? <Text style={styles.count}>{tracks.length} tracks</Text> : null}
         </View>
 
@@ -85,14 +85,14 @@ export default function ArtistScreen() {
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
-  content: { paddingHorizontal: 20, paddingBottom: 36 },
+  content: { paddingHorizontal: 18, paddingBottom: 42 },
   back: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 12 },
   backText: { color: colors.muted, fontSize: 12 },
-  hero: { alignItems: "center", paddingTop: 22, paddingBottom: 28, gap: 10 },
+  hero: { alignItems: "center", paddingTop: 22, paddingBottom: 28, gap: 10, marginBottom: 8, borderRadius: 28, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: colors.border },
   eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginTop: 8 },
   title: { color: colors.text, fontSize: 27, fontWeight: "800", letterSpacing: -0.7, textAlign: "center" },
   copy: { color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", maxWidth: 270 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 11, marginBottom: 7 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 12, marginTop: 10, marginBottom: 9 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "800" },
   count: { color: colors.subtle, fontSize: 10, fontWeight: "700" },
   releaseLoading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 22 },
@@ -106,14 +106,14 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
 
 
 function ReleaseShelf({ title, releases, colors, onOpen }: { title: string; releases: MusicRelease[]; colors: ThemePalette; onOpen: (release: MusicRelease) => void }) {
-  return <View style={{ marginBottom: 24 }}>
+  return <View style={{ marginBottom: 25, paddingTop: 2 }}>
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
       <Text style={{ color: colors.text, fontSize: 17, fontWeight: "800" }}>{title}</Text>
       <Text style={{ color: colors.subtle, fontSize: 10, fontWeight: "700" }}>{releases.length} releases</Text>
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 13, paddingRight: 20 }}>
-      {releases.map((release) => <Pressable key={release.id} onPress={() => onOpen(release)} style={{ width: 142 }}>
-        <Artwork uri={release.artwork} size={142} radius={15} />
+      {releases.map((release) => <Pressable key={release.id} onPress={() => onOpen(release)} style={{ width: 152, padding: 8, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: colors.border }}>
+        <Artwork uri={release.artwork} size={134} radius={15} />
         <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "700", marginTop: 9 }}>{release.title}</Text>
         <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10, marginTop: 3 }}>{release.subtitle}</Text>
       </Pressable>)}
