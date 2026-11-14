@@ -6,6 +6,7 @@ on:
       - Fix/Vision2.0LunaMusic
       - fix/LunaMusic
       - feature/customizableui
+      - fix/android-random-crash-stability
       - main
   pull_request:
     branches:
