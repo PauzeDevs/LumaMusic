@@ -13,6 +13,8 @@ import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePreferencesStore } from "../store/preferences";
 import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
 import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
+import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
+import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 
 function formatTime(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -61,20 +63,7 @@ export default function NowPlayingScreen() {
       if (finished) setPreviousArtwork(null);
     });
   }, [track?.id, track?.artwork, artworkCrossfade]);
-  const [progressWidth, setProgressWidth] = useState(0);
-  const [progressLeft, setProgressLeft] = useState(0);
-  const progressRef = useRef<View>(null);
-  const seekFromScreenX = (screenX: number) => {
-    if (progressWidth <= 0 || duration <= 0) return;
-    const fraction = Math.max(0, Math.min(1, (screenX - progressLeft) / progressWidth));
-    void seekTo(duration * fraction);
-  };
-  const progressPanResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (_event, gesture) => seekFromScreenX(gesture.x0),
-    onPanResponderMove: (_event, gesture) => seekFromScreenX(gesture.moveX)
-  }), [progressWidth, progressLeft, duration, seekTo]);
+  const { progressRef, progressPanResponder, onProgressLayout } = useNowPlayingSeeking(duration, seekTo);
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
