@@ -15,7 +15,8 @@ const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false
 
 // Cache resolved stream URLs in memory so replaying or seeking doesn't re-fetch before expiration
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
-const MAX_STREAM_CACHE_ENTRIES = 40;
+// Stream URLs are large signed strings. Keep only a short LRU window for the current listening session.
+const MAX_STREAM_CACHE_ENTRIES = 8;
 
 function getCachedStream(videoId: string) {
   const cached = streamCache.get(videoId);
