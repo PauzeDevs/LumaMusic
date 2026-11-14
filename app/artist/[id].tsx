@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { TrackRow } from "../../components/TrackRow";
@@ -31,7 +31,7 @@ export default function ArtistScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <FlatList data={tracks} keyExtractor={(track) => track.id} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} initialNumToRender={10} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews ListHeaderComponent={<>
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
           <Text style={styles.backText}>Back</Text>
@@ -77,8 +77,7 @@ export default function ArtistScreen() {
             <Text style={styles.stateCopy}>This artist's catalogue isn't available right now.</Text>
           </View>
         ) : null}
-        {tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />)}
-      </ScrollView>
+</>} renderItem={({ item: track, index }) => <TrackRow track={track} index={index} showIndex queue={tracks} />} />
     </SafeAreaView>
   );
 }
