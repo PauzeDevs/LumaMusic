@@ -182,7 +182,7 @@ export default function NowPlayingScreen() {
         <View style={styles.controls}>
           <Pressable onPress={toggleShuffle}><Ionicons name="shuffle" size={22} color={isShuffled ? colors.accent : colors.muted} /></Pressable>
           <Pressable onPress={() => { void playPrevious(); }}><Ionicons name="play-skip-back" size={27} color={colors.text} /></Pressable>
-          <Pressable style={styles.play} onPress={togglePlayback} accessibilityRole="button" accessibilityLabel={isPlaying ? "Pause playback" : "Start playback"}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></Pressable>
+          <Pressable style={styles.play} onPress={togglePlayback} accessibilityRole="button" accessibilityLabel={isPlaying ? "Pause playback" : "Start playback"}><View style={styles.playFace}><Ionicons name={isPlaying ? "pause" : "play"} size={29} color="#17111F" /></View></Pressable>
           <Pressable onPress={() => { void playNext(); }}><Ionicons name="play-skip-forward" size={27} color={colors.text} /></Pressable>
           <Pressable onPress={cycleRepeat}><Ionicons name="repeat" size={22} color={repeatMode === "off" ? colors.muted : colors.accent} /></Pressable>
         </View>
@@ -253,7 +253,8 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24 },
-  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: isDark ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.68)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.42)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", shadowColor: isDark ? "#000000" : "#77727B", shadowOpacity: isDark ? 0.3 : 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 11 },
+  playFace: { width: 58, height: 58, borderRadius: 29, backgroundColor: isDark ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.94)", borderWidth: 1, borderTopColor: "rgba(255,255,255,1)", borderBottomColor: "rgba(190,190,196,0.58)", alignItems: "center", justifyContent: "center", shadowColor: "#FFFFFF", shadowOpacity: isDark ? 0.12 : 0.9, shadowRadius: 5, shadowOffset: { width: 0, height: -2 }, elevation: 2 },
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 18 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
