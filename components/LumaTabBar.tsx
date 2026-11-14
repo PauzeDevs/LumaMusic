@@ -1,6 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
+import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { router } from "expo-router";
 import { useTheme } from "../theme/useTheme";
 import { Artwork } from "./Artwork";
@@ -24,9 +25,10 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   const { togglePlayback } = useAudioEngine();
   const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
   return <View style={[styles.shell, { backgroundColor: isDark ? "rgba(18,18,22,0.34)" : "rgba(255,255,255,0.34)", borderColor: colors.border }]}>
-    <BlurView tint={blurTint} intensity={96} style={StyleSheet.absoluteFill} />
+    <LiquidGlassView cornerRadius={30} style={StyleSheet.absoluteFill} />
     <View pointerEvents="none" style={[styles.shellSheen, { backgroundColor: isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.95)" }]} />
-    {track ? <View style={[styles.mini, { backgroundColor: isDark ? "rgba(255,255,255,0.11)" : "rgba(255,255,255,0.48)", borderColor: colors.border }]}>
+    {track ? <View style={[styles.mini, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.12)", borderColor: colors.border }]}>
+      <LiquidGlassView cornerRadius={18} style={StyleSheet.absoluteFill} />
       <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}><Artwork uri={track.artwork} size={42} radius={10} /><View style={styles.miniCopy}><Text numberOfLines={1} style={[styles.miniTitle, { color: colors.text }]}>{track.title}</Text><Text numberOfLines={1} style={[styles.miniArtist, { color: colors.muted }]}>{track.artist}</Text></View></Pressable>
       <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}><Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} /></Pressable>
       <View style={[styles.progressTrack, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.accent }]} /></View>
