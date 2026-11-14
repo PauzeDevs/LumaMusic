@@ -33,7 +33,12 @@ function parseDelimited(input: string, delimiter: string): string[][] {
       cell = "";
     } else {
       cell += char;
+      if (cell.length > 4096) {
+        throw new Error("A playlist field is too long. Please check the CSV and try again.");
+      }
     }
+    // Stop parsing once enough rows have been collected to find 100 tracks.
+    if (!quoted && (char === "\\n" || char === "\\r") && rows.length >= 500) break;
   }
 
   // An unmatched quote makes the remaining rows ambiguous; reject the
