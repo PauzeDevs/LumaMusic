@@ -84,7 +84,7 @@ export default function ArtistScreen() {
 }
 
 function createStyles(colors: ThemePalette) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { paddingHorizontal: 20, paddingBottom: 36 },
   back: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 12 },
   backText: { color: colors.muted, fontSize: 12 },

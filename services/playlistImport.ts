@@ -36,6 +36,9 @@ function parseDelimited(input: string, delimiter: string): string[][] {
     }
   }
 
+  // An unmatched quote makes the remaining rows ambiguous; reject the
+  // delimited parse rather than silently importing a corrupted final field.
+  if (quoted) return [];
   row.push(cell.trim());
   if (row.some((value) => value.length > 0)) rows.push(row);
   return rows;
@@ -60,6 +63,7 @@ export function parsePlaylistExport(raw: string): ImportedPlaylistEntry[] {
   const firstLine = input.split(/\r?\n/, 1)[0] ?? "";
   const delimiter = firstLine.includes("\t") ? "\t" : ",";
   const rows = parseDelimited(input, delimiter);
+  if (rows.length === 0) return [];
   const headers = (rows[0] ?? []).map(normalizeHeader);
   const titleAliases = ["track name", "track title", "title", "track", "song", "name"];
   const artistAliases = ["artist name s", "artist names", "artist name", "artists", "artist", "performer", "album artist"];

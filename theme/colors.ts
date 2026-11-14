@@ -5,10 +5,10 @@ export type ThemePalette = {
 };
 
 export const darkColors: ThemePalette = {
-  background: "#000000", surface: "#1C1C1E", surfaceElevated: "#2C2C2E",
-  surfaceSoft: "#3A3A3C", border: "rgba(255,255,255,0.12)", text: "#F5F5F7",
-  muted: "#A1A1A6", subtle: "#77777D", accent: "#FA2D48", accentStrong: "#D91532",
-  mint: "#FF8FA3", pink: "#F5A1B8", orange: "#FFB36B", danger: "#FF453A"
+  background: "#09090A", surface: "#171719", surfaceElevated: "#202023",
+  surfaceSoft: "#29292D", border: "rgba(255,255,255,0.10)", text: "#F7F7F8",
+  muted: "#A2A2A8", subtle: "#77777F", accent: "#F04455", accentStrong: "#D92D43",
+  mint: "#B7B7BE", pink: "#D8A2AA", orange: "#D6B58A", danger: "#FF453A"
 };
 
 export const lightColors: ThemePalette = {

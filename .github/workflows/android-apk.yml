@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: lumamusic-android-apk-${{ github.ref }}
@@ -15,6 +15,8 @@ concurrency:
 
 jobs:
   build:
+    # APKs are generated only from main, including manual workflow dispatches.
+    if: github.ref == 'refs/heads/main'
     name: Build release APK (${{ matrix.label }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -75,99 +77,3 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  release:
-    name: Publish GitHub release
-    # Feature-branch dispatches are build-only; never overwrite the shared nightly release.
-    if: github.ref == 'refs/heads/main'
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download both APKs
-        uses: actions/download-artifact@v4
-        with:
-          pattern: lumamusic-*
-          path: dist
-          merge-multiple: true
-
-      - name: Remove obsolete single-architecture asset
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release delete-asset nightly LumaMusic-main-android.apk --repo "${{ github.repository }}" --yes || true
-
-      - name: Publish APKs with release notes
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: nightly
-          name: Luma Music Nightly
-          prerelease: true
-          make_latest: false
-          overwrite_files: true
-          files: |
-            dist/LumaMusic-arm64-v8a.apk
-            dist/LumaMusic-armeabi-v7a.apk
-          body: |
-            # LumaMusic | Build Notes
-
-            **Version:** 0.1.0
-            **Build:** Android Release (32-bit ARM + 64-bit ARM)
-            **Project:** PauzeDevs / LumaMusic
-            **Build configuration:** Optimized Release APKs
-
-            ---
-
-            ## ✨ Overview
-
-            This build focuses on improving Android packaging, reducing APK size, and preparing LumaMusic for a cleaner installation experience.
-
-            The Android build pipeline generates separate optimized release APKs for 32-bit and 64-bit ARM devices instead of bundling multiple CPU architectures into one oversized APK.
-
-            ## 🔧 Fixes & Improvements
-
-            ### Android Build System
-            - Replaced the debug APK build task with Gradle's `assembleRelease`.
-            - Updated GitHub Actions to generate release builds automatically.
-            - Added separate ARM64 and ARMv7 architecture targets.
-            - Retained automated Expo configuration validation.
-            - Kept Android SDK license acceptance and Java 17 setup in CI.
-
-            ### APK Size Optimization
-            - Split the APKs by CPU architecture.
-            - Avoided bundling x86 and unrelated architecture binaries.
-            - Switched to release packaging instead of debug packaging.
-            - Reduced unnecessary native binary overhead by producing architecture-specific packages.
-
-            ### CI/CD Improvements
-            - Updated `.github/workflows/android-apk.yml`.
-            - Added automatic builds whenever changes are pushed to `main`.
-            - Added manual workflow dispatch support.
-            - Configured the workflow to publish both APKs to this GitHub release.
-
-            ## 📱 Compatibility
-
-            | APK | Android architecture |
-            | --- | --- |
-            | `LumaMusic-arm64-v8a.apk` | 64-bit ARM |
-            | `LumaMusic-armeabi-v7a.apk` | 32-bit ARM |
-
-            **Package:** `dev.pauze.lumamusic`
-
-            ## ⚠️ Important Notes
-
-            - These are optimized release builds, not verified Google Play production releases.
-            - Install the APK that matches your device architecture.
-            - Device installation and playback testing must be completed before treating this build as production-ready.
-            - A production signing configuration may still be required before public distribution.
-
-            ## 🚀 Build Pipeline
-
-            **Workflow:** Build and Release LumaMusic Android APKs
-
-            **Source branch:** `main`
-
-            ---
-
-            **LumaMusic**
-            *Your music. Your space.*
-
-            Developed by **PauzeX Developments**
-            https://lumamusic.devs.surf

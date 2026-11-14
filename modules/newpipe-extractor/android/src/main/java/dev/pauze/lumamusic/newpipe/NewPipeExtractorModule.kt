@@ -16,43 +16,44 @@ import java.net.URL
 
 private class LumaNewPipeDownloader : Downloader() {
   override fun execute(request: Request): Response {
-    val connection = (URL(request.url()).openConnection() as HttpURLConnection).apply {
-      requestMethod = request.httpMethod()
-      connectTimeout = 15000
-      readTimeout = 20000
-      instanceFollowRedirects = true
-      setRequestProperty("User-Agent", USER_AGENT)
+    val connection = (URL(request.url()).openConnection() as HttpURLConnection)
+    try {
+      connection.requestMethod = request.httpMethod()
+      connection.connectTimeout = 15000
+      connection.readTimeout = 20000
+      connection.instanceFollowRedirects = true
+      connection.setRequestProperty("User-Agent", USER_AGENT)
       request.headers().forEach { (name, values) ->
-        if (values.isNotEmpty()) setRequestProperty(name, values.joinToString(", "))
+        if (values.isNotEmpty()) connection.setRequestProperty(name, values.joinToString(", "))
       }
+
+      val body = request.dataToSend()
+      if (body != null) {
+        connection.doOutput = true
+        connection.outputStream.use { it.write(body) }
+      }
+
+      val code = connection.responseCode
+      val stream: InputStream? = if (code >= 400) connection.errorStream else connection.inputStream
+      val responseBody = stream?.use { input ->
+        BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use { it.readText() }
+      } ?: ""
+
+      val responseHeaders = connection.headerFields
+        .filterKeys { it != null }
+        .mapKeys { it.key!! }
+        .mapValues { it.value ?: emptyList() }
+
+      return Response(
+        code,
+        connection.responseMessage ?: "",
+        responseHeaders,
+        responseBody,
+        connection.url.toString()
+      )
+    } finally {
+      connection.disconnect()
     }
-
-    val body = request.dataToSend()
-    if (body != null) {
-      connection.doOutput = true
-      connection.outputStream.use { it.write(body) }
-    }
-
-    val code = connection.responseCode
-    val stream: InputStream? = if (code >= 400) connection.errorStream else connection.inputStream
-    val responseBody = stream?.use { input ->
-      BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use { it.readText() }
-    } ?: ""
-
-    val responseHeaders = connection.headerFields
-      .filterKeys { it != null }
-      .mapKeys { it.key!! }
-      .mapValues { it.value ?: emptyList() }
-
-    val response = Response(
-      code,
-      connection.responseMessage ?: "",
-      responseHeaders,
-      responseBody,
-      connection.url.toString()
-    )
-    connection.disconnect()
-    return response
   }
 
   companion object {

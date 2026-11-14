@@ -1,10 +1,11 @@
-import { Audio, AudioContext, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
+import { Audio, AudioContext, PlaybackNotificationManager, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
 import { useLibraryStore } from "../store/library";
+import { useListeningStatsStore } from "../store/listeningStats";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { MusicTrack } from "../types/music";
@@ -23,7 +24,7 @@ type AudioEngineValue = {
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
 type ExternalMusicTrack = MusicTrack & { source: "youtube_music" };
 type LocalMusicTrack = MusicTrack & { source: "local"; localUri: string };
-type AudioGraph = { source: MediaElementAudioSourceNode; panner: StereoPannerNode; convolver: ConvolverNode; dry: GainNode; wet: GainNode };
+type AudioGraph = { source: MediaElementAudioSourceNode; panner: StereoPannerNode; convolver: ConvolverNode; dry: GainNode; wet: GainNode; filters: ReturnType<AudioContext["createBiquadFilter"]>[] };
 
 function isExternalTrack(track: MusicTrack | null | undefined): track is ExternalMusicTrack {
   return Boolean(
@@ -56,16 +57,21 @@ function makeImpulseResponse(context: AudioContext, preset: Exclude<ReverbPreset
   }
   return impulse;
 }
-function AudioStatusBridge({ onStatus }: { onStatus: (position: number, duration: number, state: string) => void }) {
+function AudioStatusBridge({ onStatus, sourceInstance, trackId }: {
+  onStatus: (position: number, duration: number, state: string, sourceInstance: number, trackId: string) => void;
+  sourceInstance: number;
+  trackId: string;
+}) {
   const status = useAudioTagContext();
-  useEffect(() => onStatus(status.currentTime, status.duration, status.playbackState), [status.currentTime, status.duration, status.playbackState, onStatus]);
+  useEffect(() => onStatus(status.currentTime, status.duration, status.playbackState, sourceInstance, trackId),
+    [status.currentTime, status.duration, status.playbackState, sourceInstance, trackId, onStatus]);
   return null;
 }
 
 export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
-  const [localSource, setLocalSource] = useState<{ uri: string; instance: number } | null>(null);
+  const [localSource, setLocalSource] = useState<{ uri: string; instance: number; headers?: Record<string, string> } | null>(null);
   const localSourceSequence = useRef(0);
   const playbackRequestSequence = useRef(0);
   const handledFinishedState = useRef(false);
@@ -89,6 +95,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const playbackRate = usePlayerStore((state) => state.playbackRate);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
+  const equalizerEnabled = usePreferencesStore((state) => state.equalizerEnabled);
+  const equalizerBands = usePreferencesStore((state) => state.equalizerBands);
 
   const applyEffects = useCallback((balance: number, preset: ReverbPreset) => {
     const graph = graphRef.current;
@@ -113,22 +121,26 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
-    if (isLocalTrack(currentTrack)) return;
+    if (isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
     setPlaybackStatus({
       isPlaying: status.playing, isBuffering: status.isBuffering,
       playbackPosition: status.currentTime, playbackDuration: status.duration,
       playbackError: status.error ?? null
     });
+    if (currentTrack) useListeningStatsStore.getState().recordProgress(currentTrack, status.currentTime, status.playing);
   }, [status.playing, status.isBuffering, status.currentTime, status.duration, status.error, setPlaybackStatus, currentTrack?.id]);
 
-  useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
+  const applyEqualizer = useCallback((enabled: boolean, bands: number[]) => {
+    const graph = graphRef.current;
+    const context = audioContextRef.current;
+    if (!graph || !context) return;
+    graph.filters.forEach((filter, index) => {
+      filter.gain.setValueAtTime(enabled ? (bands[index] ?? 0) : 0, context.currentTime);
+    });
+  }, []);
 
-  useEffect(() => {
-    if (status.playing && startupTimeoutRef.current) {
-      clearTimeout(startupTimeoutRef.current);
-      startupTimeoutRef.current = null;
-    }
-  }, [status.playing]);
+  useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
+  useEffect(() => applyEqualizer(equalizerEnabled, equalizerBands), [equalizerEnabled, equalizerBands, applyEqualizer]);
 
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
@@ -141,9 +153,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     void audioContextRef.current?.close();
   }, []);
 
-  const onLocalAudioLoad = useCallback(() => {
+  const onLocalAudioLoad = useCallback((sourceInstance: number, trackId: string) => {
     const context = audioContextRef.current;
     const element = audioRef.current;
+    const latestTrack = usePlayerStore.getState().currentTrack;
+    // A delayed load event from a replaced audio element must not start the new source.
+    if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
     if (!context || !element || graphRef.current) return;
     try {
       const source = context.createMediaElementSource(element);
@@ -151,28 +166,59 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const convolver = context.createConvolver();
       const dry = context.createGain();
       const wet = context.createGain();
-      source.connect(panner);
+      const frequencies = [60, 250, 1000, 4000, 12000];
+      const filters = frequencies.map((frequency, index) => {
+        const filter = context.createBiquadFilter();
+        filter.type = index === 0 ? "lowshelf" : index === frequencies.length - 1 ? "highshelf" : "peaking";
+        filter.frequency.setValueAtTime(frequency, context.currentTime);
+        filter.Q.setValueAtTime(1, context.currentTime);
+        filter.gain.setValueAtTime(0, context.currentTime);
+        return filter;
+      });
+      let previous: MediaElementAudioSourceNode | ReturnType<AudioContext["createBiquadFilter"]> = source;
+      filters.forEach((filter) => { previous.connect(filter); previous = filter; });
+      previous.connect(panner);
       panner.connect(dry);
       dry.connect(context.destination);
       panner.connect(convolver);
       convolver.connect(wet);
       wet.connect(context.destination);
-      graphRef.current = { source, panner, convolver, dry, wet };
+      graphRef.current = { source, panner, convolver, dry, wet, filters };
       applyEffects(usePreferencesStore.getState().spatialBalance, usePreferencesStore.getState().reverbPreset);
+      applyEqualizer(usePreferencesStore.getState().equalizerEnabled, usePreferencesStore.getState().equalizerBands);
       void context.resume().then(() => element.play()).catch((error: unknown) => setPlaybackError(error instanceof Error ? error.message : "Could not start this local audio file."));
     } catch (error) {
       setPlaybackError(error instanceof Error ? error.message : "Could not connect the audio effects engine.");
     }
-  }, [applyEffects, setPlaybackError]);
+  }, [applyEffects, applyEqualizer, setPlaybackError]);
 
-  const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string) => {
+  const onLocalAudioStatus = useCallback((position: number, duration: number, playbackState: string, sourceInstance: number, trackId: string) => {
+    const latestTrack = usePlayerStore.getState().currentTrack;
+    // Ignore late status events from an audio element that has already been replaced.
+    if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
+    const active = playbackState === "playing";
+    if (active && startupTimeoutRef.current) {
+      clearTimeout(startupTimeoutRef.current);
+      startupTimeoutRef.current = null;
+    }
+    const previousError = usePlayerStore.getState().playbackError;
     setPlaybackStatus({
-      isPlaying: playbackState === "playing" || playbackState === "buffering",
+      isPlaying: active,
       isBuffering: playbackState === "buffering",
-      playbackPosition: Math.max(0, position || 0),
-      playbackDuration: Math.max(0, duration || 0),
-      playbackError: null
+      playbackPosition: Math.max(0, Number.isFinite(position) ? position : 0),
+      playbackDuration: Math.max(0, Number.isFinite(duration) ? duration : 0),
+      // A paused/metadata status event must not erase a real playback failure.
+      playbackError: active ? null : previousError
     });
+    const track = usePlayerStore.getState().currentTrack;
+    if (track) useListeningStatsStore.getState().recordProgress(track, position, active);
+    if (track) {
+      void PlaybackNotificationManager.show({
+        state: active ? "playing" : "paused",
+        elapsedTime: Math.max(0, position || 0),
+        duration: Math.max(0, duration || 0)
+      }).catch(() => undefined);
+    }
   }, [setPlaybackStatus]);
 
   const disconnectGraph = useCallback(() => {
@@ -181,6 +227,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     graphRef.current?.convolver.disconnect();
     graphRef.current?.dry.disconnect();
     graphRef.current?.wet.disconnect();
+    graphRef.current?.filters.forEach((filter) => filter.disconnect());
     graphRef.current = null;
   }, []);
 
@@ -192,12 +239,13 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       startupTimeoutRef.current = null;
     }
     const queue = nextQueue?.length ? nextQueue : [track];
-    if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
+    if (isLocalTrack(usePlayerStore.getState().currentTrack) || isExternalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
     // Stop the previous stream immediately; don't let it play underneath a new selection.
     player.pause();
     disconnectGraph();
     usePlayerStore.getState().setTrack(track, queue, queueIndex);
     useLibraryStore.getState().addRecentTrack(track);
+    useListeningStatsStore.getState().beginTrack();
 
     if (isExternalTrack(track)) {
       setLocalSource(null);
@@ -206,34 +254,26 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         const stream = await resolveYouTubeMusicAudio(track);
         // A slower, older resolver must never replace the song the user selected most recently.
         if (requestId !== playbackRequestSequence.current) return;
-        await player.replace({
+        // Feed the resolved YouTube URL into the native Audio API element so its
+        // samples pass through the same AudioContext graph as imported local audio.
+        setLocalSource({
           uri: stream.url,
           headers: {
             "User-Agent": stream.userAgent,
             Origin: "https://www.youtube.com",
             Referer: "https://www.youtube.com/"
-          }
-        });
-        if (requestId !== playbackRequestSequence.current) return;
-        player.setPlaybackRate(usePlayerStore.getState().playbackRate, "high");
-        // Android requires an active media/lock-screen session for sustained background playback.
-        // Keep it active while paused so notification and lock-screen controls remain available.
-        player.setActiveForLockScreen(true, {
-          title: track.title,
-          artist: track.artist,
-          albumTitle: "LumaMusic",
-          ...(track.artwork ? { artworkUrl: track.artwork } : {})
+          },
+          instance: ++localSourceSequence.current
         }, {
           showSeekBackward: true,
           showSeekForward: true
         });
-        player.play();
         // Do not leave the UI spinning forever if the resolved stream never starts.
         startupTimeoutRef.current = setTimeout(() => {
           startupTimeoutRef.current = null;
           const latest = usePlayerStore.getState();
           if (requestId !== playbackRequestSequence.current || latest.currentTrack?.id !== track.id || !latest.isBuffering) return;
-          player.pause();
+          audioRef.current?.pause();
           latest.setPlaybackError("Audio stream did not start within 20 seconds. The stream may be unavailable or blocked. Tap Play to retry.");
         }, 20_000);
         // Warm the next playlist stream while this song is already playing.
@@ -243,7 +283,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (nextTrack) {
           void resolveYouTubeMusicAudio(nextTrack).catch(() => undefined);
         }
-        // Keep the loading state until Expo Audio reports actual playback/buffering status.
+        // Keep the loading state until the native Audio API reports playback/buffering status.
         usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
         return;
       } catch (error) {
@@ -291,25 +331,24 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
-      if (status.playing) {
-        player.pause();
-      } else if (status.error || !status.isLoaded) {
-        // A failed/expired YouTube stream cannot reliably resume in-place.
-        // Resolve a fresh URL and replace the failed source on an explicit Play tap.
+      if (state.isPlaying) {
+        audioRef.current?.pause();
+      } else if (state.playbackError || !audioRef.current) {
+        // Expired streams are resolved again instead of trying to resume a dead URL.
         void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
       } else {
-        player.play();
+        void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       }
       return;
     }
-    if (isLocalTrack(state.currentTrack)) {
+    if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
       if (state.isPlaying) audioRef.current?.pause();
       else void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       return;
     }
     if (status.playing) player.pause();
     else if (state.currentTrack) player.play();
-  }, [player, status.playing, status.error, status.isLoaded, playTrackSafely]);
+  }, [player, playTrackSafely]);
 
   const playNext = useCallback(async () => {
     const state = usePlayerStore.getState();
@@ -318,10 +357,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.repeatMode === "one") {
       // Restart the already-loaded source instead of resolving the stream again.
       // Re-resolving at the end of every song can fail or leave repeat-one silent.
-      if (isExternalTrack(state.currentTrack)) {
-        await player.seekTo(0);
-        player.play();
-      } else if (isLocalTrack(state.currentTrack)) {
+      if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
         audioRef.current?.seekToTime(0);
         void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       } else {
@@ -363,12 +399,20 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (isExternalTrack(state.currentTrack) && !fetchingAutoplayQueue.current) {
       fetchingAutoplayQueue.current = true;
       try {
-        const videoId = state.currentTrack.youtubeVideoId || state.currentTrack.sourceTrackId || state.currentTrack.id.replace(/^youtube:/i, "");
+        const requestedTrackId = state.currentTrack.id;
+        const requestedQueueIndex = state.currentQueueIndex;
+        const requestId = playbackRequestSequence.current;
+        const videoId = state.currentTrack.youtubeVideoId || state.currentTrack.sourceTrackId?.replace(/^youtube:/i, "") || state.currentTrack.id.replace(/^youtube:/i, "");
         const recommendations = await getYouTubeMusicUpNextTracks(videoId, 20);
-        const existingIds = new Set(state.queue.map((item) => item.id));
-        const freshTracks = recommendations.filter((item) => isPlayable(item) && item.id !== state.currentTrack?.id && !existingIds.has(item.id));
+        const latest = usePlayerStore.getState();
+        // The user may have selected another track while recommendations were loading.
+        // Never let a stale radio response override a newer explicit selection.
+        if (requestId !== playbackRequestSequence.current ||
+            latest.currentTrack?.id !== requestedTrackId ||
+            latest.currentQueueIndex !== requestedQueueIndex) return;
+        const existingIds = new Set(latest.queue.map((item) => item.id));
+        const freshTracks = recommendations.filter((item) => isPlayable(item) && item.id !== requestedTrackId && !existingIds.has(item.id));
         if (freshTracks.length > 0) {
-          const latest = usePlayerStore.getState();
           const expandedQueue = [...latest.queue, ...freshTracks];
           const firstIndex = latest.queue.length;
           await playTrackSafely(freshTracks[0], expandedQueue, firstIndex);
@@ -381,7 +425,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       }
     }
 
-    if (isLocalTrack(state.currentTrack)) audioRef.current?.pause();
+    if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.pause();
     else player.pause();
   }, [playTrackSafely, player]);
 
@@ -390,7 +434,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.queue.length === 0 || !state.currentTrack) return;
     if (state.repeatMode === "one" || state.playbackPosition > 3) {
       if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
-      else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
+      else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
       else await player.seekTo(0);
       return;
     }
@@ -405,22 +449,23 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       if (isPlayable(candidate)) { await playTrackSafely(candidate, state.queue, index); return; }
     }
     if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
-    else if (isLocalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
+    else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
     else await player.seekTo(0);
   }, [playTrackSafely, player]);
 
   const setPlaybackRate = useCallback((rate: number) => {
+    if (!Number.isFinite(rate)) return;
     const safeRate = Math.max(0.5, Math.min(2, rate));
-    player.setPlaybackRate(safeRate, "high");
     setPlaybackRateState(safeRate);
-  }, [player, setPlaybackRateState]);
+  }, [setPlaybackRateState]);
 
   const setSleepTimer = useCallback((minutes: number | null) => {
+    if (minutes !== null && (!Number.isFinite(minutes) || (minutes < 0 && minutes !== -1))) return;
     if (sleepTimerRef.current) { clearTimeout(sleepTimerRef.current); sleepTimerRef.current = null; }
     setSleepTimerMinutesState(minutes);
     if (minutes !== null && minutes > 0) {
       sleepTimerRef.current = setTimeout(() => {
-        if (isLocalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
+        if (isLocalTrack(usePlayerStore.getState().currentTrack) || isExternalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
         else player.pause();
         sleepTimerRef.current = null;
         setSleepTimerMinutesState(null);
@@ -429,19 +474,74 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [player, setSleepTimerMinutesState]);
 
   const seekTo = useCallback(async (seconds: number) => {
-    const track = usePlayerStore.getState().currentTrack;
-    if (isLocalTrack(track)) { audioRef.current?.seekToTime(Math.max(0, seconds)); return; }
-    await player.seekTo(Math.max(0, seconds));
+    if (!Number.isFinite(seconds)) return;
+    const state = usePlayerStore.getState();
+    const track = state.currentTrack;
+    const target = Math.max(0, state.playbackDuration > 0 ? Math.min(seconds, state.playbackDuration) : seconds);
+    if (isLocalTrack(track) || isExternalTrack(track)) {
+      audioRef.current?.seekToTime(target);
+      return;
+    }
+    await player.seekTo(target);
   }, [player]);
 
-  const onLocalAudioEnded = useCallback(() => {
-    if (usePlayerStore.getState().sleepTimerMinutes === -1) {
+  const onLocalAudioEnded = useCallback((sourceInstance: number, trackId: string) => {
+    const latest = usePlayerStore.getState();
+    if (sourceInstance !== localSourceSequence.current || latest.currentTrack?.id !== trackId) return;
+    if (latest.sleepTimerMinutes === -1) {
       audioRef.current?.pause();
       setSleepTimerMinutesState(null);
       return;
     }
     void playNext();
   }, [playNext, setSleepTimerMinutesState]);
+
+  useEffect(() => {
+    const playListener = PlaybackNotificationManager.addEventListener("playbackNotificationPlay", () => {
+      const state = usePlayerStore.getState();
+      if (state.currentTrack && (state.playbackError || !audioRef.current)) {
+        void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
+      } else {
+        void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+      }
+    });
+    const pauseListener = PlaybackNotificationManager.addEventListener("playbackNotificationPause", () => audioRef.current?.pause());
+    const nextListener = PlaybackNotificationManager.addEventListener("playbackNotificationNextTrack", () => { void playNext(); });
+    const previousListener = PlaybackNotificationManager.addEventListener("playbackNotificationPreviousTrack", () => { void playPrevious(); });
+    const seekListener = PlaybackNotificationManager.addEventListener("playbackNotificationSeekTo", (event) => audioRef.current?.seekToTime(event.value));
+    const forwardListener = PlaybackNotificationManager.addEventListener("playbackNotificationSkipForward", (event) => {
+      audioRef.current?.seekToTime(usePlayerStore.getState().playbackPosition + event.value);
+    });
+    const backwardListener = PlaybackNotificationManager.addEventListener("playbackNotificationSkipBackward", (event) => {
+      audioRef.current?.seekToTime(Math.max(0, usePlayerStore.getState().playbackPosition - event.value));
+    });
+    return () => {
+      playListener.remove();
+      pauseListener.remove();
+      nextListener.remove();
+      previousListener.remove();
+      seekListener.remove();
+      forwardListener.remove();
+      backwardListener.remove();
+      void PlaybackNotificationManager.hide().catch(() => undefined);
+    };
+  }, [playNext, playPrevious, playTrackSafely]);
+
+  useEffect(() => {
+    if (!currentTrack) {
+      void PlaybackNotificationManager.hide().catch(() => undefined);
+      return;
+    }
+    void PlaybackNotificationManager.show({
+      title: currentTrack.title,
+      artist: currentTrack.artist,
+      album: "LumaMusic",
+      ...(currentTrack.artwork ? { artwork: currentTrack.artwork } : {}),
+      duration: Math.max(0, currentTrack.durationMs / 1000),
+      elapsedTime: 0,
+      state: "paused"
+    }).catch(() => undefined);
+  }, [currentTrack?.id]);
 
   useEffect(() => {
     // Expo Audio can keep didJustFinish=true briefly while the next source is loading.
@@ -451,7 +551,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       handledFinishedState.current = false;
       return;
     }
-    if (handledFinishedState.current || isLocalTrack(currentTrack)) return;
+    if (handledFinishedState.current || isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
     handledFinishedState.current = true;
     if (usePlayerStore.getState().sleepTimerMinutes === -1) {
       player.pause();
@@ -474,15 +574,20 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           <Audio
             key={localSource.instance}
             ref={audioRef}
-            source={localSource.uri}
+            source={{ uri: localSource.uri, ...(localSource.headers ? { headers: localSource.headers } : {}) }}
             context={audioContextRef.current ?? undefined}
             controls={false}
             playbackRate={playbackRate}
-            onLoad={onLocalAudioLoad}
-            onError={(error) => setPlaybackError(error.message)}
-            onEnded={onLocalAudioEnded}
+            onLoad={() => onLocalAudioLoad(localSource.instance, currentTrack?.id ?? "")}
+            onError={(error) => {
+              const latest = usePlayerStore.getState();
+              if (localSource.instance !== localSourceSequence.current || latest.currentTrack?.id !== currentTrack?.id) return;
+              setPlaybackError(error.message);
+              setPlaybackStatus({ isPlaying: false, isBuffering: false, playbackPosition: 0, playbackDuration: 0, playbackError: error.message });
+            }}
+            onEnded={() => onLocalAudioEnded(localSource.instance, currentTrack?.id ?? "")}
           >
-            <AudioStatusBridge onStatus={onLocalAudioStatus} />
+            <AudioStatusBridge onStatus={onLocalAudioStatus} sourceInstance={localSource.instance} trackId={currentTrack?.id ?? ""} />
           </Audio>
         </View>
       ) : null}
