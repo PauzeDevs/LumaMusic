@@ -100,10 +100,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const storeIsBuffering = usePlayerStore((state) => state.isBuffering);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const playbackPosition = usePlayerStore((state) => state.playbackPosition);
-  const playbackDuration = usePlayerStore((state) => state.playbackDuration);
-  const queue = usePlayerStore((state) => state.queue);
-  const currentQueueIndex = usePlayerStore((state) => state.currentQueueIndex);
   const recoveryRestoreAttempted = useRef(false);
   const playbackRate = usePlayerStore((state) => state.playbackRate);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
