@@ -12,6 +12,7 @@ on:
       - 'package.json'
       - 'app.json'
       - '.github/workflows/android-stress.yml'
+      - '.github/scripts/**'
   workflow_dispatch:
 
 permissions:
