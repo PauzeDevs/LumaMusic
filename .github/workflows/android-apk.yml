@@ -1,10 +1,8 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  # A push to main builds both Android ABIs and publishes a GitHub nightly release.
-  push:
-    branches:
-      - main
+  # Stable APK releases are published only when manually requested.
+  workflow_dispatch:
 
 permissions:
   contents: write
