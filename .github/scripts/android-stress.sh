@@ -13,7 +13,43 @@ if [[ ! -s "$APK_PATH" ]]; then
   exit 1
 fi
 
-adb install -r "$APK_PATH"
+# Wait until Android's package manager is responsive, not merely until the
+# emulator reports boot-complete. ADB can briefly return Broken pipe while
+# system services are still restarting.
+adb wait-for-device
+BOOT_READY=0
+for attempt in $(seq 1 30); do
+  if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r')" == "1" ]] &&
+     adb shell cmd package list packages >/dev/null 2>&1; then
+    BOOT_READY=1
+    break
+  fi
+  sleep 5
+done
+if [[ "$BOOT_READY" != "1" ]]; then
+  adb logcat -d -t 4000 > "$RESULTS_DIR/logcat-emulator-not-ready.txt" || true
+  echo "Android package manager did not become ready." >&2
+  exit 1
+fi
+
+INSTALLED=0
+for attempt in $(seq 1 5); do
+  if adb install -r "$APK_PATH"; then
+    INSTALLED=1
+    break
+  fi
+  echo "APK install attempt $attempt failed; restarting ADB and retrying." >&2
+  adb kill-server || true
+  adb start-server || true
+  adb wait-for-device || true
+  sleep 8
+done
+if [[ "$INSTALLED" != "1" ]]; then
+  adb logcat -d -t 4000 > "$RESULTS_DIR/logcat-install-failure.txt" || true
+  echo "Could not install the debug APK after 5 attempts." >&2
+  exit 1
+fi
+
 adb shell am force-stop "$PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 45
