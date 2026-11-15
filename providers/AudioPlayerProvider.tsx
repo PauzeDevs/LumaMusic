@@ -3,6 +3,7 @@ import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-au
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import { AppState, View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
+import { loadPlaybackRecoverySnapshot, savePlaybackRecoverySnapshot } from "../services/playbackRecovery";
 import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
 import { useLibraryStore } from "../store/library";
 import { useListeningStatsStore } from "../store/listeningStats";
@@ -98,6 +99,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const cycleRepeatState = usePlayerStore((state) => state.cycleRepeat);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const storeIsBuffering = usePlayerStore((state) => state.isBuffering);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const playbackPosition = usePlayerStore((state) => state.playbackPosition);
+  const playbackDuration = usePlayerStore((state) => state.playbackDuration);
+  const queue = usePlayerStore((state) => state.queue);
+  const currentQueueIndex = usePlayerStore((state) => state.currentQueueIndex);
+  const recoveryRestoreAttempted = useRef(false);
   const playbackRate = usePlayerStore((state) => state.playbackRate);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
@@ -160,14 +167,51 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [setPlaybackError]);
 
   useEffect(() => {
+    if (recoveryRestoreAttempted.current) return;
+    recoveryRestoreAttempted.current = true;
+    let cancelled = false;
+    void loadPlaybackRecoverySnapshot().then((snapshot) => {
+      if (cancelled || !snapshot || usePlayerStore.getState().currentTrack) return;
+      const restoredTrack = snapshot.currentTrack;
+      const restoredQueue = snapshot.queue.some((track) => track.id === restoredTrack.id)
+        ? snapshot.queue
+        : [restoredTrack, ...snapshot.queue];
+      const restoredIndex = restoredQueue.findIndex((track) => track.id === restoredTrack.id);
+      usePlayerStore.getState().setTrack(restoredTrack, restoredQueue, restoredIndex);
+      usePlayerStore.getState().setPlaybackStatus({
+        isPlaying: false,
+        isBuffering: false,
+        playbackPosition: snapshot.playbackPosition,
+        playbackDuration: snapshot.playbackDuration || Math.max(0, restoredTrack.durationMs / 1000),
+        playbackError: null
+      });
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const saveCurrentSnapshot = () => {
+      const latest = usePlayerStore.getState();
+      if (!latest.currentTrack || (!isExternalTrack(latest.currentTrack) && !isLocalTrack(latest.currentTrack))) return;
+      void savePlaybackRecoverySnapshot({
+        currentTrack: latest.currentTrack,
+        queue: latest.queue,
+        currentQueueIndex: latest.currentQueueIndex,
+        playbackPosition: latest.playbackPosition,
+        playbackDuration: latest.playbackDuration
+      });
+    };
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active") return;
+      if (nextState !== "active") {
+        saveCurrentSnapshot();
+        return;
+      }
       const latest = usePlayerStore.getState();
       if (!latest.isPlaying || (!isExternalTrack(latest.currentTrack) && !isLocalTrack(latest.currentTrack))) return;
 
       // Android may leave the custom AudioContext suspended after another app
       // takes foreground. Resume only when the store still considers playback
-      // active, so returning from ChatGPT never overrides an intentional pause.
+      // active, so returning from another app never overrides an intentional pause.
       void audioContextRef.current?.resume().then(() => {
         const current = usePlayerStore.getState();
         if (current.isPlaying && current.currentTrack?.id === latest.currentTrack?.id) {
@@ -177,6 +221,22 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     });
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    if (!currentTrack || (!isExternalTrack(currentTrack) && !isLocalTrack(currentTrack))) return;
+    const saveCurrentSnapshot = () => {
+      void savePlaybackRecoverySnapshot({
+        currentTrack,
+        queue,
+        currentQueueIndex,
+        playbackPosition,
+        playbackDuration
+      });
+    };
+    if (!isPlaying) saveCurrentSnapshot();
+    const checkpoint = isPlaying ? setInterval(saveCurrentSnapshot, 5_000) : null;
+    return () => { if (checkpoint) clearInterval(checkpoint); };
+  }, [currentTrack, currentTrack?.id, queue, currentQueueIndex, playbackPosition, playbackDuration, isPlaying]);
 
   useEffect(() => {
     if (isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
