@@ -100,36 +100,40 @@ jobs:
           body: |
             # LumaMusic | Release Notes
 
-            **Update: Liquid Glass UI & Stability Improvements**
+            **Update: Memory Optimisation, Playback Safety & Import Stability**
 
-            This release brings a refreshed LumaMusic experience with a refined visual system, improved Android compatibility, and a more complete artist catalogue.
+            This stable Android build includes the latest merged runtime optimisations and crash-prevention fixes. The existing visual design and UI layout are unchanged.
 
-            ### 🐛 Bugs Fixed
-            - **Android Liquid Glass compatibility:** Fixed the app attempting to load an iOS-only native Liquid Glass component on Android. Android now uses a safe fallback instead.
-            - **Theme consistency in Account:** Fixed the Account screen using hard-coded dark styling instead of respecting the selected appearance and accent colour.
-            - **Theme consistency in Playlists:** Fixed the Playlist screen not properly following the user's selected appearance and accent.
-            - **Theme consistency in Liked Songs:** Updated the screen to respect the active theme.
-            - **Artwork fallback:** Improved handling of missing or failed album artwork, displaying a themed fallback instead of leaving broken artwork.
+            ### ⚡ Memory Optimisation
+            - Bounded YouTube stream and PO token caches to reduce retained memory.
+            - Added bounded LRU caching for lyrics while preserving cache expiry behaviour.
+            - Reduced React Query garbage-collection retention to two minutes.
+            - Reduced artwork decode overhead with resize-first image handling.
+            - Limited the reverb impulse-response cache to the active preset and clear it when reverb is disabled.
 
-            ### ✨ Improvements
-            - **Visual refresh:** Introduced a deeper matte interface, refined typography, velvet-red accents, and updated surfaces.
-            - **Liquid Glass controls:** Improved shared glass surfaces and made them respect Liquid Glass, Frosted, Clear, and Dark Matte preferences.
-            - **Navigation redesign:** Refined the floating tab bar and mini-player.
-            - **Track rows and cards:** Improved spacing, styling, and visual consistency.
-            - **Audio Lab:** Refined the header and added LumaMusic branding.
-            - **Artist pages:** Expanded artist track and release retrieval, with a higher pagination limit.
-            - **Discography:** Added improved horizontal release shelves for albums, EPs, and singles.
-            - **All tracks:** Replaced the limited “Popular tracks” section with an expanded “All tracks” catalogue.
+            ### 🛡️ Stability & Crash Prevention
+            - Added a 512 KB input limit and field/row bounds for playlist CSV imports.
+            - Hardened playlist import preview and matching error handling.
+            - Replaced recursive YouTube Music payload traversal with bounded iterative traversal.
+            - Added response-size limits and safer JSON response handling for YouTube Music requests.
+            - Added guards against stale asynchronous audio startup callbacks during rapid track changes.
 
-            ### ⚙️ Compatibility
-            - Improved Android handling of the iOS-only native Liquid Glass component.
-            - Preserved platform-specific rendering behaviour.
+            ### 🎵 Playback & Catalogue Reliability
+            - Improved stream URL refresh support for recovery from premature stream endings.
+            - Added safer handling around playback source changes and foreground audio recovery.
+            - Kept existing playback controls and app behaviour intact; no UI layout or styling changes were made.
 
-            ### Important
-            This release includes code-level compatibility and UI fixes. Native rendering, touch behaviour, and device-specific performance still require real-device verification. This update does not claim to fix every known playback or equalizer issue.
+            ### 📱 Android Builds
+            - `LumaMusic-arm64-v8a.apk`: 64-bit ARM devices.
+            - `LumaMusic-armeabi-v7a.apk`: 32-bit ARM devices.
+
+            ### Verification
+            - Both Android release APK build jobs completed successfully in GitHub Actions.
+            - The release publishing job completed successfully.
+            - Automated emulator stress testing remains unverified because the emulator environment failed before app stress checks could run. Real-device playback and memory behaviour should still be tested.
 
             ---
             **Developed by PauzeX Developments**  
-            [Website](https://lumamusic.devs.surf) · [Support the project](https://pauze.is-a.dev/support/) · [GitHub](https://github.com/PauzeDevs/LumaMusic)
+            [Website](https://lumamusic.devs.surf) · [GitHub](https://github.com/PauzeDevs/LumaMusic)
 
             *Thank you for using LumaMusic. Keep listening.*
