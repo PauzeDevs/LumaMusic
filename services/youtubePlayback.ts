@@ -17,6 +17,12 @@ const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
 // Stream URLs are large signed strings. Keep only a short LRU window for the current listening session.
 const MAX_STREAM_CACHE_ENTRIES = 8;
+// Share one extraction between playback and playlist prefetch for the same video.
+const inFlightExtractions = new Map<string, Promise<ResolvedYouTubeAudio>>();
+
+function logExtraction(stage: string, startedAt: number, details?: Record<string, unknown>) {
+  if (__DEV__) console.debug(`[LumaMusic][Extraction] ${stage}`, { durationMs: Date.now() - startedAt, ...details });
+}
 
 function getCachedStream(videoId: string) {
   const cached = streamCache.get(videoId);
@@ -145,7 +151,7 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
  * Resolves a playable audio stream directly through YouTube's InnerTube /player API.
  * Keeps InnerTube as the primary resolver and falls back to NewPipe on Android only if all InnerTube clients fail.
  */
-export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
+async function resolveYouTubeMusicAudioUncached(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
   const videoId = extractYouTubeVideoId(track);
   if (!videoId) {
     throw new Error("Missing YouTube video ID for this track.");
@@ -156,6 +162,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
   const cached = forceRefresh ? null : getCachedStream(videoId);
   if (cached) return cached;
 
+  const extractionStartedAt = Date.now();
   const errors: string[] = [];
   // Race the profiles and use the first successful playable stream.
   // Promise.allSettled would wait for every slow/failing client before returning.
@@ -163,7 +170,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
   const profileAttempts = INNERTUBE_PLAYER_CLIENTS.map(async (profile) => {
     const controller = new AbortController();
     controllers.push(controller);
-    const timeout = setTimeout(() => controller.abort(), 7000);
+    const timeout = setTimeout(() => controller.abort(), 5500);
     try {
       const response = await fetch(PLAYER_URL, {
         method: "POST",
@@ -239,21 +246,31 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
   }
   if (resolvedStream) {
     cacheStream(videoId, resolvedStream);
+    logExtraction("InnerTube resolved", extractionStartedAt);
     return resolvedStream;
   }
+  logExtraction("InnerTube exhausted; starting NewPipe", extractionStartedAt, { failures: errors.length });
 
   // Android fallback: NewPipe uses its own extraction implementation.
   // The InnerTube clients above remain the primary path and are never modified
   // or bypassed when one of them returns a playable stream.
   try {
+    const newPipeStartedAt = Date.now();
+    // Start optional BotGuard work alongside NewPipe extraction, not after it.
+    // It can populate the token cache for later requests without holding up this track.
+    const poTokenPromise = resolvePoTokenQuickly(videoId).catch(() => null);
     const newPipeResult = await resolveWithNewPipe(videoId);
+    logExtraction("NewPipe resolved", newPipeStartedAt, { success: Boolean(newPipeResult?.url) });
     if (newPipeResult?.url) {
       const expiryMatch = newPipeResult.url.match(/[?&]expire=(\d+)/);
       const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
       const newPipeUrl = new URL(newPipeResult.url);
-      // PoTokens are optional and only requested for the Android extraction
-      // fallback. A slow or unavailable BotGuard WebView never blocks playback.
-      const poToken = await resolvePoTokenQuickly(videoId);
+      // Attach a token only if it is ready almost immediately. The request
+      // continues in the background and caches its result for a later extraction.
+      const poToken = await Promise.race([
+        poTokenPromise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 400))
+      ]);
       if (poToken && poToken.expiresAt > Date.now() + 30_000) {
         newPipeUrl.searchParams.set("pot", poToken.contentToken);
       }
@@ -270,6 +287,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
           : Date.now() + 30 * 60 * 1000
       };
       cacheStream(videoId, resolved);
+      logExtraction("NewPipe stream ready", extractionStartedAt, { tokenAttached: Boolean(poToken) });
       return resolved;
     }
   } catch (error) {
@@ -278,7 +296,34 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
     );
   }
 
+  logExtraction("Extraction failed", extractionStartedAt, { failures: errors.length });
   throw new Error(
     `Could not stream "${track.title}". (${errors.join(" | ") || "No playable stream"})`
   );
+}
+
+/**
+ * Reuse in-progress extraction across queue prefetch and an immediate user tap.
+ * Forced refresh deliberately starts a fresh extraction for early-end recovery.
+ */
+export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
+  const videoId = extractYouTubeVideoId(track);
+  if (!videoId) throw new Error("Missing YouTube video ID for this track.");
+
+  if (!forceRefresh) {
+    const cached = getCachedStream(videoId);
+    if (cached) return cached;
+    const existing = inFlightExtractions.get(videoId);
+    if (existing) return existing;
+  } else {
+    streamCache.delete(videoId);
+  }
+
+  const extraction = resolveYouTubeMusicAudioUncached(track, forceRefresh);
+  inFlightExtractions.set(videoId, extraction);
+  try {
+    return await extraction;
+  } finally {
+    if (inFlightExtractions.get(videoId) === extraction) inFlightExtractions.delete(videoId);
+  }
 }
