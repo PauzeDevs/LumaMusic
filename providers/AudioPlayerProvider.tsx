@@ -73,6 +73,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const status = useAudioPlayerStatus(player);
   const [localSource, setLocalSource] = useState<{ uri: string; instance: number; headers?: Record<string, string> } | null>(null);
   const localSourceSequence = useRef(0);
+  const audioSourceAssignedAtRef = useRef(0);
+  const audioPlaybackStartedAtRef = useRef(0);
   const pendingResumePositionRef = useRef<number | null>(null);
   const playbackRequestSequence = useRef(0);
   const handledFinishedState = useRef(false);
@@ -230,6 +232,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const latestTrack = usePlayerStore.getState().currentTrack;
     if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
     if (!context || !element || graphRef.current) return;
+    if (__DEV__) console.debug("[LumaMusic][AudioStartup] native source loaded", { timeSinceSourceAssignedMs: Date.now() - audioSourceAssignedAtRef.current });
 
     let source: MediaElementAudioSourceNode | null = null;
     const partialNodes: Array<{ disconnect: () => void }> = [];
@@ -328,6 +331,10 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     // Ignore late status events from an audio element that has already been replaced.
     if (sourceInstance !== localSourceSequence.current || latestTrack?.id !== trackId) return;
     const active = playbackState === "playing";
+    if (active && audioPlaybackStartedAtRef.current > 0) {
+      if (__DEV__) console.debug("[LumaMusic][AudioStartup] playback started", { timeSinceSourceAssignedMs: Date.now() - audioSourceAssignedAtRef.current });
+      audioPlaybackStartedAtRef.current = 0;
+    }
     if (active && startupTimeoutRef.current) {
       clearTimeout(startupTimeoutRef.current);
       startupTimeoutRef.current = null;
@@ -390,7 +397,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       setLocalSource(null);
       usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
       try {
+        const extractionStartedAt = Date.now();
         const stream = await resolveYouTubeMusicAudio(track, forceStreamRefresh);
+        if (__DEV__) console.debug("[LumaMusic][AudioStartup] stream resolved", { extractionDurationMs: Date.now() - extractionStartedAt, forceRefresh: forceStreamRefresh });
         const bitrateKbps = stream.bitrate && stream.bitrate > 0 ? Math.round(stream.bitrate / 1000) : null;
         // YouTube Music streams are lossy codecs; only label HD when the actual
         // selected stream reports a high bitrate. Never infer lossless from bitrate.
@@ -405,6 +414,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         ensureAudioContext();
         // Feed the resolved YouTube URL into the native Audio API element so its
         // samples pass through the same AudioContext graph as imported local audio.
+        audioSourceAssignedAtRef.current = Date.now();
+        audioPlaybackStartedAtRef.current = audioSourceAssignedAtRef.current;
         setLocalSource({
           uri: stream.url,
           headers: {
