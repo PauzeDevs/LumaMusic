@@ -225,18 +225,20 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!currentTrack || (!isExternalTrack(currentTrack) && !isLocalTrack(currentTrack))) return;
     const saveCurrentSnapshot = () => {
+      const latest = usePlayerStore.getState();
+      if (!latest.currentTrack || (!isExternalTrack(latest.currentTrack) && !isLocalTrack(latest.currentTrack))) return;
       void savePlaybackRecoverySnapshot({
-        currentTrack,
-        queue,
-        currentQueueIndex,
-        playbackPosition,
-        playbackDuration
+        currentTrack: latest.currentTrack,
+        queue: latest.queue,
+        currentQueueIndex: latest.currentQueueIndex,
+        playbackPosition: latest.playbackPosition,
+        playbackDuration: latest.playbackDuration
       });
     };
     if (!isPlaying) saveCurrentSnapshot();
     const checkpoint = isPlaying ? setInterval(saveCurrentSnapshot, 5_000) : null;
     return () => { if (checkpoint) clearInterval(checkpoint); };
-  }, [currentTrack, currentTrack?.id, queue, currentQueueIndex, playbackPosition, playbackDuration, isPlaying]);
+  }, [currentTrack?.id, isPlaying]);
 
   useEffect(() => {
     if (isLocalTrack(currentTrack) || isExternalTrack(currentTrack)) return;
