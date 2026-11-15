@@ -7,6 +7,13 @@ RESULTS_DIR="$PWD/stress-results"
 
 mkdir -p "$RESULTS_DIR"
 
+capture_diagnostics() {
+  local label="$1"
+  adb logcat -d -t 8000 > "$RESULTS_DIR/logcat-$label.txt" 2>&1 || true
+  adb shell dumpsys activity activities > "$RESULTS_DIR/activities-$label.txt" 2>&1 || true
+  adb shell dumpsys package "$PACKAGE" > "$RESULTS_DIR/package-$label.txt" 2>&1 || true
+}
+
 if [[ ! -s "$APK_PATH" ]]; then
   echo "Expected debug APK is missing or empty: $APK_PATH" >&2
   ls -lah "$PWD" >&2
@@ -27,7 +34,7 @@ for attempt in $(seq 1 30); do
   sleep 5
 done
 if [[ "$BOOT_READY" != "1" ]]; then
-  adb logcat -d -t 4000 > "$RESULTS_DIR/logcat-emulator-not-ready.txt" || true
+  capture_diagnostics "emulator-not-ready"
   echo "Android package manager did not become ready." >&2
   exit 1
 fi
@@ -45,7 +52,7 @@ for attempt in $(seq 1 5); do
   sleep 8
 done
 if [[ "$INSTALLED" != "1" ]]; then
-  adb logcat -d -t 4000 > "$RESULTS_DIR/logcat-install-failure.txt" || true
+  capture_diagnostics "install-failure"
   echo "Could not install the debug APK after 5 attempts." >&2
   exit 1
 fi
@@ -53,7 +60,16 @@ fi
 adb shell am force-stop "$PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 45
-adb shell pidof "$PACKAGE" | tee "$RESULTS_DIR/initial-pid.txt"
+
+# Do not let pipefail turn an empty pidof result into an opaque script exit.
+# Preserve crash/activity logs so we can distinguish a real startup crash
+# from a launcher or emulator issue.
+adb shell pidof "$PACKAGE" > "$RESULTS_DIR/initial-pid.txt" 2>&1 || true
+if [[ ! -s "$RESULTS_DIR/initial-pid.txt" ]]; then
+  capture_diagnostics "launch-failure"
+  echo "App process was not running 45 seconds after the launch command." | tee "$RESULTS_DIR/failure.txt"
+  exit 1
+fi
 adb shell dumpsys meminfo "$PACKAGE" > "$RESULTS_DIR/meminfo-launch.txt"
 
 # Exercise the app UI with bounded input events while sampling PSS.
@@ -64,16 +80,17 @@ MONKEY_PID=$!
 
 for sample in $(seq 1 20); do
   sleep 30
-  if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
+  adb shell pidof "$PACKAGE" > "$RESULTS_DIR/current-pid.txt" 2>&1 || true
+  if [[ ! -s "$RESULTS_DIR/current-pid.txt" ]]; then
     echo "App process exited during stress soak at sample $sample" | tee "$RESULTS_DIR/failure.txt"
-    adb logcat -d -t 4000 > "$RESULTS_DIR/logcat-crash.txt"
+    capture_diagnostics "crash"
     exit 1
   fi
   adb shell dumpsys meminfo "$PACKAGE" > "$RESULTS_DIR/meminfo-$(printf '%02d' "$sample").txt"
-  adb shell pidof "$PACKAGE" >> "$RESULTS_DIR/pids.txt"
+  cat "$RESULTS_DIR/current-pid.txt" >> "$RESULTS_DIR/pids.txt"
 done
 
 wait "$MONKEY_PID" || true
 adb shell dumpsys meminfo "$PACKAGE" > "$RESULTS_DIR/meminfo-final.txt"
-adb logcat -d -t 4000 > "$RESULTS_DIR/logcat-final.txt"
+capture_diagnostics "final"
 echo "Stress soak completed: 10 minutes of UI event load with 20 memory/process samples."
