@@ -7,6 +7,9 @@ on:
       - "website/**"
       - "assets/lumamusic-soundstage.svg"
       - "assets/lumamusic-logo.svg"
+      - "assets/Screenshot_20261114-111431.png"
+      - "assets/Screenshot_20261114-111449.png"
+      - "assets/Screenshot_20261114-111553.png"
       - ".github/workflows/website.yml"
   workflow_dispatch:
 
@@ -23,7 +26,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: \${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,6 +41,10 @@ jobs:
           cp -R website/. site/
           cp assets/lumamusic-soundstage.svg site/assets/lumamusic-soundstage.svg
           cp assets/lumamusic-logo.svg site/assets/lumamusic-logo.svg
+          cp assets/lumamusic-icon.png site/assets/lumamusic-icon.png
+          cp assets/Screenshot_20261114-111431.png site/assets/app-player.png
+          cp assets/Screenshot_20261114-111449.png site/assets/app-library.png
+          cp assets/Screenshot_20261114-111553.png site/assets/app-discovery.png
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
