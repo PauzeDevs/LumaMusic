@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TrackRow } from "../../components/TrackRow";
+import { PlaylistRecommendations } from "../../components/PlaylistRecommendations";
 import { Artwork } from "../../components/Artwork";
 import { getYouTubeMusicPlaylistTracks } from "../../services/youtubeMusic";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
@@ -108,6 +109,7 @@ export default function PlaylistScreen() {
                 <Ionicons name="play" size={16} color="#17111F" /><Text style={makeStyles(colors).primaryText}>Play all</Text>
               </Pressable>
             </View>
+            {localPlaylist ? <PlaylistRecommendations playlist={localPlaylist} /> : null}
             {!localPlaylist && loading ? null : !localPlaylist && failed ? null : tracks.length > 0 ? (
               <View style={makeStyles(colors).sectionHeader}><Text style={makeStyles(colors).sectionTitle}>Tracks</Text><Text style={makeStyles(colors).count}>{tracks.length}</Text></View>
             ) : null}
