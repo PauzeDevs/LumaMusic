@@ -231,7 +231,7 @@ async function resolveUncachedStream(track: MusicTrack, videoId: string): Promis
   try {
     const newPipeResult = await resolveWithNewPipe(videoId);
     if (newPipeResult?.url) {
-      const expiryMatch = newPipeResult.url.match(/[?&]expire=(\\d+)/);
+      const expiryMatch = newPipeResult.url.match(/[?&]expire=(\d+)/);
       const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
       const newPipeUrl = new URL(newPipeResult.url);
       const poToken = await resolvePoTokenQuickly(videoId);
