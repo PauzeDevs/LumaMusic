@@ -172,9 +172,10 @@ async function resolveUncachedStream(track: MusicTrack, videoId: string): Promis
           "X-YouTube-Client-Version": profile.context.client.clientVersion
         }
       });
-      const status = payload?.playabilityStatus?.status;
+      const playabilityStatus = payload.playabilityStatus as Record<string, any> | undefined;
+      const status = playabilityStatus?.status;
       if (status !== "OK") {
-        const reason = payload?.playabilityStatus?.reason || status || "Unavailable";
+        const reason = playabilityStatus?.reason || status || "Unavailable";
         errors.push(profile.name + ": " + String(reason));
         continue;
       }
