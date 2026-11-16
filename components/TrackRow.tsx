@@ -12,8 +12,6 @@ import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
-
-
 type Props = { track: MusicTrack; index?: number; showIndex?: boolean; queue?: MusicTrack[]; playlistId?: string };
 
 export const TrackRow = memo(function TrackRow({ track, index, showIndex = false, queue, playlistId }: Props) {
