@@ -12,7 +12,7 @@ import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 
-const EMPTY_PLAYLISTS: LocalPlaylist[] = [];
+
 
 type Props = { track: MusicTrack; index?: number; showIndex?: boolean; queue?: MusicTrack[]; playlistId?: string };
 
@@ -24,7 +24,7 @@ export const TrackRow = memo(function TrackRow({ track, index, showIndex = false
   const compactRows = usePreferencesStore((state) => state.compactRows);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isLiked = useLibraryStore((state) => state.likedTracks.some((item) => item.id === track.id));
-  const playlists = useLibraryStore((state) => pickerVisible ? state.playlists : EMPTY_PLAYLISTS);
+  const playlists = useLibraryStore((state) => state.playlists);
   const toggleLike = useLibraryStore((state) => state.toggleLike);
   const addTrackToPlaylist = useLibraryStore((state) => state.addTrackToPlaylist);
   const removeTrackFromPlaylist = useLibraryStore((state) => state.removeTrackFromPlaylist);
