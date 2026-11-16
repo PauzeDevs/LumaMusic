@@ -113,69 +113,69 @@ function failureMessage(endpoint: string, status?: number, retryMs?: number | nu
 async function performRequest(url: string, body: InnerTubePayload, options: RequestOptions): Promise<InnerTubePayload> {
   const endpoint = endpointFor(url);
   const stats = diagnostic(endpoint);
-  const now = Date.now();
-  if (stats.circuitOpenUntil > now) {
+  if (stats.circuitOpenUntil > Date.now()) {
     throw new Error("YouTube InnerTube " + endpoint + " is temporarily paused after repeated upstream failures. Try again shortly.");
   }
-  if (stats.circuitOpenUntil > 0) stats.circuitOpenUntil = 0;
+  stats.circuitOpenUntil = 0;
 
   const maxRetries = Math.max(0, Math.min(options.maxRetries ?? 2, 2));
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    await acquireSlot();
-    const startedAt = Date.now();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), Math.max(1000, options.timeoutMs ?? DEFAULT_TIMEOUT_MS));
-    const abortFromCaller = () => controller.abort();
-    options.signal?.addEventListener("abort", abortFromCaller, { once: true });
-    stats.requests += 1;
+    let retryDelay: number | null = null;
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Origin: url.includes("music.youtube.com") ? "https://music.youtube.com" : "https://www.youtube.com",
-          Referer: url.includes("music.youtube.com") ? "https://music.youtube.com/" : "https://www.youtube.com/",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          ...options.headers
-        },
-        body: JSON.stringify(body)
-      });
-
-      if (!response.ok) {
-        const status = response.status;
-        const retryMs = retryAfterMs(response);
-        stats.lastStatus = status;
-        if (status === 429) stats.rateLimited += 1;
-        if (status >= 500) stats.serverErrors += 1;
-        if (status === 429 || status >= 500) {
+      const payload = await (async () => {
+        await acquireSlot();
+        const startedAt = Date.now();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), Math.max(1000, options.timeoutMs ?? DEFAULT_TIMEOUT_MS));
+        const abortFromCaller = () => controller.abort();
+        options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+        stats.requests += 1;
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Origin: url.includes("music.youtube.com") ? "https://music.youtube.com" : "https://www.youtube.com",
+              Referer: url.includes("music.youtube.com") ? "https://music.youtube.com/" : "https://www.youtube.com/",
+              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+              ...options.headers
+            },
+            body: JSON.stringify(body)
+          });
+          if (!response.ok) {
+            const status = response.status;
+            const retryMs = retryAfterMs(response);
+            stats.lastStatus = status;
+            if (status === 429) stats.rateLimited += 1;
+            if (status >= 500) stats.serverErrors += 1;
+            const retryable = status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+            if (retryable && attempt < maxRetries && (retryMs == null || retryMs <= MAX_RETRY_AFTER_MS)) {
+              retryDelay = retryMs ?? Math.round(Math.min(6000, 500 * Math.pow(2, attempt)) * (0.75 + Math.random() * 0.5));
+              throw new Error("RETRYABLE_INNERTUBE_HTTP_" + status);
+            }
+            throw new Error(failureMessage(endpoint, status, retryMs));
+          }
+          const contentLength = Number(response.headers.get("content-length") || 0);
+          if (contentLength > 5 * 1024 * 1024) throw new Error("YouTube returned an unusually large response.");
+          const text = await response.text();
+          if (text.length > 5 * 1024 * 1024) throw new Error("YouTube returned an unusually large response.");
+          try {
+            return JSON.parse(text) as InnerTubePayload;
+          } catch {
+            throw new Error("YouTube returned an invalid InnerTube response.");
+          }
+        } finally {
+          clearTimeout(timeout);
+          options.signal?.removeEventListener("abort", abortFromCaller);
+          stats.totalLatencyMs += Date.now() - startedAt;
+          releaseSlot();
         }
-        const retryable = status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
-        if (!retryable || attempt >= maxRetries || (retryMs != null && retryMs > MAX_RETRY_AFTER_MS)) {
-          stats.failures += 1;
-          if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
-          throw new Error(failureMessage(endpoint, status, retryMs));
-        }
-        stats.failures += 1;
-        const exponential = Math.min(6000, 500 * Math.pow(2, attempt));
-        const delay = retryMs ?? Math.round(exponential * (0.75 + Math.random() * 0.5));
-        await wait(delay, options.signal);
-        continue;
-      }
+      })();
 
-      const contentLength = Number(response.headers.get("content-length") || 0);
-      if (contentLength > 5 * 1024 * 1024) throw new Error("YouTube returned an unusually large response.");
-      const text = await response.text();
-      if (text.length > 5 * 1024 * 1024) throw new Error("YouTube returned an unusually large response.");
-      let payload: InnerTubePayload;
-      try {
-        payload = JSON.parse(text) as InnerTubePayload;
-      } catch {
-        throw new Error("YouTube returned an invalid InnerTube response.");
-      }
       stats.successes += 1;
       stats.failures = 0;
       stats.circuitOpenUntil = 0;
@@ -183,23 +183,20 @@ async function performRequest(url: string, body: InnerTubePayload, options: Requ
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       if (options.signal?.aborted) throw new Error("InnerTube request cancelled.");
-      const aborted = controller.signal.aborted;
-      const retryableNetwork = aborted || !(error instanceof Error && /HTTP \d+/.test(error.message));
-      if (!retryableNetwork || attempt >= maxRetries) {
-        if (retryableNetwork) {
-          stats.failures += 1;
-          if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
-        }
+
+      const retryableHttp = lastError.message.startsWith("RETRYABLE_INNERTUBE_HTTP_");
+      const httpFailure = /HTTP \d+/.test(lastError.message);
+      const retryableNetwork = !httpFailure && !lastError.message.includes("unusually large") && !lastError.message.includes("invalid InnerTube");
+      if (!retryableHttp && !retryableNetwork) {
+        stats.failures += 1;
+        if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
         throw lastError;
       }
       stats.failures += 1;
       if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
-      await wait(Math.min(6000, 500 * Math.pow(2, attempt)), options.signal);
-    } finally {
-      clearTimeout(timeout);
-      options.signal?.removeEventListener("abort", abortFromCaller);
-      stats.totalLatencyMs += Date.now() - startedAt;
-      releaseSlot();
+      if (attempt >= maxRetries) throw lastError;
+      const delay = retryDelay ?? Math.min(6000, 500 * Math.pow(2, attempt));
+      await wait(delay, options.signal);
     }
   }
   throw lastError ?? new Error(failureMessage(endpoint));
