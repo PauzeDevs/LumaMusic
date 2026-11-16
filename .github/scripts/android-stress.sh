@@ -4,14 +4,14 @@ set -euo pipefail
 APK_PATH="$PWD/stress-app-debug.apk"
 PACKAGE="dev.pauze.lumamusic"
 RESULTS_DIR="$PWD/stress-results"
-
 mkdir -p "$RESULTS_DIR"
 
 capture_diagnostics() {
   local label="$1"
-  adb logcat -d -t 8000 > "$RESULTS_DIR/logcat-$label.txt" 2>&1 || true
+  adb logcat -d -t 12000 > "$RESULTS_DIR/logcat-$label.txt" 2>&1 || true
   adb shell dumpsys activity activities > "$RESULTS_DIR/activities-$label.txt" 2>&1 || true
   adb shell dumpsys package "$PACKAGE" > "$RESULTS_DIR/package-$label.txt" 2>&1 || true
+  adb shell dumpsys dropbox --print data_app_anr > "$RESULTS_DIR/anr-dropbox-$label.txt" 2>&1 || true
 }
 
 if [[ ! -s "$APK_PATH" ]]; then
@@ -20,9 +20,6 @@ if [[ ! -s "$APK_PATH" ]]; then
   exit 1
 fi
 
-# Wait until Android's package manager is responsive, not merely until the
-# emulator reports boot-complete. ADB can briefly return Broken pipe while
-# system services are still restarting.
 adb wait-for-device
 BOOT_READY=0
 for attempt in $(seq 1 30); do
@@ -57,24 +54,21 @@ if [[ "$INSTALLED" != "1" ]]; then
   exit 1
 fi
 
+# The hosted emulator can report boot-complete while first-boot background
+# services are still saturating its CPU. Let the launcher/system settle before
+# measuring app startup, otherwise the test measures emulator cold-boot load.
+sleep 60
 adb shell am force-stop "$PACKAGE"
-adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
-sleep 45
-
-# Do not let pipefail turn an empty pidof result into an opaque script exit.
-# Preserve crash/activity logs so we can distinguish a real startup crash
-# from a launcher or emulator issue.
+adb shell am start -W -n "$PACKAGE/.MainActivity" | tee "$RESULTS_DIR/activity-start.txt"
+sleep 30
 adb shell pidof "$PACKAGE" > "$RESULTS_DIR/initial-pid.txt" 2>&1 || true
 if [[ ! -s "$RESULTS_DIR/initial-pid.txt" ]]; then
   capture_diagnostics "launch-failure"
-  echo "App process was not running 45 seconds after the launch command." | tee "$RESULTS_DIR/failure.txt"
+  echo "App process was not running after the settled-emulator launch." | tee "$RESULTS_DIR/failure.txt"
   exit 1
 fi
 adb shell dumpsys meminfo "$PACKAGE" > "$RESULTS_DIR/meminfo-launch.txt"
 
-# Exercise the app UI with bounded input events while sampling PSS.
-# This is a generic navigation soak, not a substitute for scripted playback
-# or Audio Lab interaction with a real music account/device.
 adb shell monkey -p "$PACKAGE" --throttle 650 --pct-syskeys 0 --pct-appswitch 5 240 > "$RESULTS_DIR/monkey.txt" 2>&1 &
 MONKEY_PID=$!
 
