@@ -91,7 +91,8 @@ export default function SearchScreen() {
     : activeFilter === "Artists" ? [artistsQuery]
     : activeFilter === "Albums" ? [albumsQuery] : [playlistsQuery];
   const loading = visibleQueries.some((item) => item.isLoading);
-  const error = visibleQueries.find((item) => item.error)?.error;
+  const error = activeFilter === "All" ? undefined : visibleQueries.find((item) => item.error)?.error;
+  const failedCategories = activeFilter === "All" ? [["Songs", songsQuery.error], ["Artists", artistsQuery.error], ["Albums", albumsQuery.error], ["Playlists", playlistsQuery.error]].filter(([, failure]) => Boolean(failure)).map(([label]) => label) : [];
   const count = activeFilter === "All" ? songs.length + artists.length + albums.length + playlists.length
     : activeFilter === "Songs" ? songs.length
     : activeFilter === "Artists" ? artists.length
@@ -188,15 +189,16 @@ export default function SearchScreen() {
             </View>
             {loading ? <View style={styles.stateCard}><Ionicons name="search" size={24} color={colors.muted} /><Text style={styles.stateTitle}>Searching everything</Text><Text style={styles.stateText}>Finding tracks, artists, albums and playlists…</Text></View> : null}
             {error ? <View style={styles.stateCard}><Ionicons name="cloud-offline-outline" size={24} color={colors.danger} /><Text style={styles.stateTitle}>Search couldn't load</Text><Text style={styles.stateText}>{error instanceof Error ? error.message : "Check your connection and try again."}</Text></View> : null}
+            {!loading && failedCategories.length > 0 ? <View style={styles.stateCard}><Ionicons name="warning-outline" size={20} color={colors.danger} /><Text style={styles.stateTitle}>Some results couldn't load</Text><Text style={styles.stateText}>{failedCategories.join(", ")} failed. Other available results are still shown.</Text></View> : null}
             {!loading && !error && count === 0 ? <View style={styles.stateCard}><Ionicons name="musical-notes-outline" size={25} color={colors.subtle} /><Text style={styles.stateTitle}>No matches yet</Text><Text style={styles.stateText}>Try another title, artist or mood.</Text></View> : null}
 
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Songs") && songs.length > 0 ? (
+            {!loading && !songsQuery.error && (activeFilter === "All" || activeFilter === "Songs") && songs.length > 0 ? (
               <View style={styles.resultGroup}><Text style={styles.groupTitle}>Songs</Text>{songs.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={songs} />)}</View>
             ) : null}
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Artists") && artists.length > 0 ? (
+            {!loading && !artistsQuery.error && (activeFilter === "All" || activeFilter === "Artists") && artists.length > 0 ? (
               <View style={styles.resultGroup}><Text style={styles.groupTitle}>Artists</Text>{artists.map((artist) => <ArtistRow key={artist.id} artist={artist} />)}</View>
             ) : null}
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Albums") && albums.length > 0 ? (
+            {!loading && !albumsQuery.error && (activeFilter === "All" || activeFilter === "Albums") && albums.length > 0 ? (
               <View style={styles.resultGroup}>
                 <Text style={styles.groupTitle}>Albums & EPs</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.albumRail}>
@@ -210,7 +212,7 @@ export default function SearchScreen() {
                 </ScrollView>
               </View>
             ) : null}
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Playlists") && playlists.length > 0 ? (
+            {!loading && !playlistsQuery.error && (activeFilter === "All" || activeFilter === "Playlists") && playlists.length > 0 ? (
               <View style={styles.resultGroup}><Text style={styles.groupTitle}>Playlists</Text>{playlists.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} />)}</View>
             ) : null}
           </ScrollReveal>
