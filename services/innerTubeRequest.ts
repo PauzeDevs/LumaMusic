@@ -5,6 +5,7 @@ type RequestOptions = {
   timeoutMs?: number;
   maxRetries?: number;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 };
 
 type CacheEntry = { value: InnerTubePayload; expiresAt: number };
@@ -138,7 +139,8 @@ async function performRequest(url: string, body: InnerTubePayload, options: Requ
           "Content-Type": "application/json",
           Origin: url.includes("music.youtube.com") ? "https://music.youtube.com" : "https://www.youtube.com",
           Referer: url.includes("music.youtube.com") ? "https://music.youtube.com/" : "https://www.youtube.com/",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          ...options.headers
         },
         body: JSON.stringify(body)
       });
@@ -150,13 +152,14 @@ async function performRequest(url: string, body: InnerTubePayload, options: Requ
         if (status === 429) stats.rateLimited += 1;
         if (status >= 500) stats.serverErrors += 1;
         if (status === 429 || status >= 500) {
-          stats.failures += 1;
-          if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
         }
         const retryable = status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
         if (!retryable || attempt >= maxRetries || (retryMs != null && retryMs > MAX_RETRY_AFTER_MS)) {
+          stats.failures += 1;
+          if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
           throw new Error(failureMessage(endpoint, status, retryMs));
         }
+        stats.failures += 1;
         const exponential = Math.min(6000, 500 * Math.pow(2, attempt));
         const delay = retryMs ?? Math.round(exponential * (0.75 + Math.random() * 0.5));
         await wait(delay, options.signal);
@@ -183,8 +186,10 @@ async function performRequest(url: string, body: InnerTubePayload, options: Requ
       const aborted = controller.signal.aborted;
       const retryableNetwork = aborted || !(error instanceof Error && /HTTP \d+/.test(error.message));
       if (!retryableNetwork || attempt >= maxRetries) {
-        stats.failures += 1;
-        if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
+        if (retryableNetwork) {
+          stats.failures += 1;
+          if (stats.failures >= 4) stats.circuitOpenUntil = Date.now() + 15_000;
+        }
         throw lastError;
       }
       stats.failures += 1;
