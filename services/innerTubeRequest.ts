@@ -12,6 +12,8 @@ type CacheEntry = { value: InnerTubePayload; expiresAt: number; size: number };
 type Diagnostic = { requests: number; successes: number; failures: number; rateLimited: number; serverErrors: number; totalLatencyMs: number; lastStatus?: number; circuitOpenUntil: number };
 
 const MAX_CONCURRENT_REQUESTS = 3;
+const MIN_REQUEST_INTERVAL_MS = 250; // Conservative client-side ceiling of four starts per second.
+let nextRequestStartAt = 0;
 const MAX_CACHE_ENTRIES = 60;
 const MAX_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRY_BYTES = 1.5 * 1024 * 1024;
@@ -75,13 +77,22 @@ function writeCache(key: string, value: InnerTubePayload, ttlMs: number) {
   }
 }
 
-async function acquireSlot(): Promise<void> {
+async function acquireSlot(signal?: AbortSignal): Promise<void> {
   if (activeRequests < MAX_CONCURRENT_REQUESTS) {
     activeRequests += 1;
-    return;
+  } else {
+    await new Promise<void>((resolve) => queue.push(resolve));
+    activeRequests += 1;
   }
-  await new Promise<void>((resolve) => queue.push(resolve));
-  activeRequests += 1;
+
+  const scheduledStart = Math.max(Date.now(), nextRequestStartAt);
+  nextRequestStartAt = scheduledStart + MIN_REQUEST_INTERVAL_MS;
+  try {
+    await wait(scheduledStart - Date.now(), signal);
+  } catch (error) {
+    releaseSlot();
+    throw error;
+  }
 }
 
 function releaseSlot() {
@@ -138,7 +149,7 @@ async function performRequest(url: string, body: InnerTubePayload, options: Requ
     let retryDelay: number | null = null;
     try {
       const payload = await (async () => {
-        await acquireSlot();
+        await acquireSlot(options.signal);
         const startedAt = Date.now();
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), Math.max(1000, options.timeoutMs ?? DEFAULT_TIMEOUT_MS));
