@@ -77,24 +77,17 @@ function writeCache(key: string, value: InnerTubePayload, ttlMs: number) {
   }
 }
 
-async function acquireSlot(signal?: AbortSignal): Promise<void> {
+async function acquireSlot(): Promise<void> {
   if (activeRequests < MAX_CONCURRENT_REQUESTS) {
     activeRequests += 1;
   } else {
     await new Promise<void>((resolve) => queue.push(resolve));
     activeRequests += 1;
   }
-
   const scheduledStart = Math.max(Date.now(), nextRequestStartAt);
   nextRequestStartAt = scheduledStart + MIN_REQUEST_INTERVAL_MS;
-  try {
-    await wait(scheduledStart - Date.now(), signal);
-  } catch (error) {
-    releaseSlot();
-    throw error;
-  }
+  await wait(scheduledStart - Date.now());
 }
-
 function releaseSlot() {
   activeRequests = Math.max(0, activeRequests - 1);
   queue.shift()?.();
@@ -149,7 +142,7 @@ async function performRequest(url: string, body: InnerTubePayload, options: Requ
     let retryDelay: number | null = null;
     try {
       const payload = await (async () => {
-        await acquireSlot(options.signal);
+        await acquireSlot();
         const startedAt = Date.now();
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), Math.max(1000, options.timeoutMs ?? DEFAULT_TIMEOUT_MS));
