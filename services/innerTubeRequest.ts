@@ -8,14 +8,17 @@ type RequestOptions = {
   headers?: Record<string, string>;
 };
 
-type CacheEntry = { value: InnerTubePayload; expiresAt: number };
+type CacheEntry = { value: InnerTubePayload; expiresAt: number; size: number };
 type Diagnostic = { requests: number; successes: number; failures: number; rateLimited: number; serverErrors: number; totalLatencyMs: number; lastStatus?: number; circuitOpenUntil: number };
 
 const MAX_CONCURRENT_REQUESTS = 3;
 const MAX_CACHE_ENTRIES = 60;
+const MAX_CACHE_BYTES = 8 * 1024 * 1024;
+const MAX_CACHE_ENTRY_BYTES = 1.5 * 1024 * 1024;
 const MAX_RETRY_AFTER_MS = 30_000;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const cache = new Map<string, CacheEntry>();
+let cacheBytes = 0;
 const inFlight = new Map<string, Promise<InnerTubePayload>>();
 const diagnostics = new Map<string, Diagnostic>();
 const queue: Array<() => void> = [];
@@ -44,6 +47,7 @@ function readCache(key: string): InnerTubePayload | null {
   if (!entry) return null;
   if (entry.expiresAt <= Date.now()) {
     cache.delete(key);
+    cacheBytes = Math.max(0, cacheBytes - entry.size);
     return null;
   }
   cache.delete(key);
@@ -53,12 +57,21 @@ function readCache(key: string): InnerTubePayload | null {
 
 function writeCache(key: string, value: InnerTubePayload, ttlMs: number) {
   if (ttlMs <= 0) return;
-  cache.delete(key);
-  cache.set(key, { value, expiresAt: Date.now() + ttlMs });
-  while (cache.size > MAX_CACHE_ENTRIES) {
+  const size = JSON.stringify(value).length * 2;
+  if (size > MAX_CACHE_ENTRY_BYTES) return;
+  const previous = cache.get(key);
+  if (previous) {
+    cacheBytes = Math.max(0, cacheBytes - previous.size);
+    cache.delete(key);
+  }
+  cache.set(key, { value, expiresAt: Date.now() + ttlMs, size });
+  cacheBytes += size;
+  while (cache.size > MAX_CACHE_ENTRIES || cacheBytes > MAX_CACHE_BYTES) {
     const oldest = cache.keys().next().value;
     if (!oldest) break;
+    const entry = cache.get(oldest);
     cache.delete(oldest);
+    if (entry) cacheBytes = Math.max(0, cacheBytes - entry.size);
   }
 }
 
@@ -241,4 +254,5 @@ export function getInnerTubeDiagnostics() {
 
 export function clearInnerTubeCache() {
   cache.clear();
+  cacheBytes = 0;
 }
