@@ -143,3 +143,20 @@ The following capabilities are in scope. Each must have a defined implementation
 - No production changes to `main`.
 - No APK or release without explicit instruction.
 - No copying of Mochy Music source code.
+
+
+## Implementation status — 17 November 2026
+
+### Completed groundwork
+- Created the isolated `master` working branch; `main` remains untouched.
+- Added an independent Kotlin five-band EQ / preamp / limiter DSP prototype and a Swift DSP prototype. Neither is connected to the live playback path yet.
+- Added the shared TypeScript transport and Audio Lab contract.
+- Added a local Expo module package and an initial Android Media3 transport adapter with load, play, pause, seek, playback-rate control, track-scoped state, buffering/progress events, and catalogue-duration fallback when stream metadata omits duration.
+- The native adapter explicitly reports DSP capabilities as unavailable until the processor chain is integrated and verified.
+
+### Not yet completed or verified
+- The Android adapter is not yet wired into `AudioPlayerProvider`; the existing player remains the app's active playback path.
+- Android foreground `MediaSessionService`, notification/lock-screen integration, interruption/route handling, and background lifecycle are not implemented in this adapter.
+- iOS native transport is not implemented; the Swift file is only a standalone DSP prototype.
+- No native build, TypeScript check, emulator test, or physical-device playback test has been run for this increment. The repository currently reports no GitHub Actions runs on `master`.
+- Do not treat this as a usable replacement player or as a completed Mochy-equivalent engine yet.
