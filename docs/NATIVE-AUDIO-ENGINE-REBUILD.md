@@ -194,3 +194,12 @@ The following capabilities are in scope. Each must have a defined implementation
 - Replaced per-audio-block coefficient-array and coefficient-object creation in the Android five-band EQ with preallocated reusable coefficient storage.
 - Biquad coefficient updates now copy primitive values into existing filter instances. This removes those avoidable allocations from the decoded-PCM processing loop.
 - This is a targeted allocation reduction, not a measured performance claim. Native compilation, DSP tests, and device profiling are still required.
+
+
+## Platform scope update — 17 November 2026
+
+The native Luma Audio Engine is Android-only. iOS is explicitly out of scope for this implementation: the Expo module autolinking config now declares only Android, and the unfinished Swift adapter, Swift DSP prototype, and podspec have been removed. Do not plan or claim iOS native-engine parity unless the product requirements change.
+
+The CI workflow now generates the Android native project and runs the app Kotlin compilation task. This is a compile-only verification step: it does not package, upload, or publish an APK. The workflow result must be green before treating the Android native module as compile-verified.
+
+Android DSP configuration is published as an immutable volatile snapshot. The audio processing callback reads one snapshot per PCM buffer and no longer takes the configuration monitor, avoiding UI/configuration lock contention on the audio thread. The DSP state itself remains owned by the playback processing thread.
