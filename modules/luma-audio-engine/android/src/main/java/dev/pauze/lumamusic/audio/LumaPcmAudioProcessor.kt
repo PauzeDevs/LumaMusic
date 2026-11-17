@@ -14,12 +14,12 @@ import kotlin.math.roundToInt
  */
 @androidx.media3.common.util.UnstableApi
 class LumaPcmAudioProcessor : BaseAudioProcessor() {
-  private var dsp: PauzeAudioDsp? = null
+  @Volatile private var dsp: PauzeAudioDsp? = null
   private var scratch = FloatArray(0)
   private var equalizerEnabled = false
   private var bandDb = floatArrayOf(0f, 0f, 0f, 0f, 0f)
   private var preampDb = 0f
-  private var limiterEnabled = true
+  private var limiterEnabled = false
   private var encoding = C.ENCODING_INVALID
 
   override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
