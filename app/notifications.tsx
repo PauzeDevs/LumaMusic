@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import * as Notifications from "expo-notifications";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ComponentProps } from "react";
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNotificationPreferences } from "../store/notificationPreferences";
@@ -68,7 +68,7 @@ export default function NotificationsScreen() {
     permission === "denied" ? "Blocked in device settings" : "Permission not requested";
 
   const SettingRow = ({ icon, title, description, value, onChange }: {
-    icon: keyof typeof Ionicons.glyphMap; title: string; description: string;
+    icon: ComponentProps<typeof Ionicons>["name"]; title: string; description: string;
     value: boolean; onChange: (next: boolean) => void;
   }) => (
     <View style={styles.settingRow}>
