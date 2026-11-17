@@ -171,3 +171,10 @@ The following capabilities are in scope. Each must have a defined implementation
 - The Android adapter likewise remains a prototype transport and is not yet integrated into the provider or a foreground `MediaSessionService`.
 
 - Added a CocoaPods specification for the local iOS Expo module so the Swift implementation has a native iOS pod target during autolinking.
+
+
+### DSP correctness increment — 17 November 2026
+- Corrected the Kotlin and Swift limiter attack behavior: gain reduction now reacts immediately to a transient peak, while gain recovery remains smoothed. The previous envelope-based attack could allow the first transient to exceed the ceiling before the envelope caught up.
+- Added Android JVM regression tests for transparent low-level bypass, first-transient limiting, interleaved-frame validation, and DSP state reset.
+- Added JUnit 4.13.2 to the audio-engine Android module's test dependencies.
+- These tests are committed but have not been executed in this environment. No Android or iOS compilation is claimed.
