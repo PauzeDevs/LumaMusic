@@ -2,13 +2,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { MusicTrack } from "../types/music";
-export type LocalPlaylist = { id: string; name: string; tracks: MusicTrack[]; createdAt: number };
+export type LocalPlaylist = { id: string; name: string; tracks: MusicTrack[]; createdAt: number; artwork?: string };
 type LibraryState = {
   likedTracks: MusicTrack[]; recentTracks: MusicTrack[]; localTracks: MusicTrack[]; playlists: LocalPlaylist[];
   toggleLike: (track: MusicTrack) => void; addRecentTrack: (track: MusicTrack) => void;
   addLocalTracks: (tracks: MusicTrack[]) => void; createPlaylist: (name: string) => void;
-  renamePlaylist: (playlistId: string, name: string) => void; deletePlaylist: (playlistId: string) => void;
-  clearLibrary: () => void; addTrackToPlaylist: (playlistId: string, track: MusicTrack) => void;
+  renamePlaylist: (playlistId: string, name: string) => void; setPlaylistArtwork: (playlistId: string, artwork: string | null) => void;
+  deletePlaylist: (playlistId: string) => void; clearLibrary: () => void; addTrackToPlaylist: (playlistId: string, track: MusicTrack) => void;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
 };
 type PersistedLibraryState = Pick<LibraryState, "likedTracks" | "recentTracks" | "localTracks" | "playlists">;
@@ -44,6 +44,10 @@ export const useLibraryStore = create<LibraryState>()(
       if (!normalizedName) return state;
       return { playlists: state.playlists.map((playlist) => playlist.id === playlistId ? { ...playlist, name: normalizedName } : playlist) };
     }),
+    setPlaylistArtwork: (playlistId, artwork) => set((state) => ({
+      playlists: state.playlists.map((playlist) => playlist.id === playlistId
+        ? { ...playlist, artwork: artwork || undefined } : playlist)
+    })),
     deletePlaylist: (playlistId) => set((state) => ({ playlists: state.playlists.filter((playlist) => playlist.id !== playlistId) })),
     clearLibrary: () => set({ likedTracks: [], recentTracks: [], localTracks: [], playlists: [] }),
     addTrackToPlaylist: (playlistId, track) => set((state) => ({
