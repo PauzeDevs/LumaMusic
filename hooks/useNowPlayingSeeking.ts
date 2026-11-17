@@ -10,22 +10,28 @@ export function useNowPlayingSeeking(
   const progressRef = useRef<View>(null);
 
   const seekFromScreenX = useCallback((screenX: number) => {
-    if (progressWidth <= 0 || duration <= 0) return;
+    if (progressWidth <= 0 || duration <= 0 || !Number.isFinite(screenX)) return;
     const fraction = Math.max(0, Math.min(1, (screenX - progressLeft) / progressWidth));
     void seekTo(duration * fraction);
   }, [progressWidth, progressLeft, duration, seekTo]);
 
   const progressPanResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponderCapture: () => true,
     onMoveShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponderCapture: () => true,
+    onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: (_event, gesture) => seekFromScreenX(gesture.x0),
-    onPanResponderMove: (_event, gesture) => seekFromScreenX(gesture.moveX)
+    onPanResponderMove: (_event, gesture) => seekFromScreenX(gesture.moveX),
+    onPanResponderRelease: (_event, gesture) => seekFromScreenX(gesture.moveX)
   }), [seekFromScreenX]);
 
   const onProgressLayout = useCallback(() => {
-    progressRef.current?.measureInWindow((x, _y, width) => {
-      setProgressLeft(x);
-      setProgressWidth(width);
+    requestAnimationFrame(() => {
+      progressRef.current?.measureInWindow((x, _y, width) => {
+        setProgressLeft(x);
+        setProgressWidth(width);
+      });
     });
   }, []);
 
