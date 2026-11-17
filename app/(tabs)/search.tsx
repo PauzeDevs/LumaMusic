@@ -48,11 +48,14 @@ export default function SearchScreen() {
   }, [query]);
 
   const moodQueries = useQueries({
-    queries: moods.map((mood) => ({
+    queries: moods.map((mood, index) => ({
       queryKey: ["youtubeMusic", "mood-art", mood.query],
       queryFn: () => searchYouTubeMusicTracks(mood.query, 3),
       staleTime: 1000 * 60 * 30,
-      retry: 1
+      retry: 1,
+      // Keep the initial Search mount bounded; the remaining mood cards use
+      // their existing visual fallback until the user starts a search.
+      enabled: index < 2
     }))
   });
 
