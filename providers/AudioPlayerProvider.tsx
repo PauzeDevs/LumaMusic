@@ -79,6 +79,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const fetchingAutoplayQueue = useRef(false);
   const automaticRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const earlyEndRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
+  // Keep resolver/catalogue duration available even when the native player reports a shorter duration.
+  const resolvedDurationRef = useRef<{ trackId: string; durationSeconds: number } | null>(null);
   const audioRef = useRef<AudioTagHandle>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const impulseCacheRef = useRef<Map<Exclude<ReverbPreset, "off">, ReturnType<AudioContext["createBuffer"]>>>(new Map());
@@ -344,21 +346,31 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       startupTimeoutRef.current = null;
     }
     const previousError = usePlayerStore.getState().playbackError;
+    const track = usePlayerStore.getState().currentTrack;
+    const nativeDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0;
+    const catalogueDuration = isExternalTrack(track) ? Math.max(0, track.durationMs / 1000) : 0;
+    const resolvedDuration = isExternalTrack(track) && resolvedDurationRef.current?.trackId === track.id
+      ? resolvedDurationRef.current.durationSeconds
+      : 0;
+    // Native duration can describe a truncated stream. Preserve the longest
+    // independently available duration for display and end-of-track decisions.
+    const effectiveDuration = isExternalTrack(track)
+      ? Math.max(nativeDuration, catalogueDuration, resolvedDuration)
+      : nativeDuration;
     setPlaybackStatus({
       isPlaying: active,
       isBuffering: playbackState === "buffering",
       playbackPosition: Math.max(0, Number.isFinite(position) ? position : 0),
-      playbackDuration: Math.max(0, Number.isFinite(duration) ? duration : 0),
+      playbackDuration: effectiveDuration,
       // A paused/metadata status event must not erase a real playback failure.
       playbackError: active ? null : previousError
     });
-    const track = usePlayerStore.getState().currentTrack;
     if (track) useListeningStatsStore.getState().recordProgress(track, position, active);
     if (track) {
       void PlaybackNotificationManager.show({
         state: active ? "playing" : "paused",
         elapsedTime: Math.max(0, position || 0),
-        duration: Math.max(0, duration || 0)
+        duration: effectiveDuration
       }).catch(() => undefined);
     }
   }, [setPlaybackStatus]);
@@ -402,6 +414,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
       try {
         const stream = await resolveYouTubeMusicAudio(track, forceStreamRefresh);
+        if (requestId !== playbackRequestSequence.current) return;
+        resolvedDurationRef.current = {
+          trackId: track.id,
+          durationSeconds: Math.max(0, Number.isFinite(stream.durationSeconds) ? stream.durationSeconds : 0)
+        };
         const bitrateKbps = stream.bitrate && stream.bitrate > 0 ? Math.round(stream.bitrate / 1000) : null;
         // YouTube Music streams are lossy codecs; only label HD when the actual
         // selected stream reports a high bitrate. Never infer lossless from bitrate.
@@ -658,14 +675,18 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         earlyEndRecovery.current = { trackId: track.id, attempts: 0 };
       }
       const catalogueDuration = Math.max(0, track.durationMs / 1000);
-      const expectedDuration = Math.max(catalogueDuration, latest.playbackDuration || 0);
+      const resolvedDuration = resolvedDurationRef.current?.trackId === track.id
+        ? Math.max(0, resolvedDurationRef.current.durationSeconds)
+        : 0;
+      const nativeDuration = Math.max(0, latest.playbackDuration || 0);
+      const expectedDuration = Math.max(catalogueDuration, resolvedDuration, nativeDuration);
       const currentPosition = Math.max(0, latest.playbackPosition || 0);
-      // A native ended event is not proof that a YouTube track completed. Compare
-      // against catalogue duration as well as stream metadata to catch truncated
-      // direct URLs (for example, a 3-minute song ending around 1:50).
+      // Do not let a short native stream duration redefine the catalogue track's
+      // length. A small tolerance accommodates status-event cadence and encoder
+      // padding, while still catching a track cut short by several seconds.
       const remaining = expectedDuration - currentPosition;
-      const earlyEndThreshold = Math.max(12, expectedDuration * 0.08);
-      if (expectedDuration > 0 && remaining > earlyEndThreshold) {
+      const completionTolerance = Math.max(3, expectedDuration * 0.015);
+      if (expectedDuration > 0 && remaining > completionTolerance) {
         if (earlyEndRecovery.current.attempts < 1) {
           earlyEndRecovery.current.attempts += 1;
           const resumeAt = Math.max(0, currentPosition - 2);
