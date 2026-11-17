@@ -208,7 +208,7 @@ class LumaAudioEngineModule : Module() {
     return mapOf(
       "trackId" to activeTrackId,
       "isPlaying" to current.isPlaying,
-      "isBuffering" to current.playbackState == Player.STATE_BUFFERING,
+      "isBuffering" to (current.playbackState == Player.STATE_BUFFERING),
       "positionSeconds" to current.currentPosition.coerceAtLeast(0L) / 1000.0,
       "durationSeconds" to duration / 1000.0,
       "bufferedSeconds" to current.bufferedPosition.coerceAtLeast(0L) / 1000.0,
