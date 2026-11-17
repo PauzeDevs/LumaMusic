@@ -30,7 +30,6 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     private var targetPreamp = 1.0
     private var limiterEnabled = true
     private var limiterEnvelope = 0.0
-    private val attack = exp(-1.0 / (0.004 * rate))
     private val release = exp(-1.0 / (0.080 * rate))
     private var enabled = false
 
@@ -82,8 +81,10 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
             }
 
             if (limiterEnabled) {
-                limiterEnvelope = if (peak > limiterEnvelope) {
-                    attack * limiterEnvelope + (1.0 - attack) * peak
+                // Instantaneous attack prevents the first transient from escaping
+                // above full scale; only gain recovery is smoothed.
+                limiterEnvelope = if (peak >= limiterEnvelope) {
+                    peak
                 } else {
                     release * limiterEnvelope + (1.0 - release) * peak
                 }
