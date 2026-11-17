@@ -50,6 +50,11 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install
 
+      - name: Use the preinstalled JDK without remote toolchain resolution
+        run: |
+          if [ -f android/settings.gradle ]; then sed -i "/foojay-resolver-convention/d" android/settings.gradle; fi
+          if [ -f android/settings.gradle.kts ]; then sed -i '/foojay-resolver-convention/d' android/settings.gradle.kts; fi
+
       - name: Configure emulator ABI
         run: printf '\nreactNativeArchitectures=x86_64\n' >> android/gradle.properties
 
@@ -65,6 +70,9 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_2
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-snapshots: true
           ram-size: 4096M
           disk-size: 8192M
           disable-animations: true
