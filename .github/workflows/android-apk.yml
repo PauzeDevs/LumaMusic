@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - master
     paths:
       - .github/workflows/android-apk.yml
   workflow_dispatch:
@@ -90,7 +91,7 @@ jobs:
 
   release:
     name: Publish LumaMusic DayLight stable release
-    if: github.event_name == 'push' || github.event.inputs.release_channel == 'stable'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_channel == 'stable'
     needs: build
     runs-on: ubuntu-latest
     steps:
