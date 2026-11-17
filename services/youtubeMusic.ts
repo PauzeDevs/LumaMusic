@@ -412,10 +412,12 @@ function mapRelease(item: Obj, shelfTitle = ""): MusicRelease | null {
     item.subtitle?.musicTwoRowItemRenderer?.subtitle
   ];
   const details = subtitleCandidates.map(readText).find((value) => value.trim().length > 0) ?? "";
-  const normalized = (details + " " + shelfTitle).toLowerCase();
-  const kind = /\bep\b/.test(normalized)
+  const normalizedDetails = details.toLowerCase();
+  const normalizedShelf = shelfTitle.toLowerCase();
+  const shelfIsEPOnly = /\b(extended plays|eps)\b/.test(normalizedShelf) && !/\bsingles?\b/.test(normalizedShelf);
+  const kind = /\bep\b/.test(normalizedDetails) || shelfIsEPOnly
     ? "ep"
-    : /\bsingle\b/.test(details.toLowerCase())
+    : /\bsingle\b/.test(normalizedDetails)
       ? "single"
       : "album";
   const countMatch = details.match(/(\d+)\s*(?:songs?|tracks?)/i);
@@ -510,9 +512,17 @@ export async function getYouTubeMusicArtistReleases(artistId: string, limit = 30
   let pagesVisited = 0;
   while (pending.length > 0 && pagesVisited < 8 && uniqueById(collected).length < limit) {
     const target = pending.shift()!;
-    const payload = await innerTubePost(BROWSE_URL, target.continuation
-      ? { continuation: target.continuation }
-      : { browseId: target.browseId, ...(target.params ? { params: target.params } : {}) });
+    let payload: Obj;
+    try {
+      payload = await innerTubePost(BROWSE_URL, target.continuation
+        ? { continuation: target.continuation }
+        : { browseId: target.browseId, ...(target.params ? { params: target.params } : {}) });
+    } catch {
+      // One unavailable shelf should not hide releases already collected from
+      // the artist page or other shelves.
+      pagesVisited += 1;
+      continue;
+    }
     consume(payload, target.shelfTitle);
 
     const token = continuationTokens(payload).find((candidate) => !seenTokens.has(candidate));
