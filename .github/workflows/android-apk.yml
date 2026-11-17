@@ -1,8 +1,13 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  # APK builds are always manual. Test is the safe default; stable publishing
-  # requires explicitly selecting the stable channel in the Actions UI.
+  # A deliberate workflow-file update on main can publish a release.
+  # Ordinary application commits do not publish APKs.
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/android-apk.yml
   workflow_dispatch:
     inputs:
       release_channel:
@@ -78,14 +83,14 @@ jobs:
       - name: Upload architecture APK
         uses: actions/upload-artifact@v4
         with:
-          name: lumamusic-${{ github.event.inputs.release_channel }}-${{ matrix.abi }}
+          name: lumamusic-${{ github.event.inputs.release_channel || 'stable' }}-${{ matrix.abi }}
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
           retention-days: 14
 
   release:
-    name: Publish LumaMusic stable release
-    if: github.event.inputs.release_channel == 'stable'
+    name: Publish LumaMusic DayLight stable release
+    if: github.event_name == 'push' || github.event.inputs.release_channel == 'stable'
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -99,50 +104,45 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: luna-music-nightly-stable
-          name: Luna Music Nightly - Stable
+          tag_name: daylight-2026-11-17
+          name: LumaMusic DayLight Update
           prerelease: false
           overwrite_files: true
           files: |
             dist/LumaMusic-arm64-v8a.apk
             dist/LumaMusic-armeabi-v7a.apk
           body: |
-            # LumaMusic | Release Notes
+            # 🌅 LumaMusic DayLight Update
 
-            **Update: Memory Optimisation, Playback Safety & Import Stability**
+            Yo guys! 👋
 
-            This stable Android build includes the latest merged runtime optimisations and crash-prevention fixes. The existing visual design and UI layout are unchanged.
+            We've been cooking behind the scenes, fixing things, polishing the experience, and making LumaMusic better with every update. Here's the DayLight Update.
 
-            ### ⚡ Memory Optimisation
-            - Bounded YouTube stream and PO token caches to reduce retained memory.
-            - Added bounded LRU caching for lyrics while preserving cache expiry behaviour.
-            - Reduced React Query garbage-collection retention to two minutes.
-            - Reduced artwork decode overhead with resize-first image handling.
-            - Limited the reverb impulse-response cache to the active preset and clear it when reverb is disabled.
+            ### ✨ What's New
+            - Refreshed the Preferences area with a cleaner matte-black appearance.
+            - Improved the startup experience.
+            - Continued improvements to YouTube-based audio streaming compatibility.
+            - General internal stability and code-quality improvements.
 
-            ### 🛡️ Stability & Crash Prevention
-            - Added a 512 KB input limit and field/row bounds for playlist CSV imports.
-            - Hardened playlist import preview and matching error handling.
-            - Replaced recursive YouTube Music payload traversal with bounded iterative traversal.
-            - Added response-size limits and safer JSON response handling for YouTube Music requests.
-            - Added guards against stale asynchronous audio startup callbacks during rapid track changes.
+            ### 🛠️ Bug Fixes
+            - Removed the problematic blur integration associated with startup issues.
+            - Removed the BlurTargetView integration.
+            - Addressed issues from the previous blur implementation.
+            - General stability fixes and cleanup.
 
-            ### 🎵 Playback & Catalogue Reliability
-            - Improved stream URL refresh support for recovery from premature stream endings.
-            - Added safer handling around playback source changes and foreground audio recovery.
-            - Kept existing playback controls and app behaviour intact; no UI layout or styling changes were made.
+            ### 📱 Which APK should you download?
+            - **LumaMusic-arm64-v8a.apk (64-bit ARM):** Recommended for most modern Android phones and tablets with 64-bit ARM processors.
+            - **LumaMusic-armeabi-v7a.apk (32-bit ARM):** For older Android devices that use a 32-bit ARM processor.
 
-            ### 📱 Android Builds
-            - `LumaMusic-arm64-v8a.apk`: 64-bit ARM devices.
-            - `LumaMusic-armeabi-v7a.apk`: 32-bit ARM devices.
+            If you're unsure, check your device's CPU architecture with a device-information app. Android version alone does not determine the correct APK.
 
-            ### Verification
-            - Both Android release APK build jobs completed successfully in GitHub Actions.
-            - The release publishing job completed successfully.
-            - Automated emulator stress testing remains unverified because the emulator environment failed before app stress checks could run. Real-device playback and memory behaviour should still be tested.
+            ### 🌐 Find us
+            - [LumaMusic](https://lumamusic.devs.surf)
+            - [Pauze](https://pauze.is-a.dev)
+            - [PauzeX Developments](https://pauzedevs.github.io/PauzeWebsiteMain/)
+            - [GitHub Repository](https://github.com/PauzeDevs/LumaMusic)
 
             ---
-            **Developed by PauzeX Developments**  
-            [Website](https://lumamusic.devs.surf) · [GitHub](https://github.com/PauzeDevs/LumaMusic)
+            **Built with ❤️ by PauzeX Developments.**
 
-            *Thank you for using LumaMusic. Keep listening.*
+            Keep listening. Keep discovering. Keep it Luma.
