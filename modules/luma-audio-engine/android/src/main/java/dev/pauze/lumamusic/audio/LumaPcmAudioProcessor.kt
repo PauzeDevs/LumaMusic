@@ -85,7 +85,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     inputBuffer.position(start + bytes)
   }
 
-  override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
+  override fun onFlush() {
     dsp?.reset()
   }
 
