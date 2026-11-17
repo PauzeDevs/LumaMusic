@@ -20,14 +20,13 @@ export default function NowPlayingScreen() {
   const playbackPosition = usePlayerStore((s) => s.playbackPosition);
   const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const playbackError = usePlayerStore((s) => s.playbackError);
-  const playbackRate = usePlayerStore((s) => s.playbackRate);
   const sleepTimerMinutes = usePlayerStore((s) => s.sleepTimerMinutes);
   const isShuffled = usePlayerStore((s) => s.isShuffled);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const queue = usePlayerStore((s) => s.queue);
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
-  const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setPlaybackRate, setSleepTimer } = useAudioEngine();
+  const { togglePlayback, playNext, playPrevious, toggleShuffle, cycleRepeat, seekTo, setSleepTimer } = useAudioEngine();
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
   const isExternalPlayback = track?.source === "youtube_music";
   const [artworkFailed, setArtworkFailed] = useState(false);
@@ -53,11 +52,6 @@ export default function NowPlayingScreen() {
 
   const liked = likedTracks.some((item) => item.id === track.id);
   const progress = duration > 0 ? Math.min(100, (playbackPosition / duration) * 100) : 0;
-  const cycleSpeed = () => {
-    const speeds = [0.75, 1, 1.25, 1.5, 2];
-    const index = speeds.indexOf(playbackRate);
-    setPlaybackRate(speeds[(index + 1) % speeds.length]);
-  };
   const chooseSleepTimer = () => {
     if (isExternalPlayback) {
       Alert.alert("Sleep timer unavailable", "Playback is handled by the external player. Use its playback controls or your device settings for a sleep timer.");
@@ -120,7 +114,6 @@ export default function NowPlayingScreen() {
         </View>
         {!isExternalPlayback ? (
           <View style={styles.extraControls}>
-            <Pressable style={styles.extraButton} onPress={cycleSpeed}><Ionicons name="speedometer-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{playbackRate}× speed</Text></Pressable>
             <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
           </View>
         ) : null}
