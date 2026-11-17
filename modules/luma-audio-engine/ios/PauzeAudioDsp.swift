@@ -13,7 +13,6 @@ final class PauzeAudioDsp {
     private var targetPreamp = 1.0
     private var limiterEnabled = true
     private var limiterEnvelope = 0.0
-    private let attack: Double
     private let release: Double
     private var equalizerEnabled = false
     private let lock = NSLock()
@@ -23,7 +22,6 @@ final class PauzeAudioDsp {
         self.sampleRate = sampleRate
         self.channels = channels
         self.filters = Array(repeating: Array(repeating: Biquad(), count: 5), count: channels)
-        self.attack = exp(-1.0 / (0.004 * sampleRate))
         self.release = exp(-1.0 / (0.080 * sampleRate))
     }
 
@@ -75,8 +73,10 @@ final class PauzeAudioDsp {
                 peak = max(peak, abs(value))
             }
             if limiterEnabled {
-                limiterEnvelope = peak > limiterEnvelope
-                    ? attack * limiterEnvelope + (1 - attack) * peak
+                // Instantaneous attack prevents the first transient from escaping
+                // above full scale; only gain recovery is smoothed.
+                limiterEnvelope = peak >= limiterEnvelope
+                    ? peak
                     : release * limiterEnvelope + (1 - release) * peak
                 let gain = limiterEnvelope > 0.98 ? 0.98 / limiterEnvelope : 1
                 for channel in 0..<channels { samples[base + channel] *= Float(gain) }
