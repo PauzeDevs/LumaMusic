@@ -47,7 +47,7 @@ export function useNowPlayingArtworkMotion(
         }),
         Animated.timing(artworkFloat, {
           toValue: -floatAmount,
-          duration: 4200,
+          duration: firstDuration,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true
         })
@@ -69,7 +69,7 @@ export function useNowPlayingArtworkMotion(
       Animated.parallel([
         Animated.timing(artworkScale, {
           toValue: 1,
-          duration: 4200,
+          duration: firstDuration,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true
         }),
