@@ -149,14 +149,14 @@ public class LumaAudioEngineModule: Module {
     let rate = Double(player?.rate ?? 0)
     let buffering = player?.timeControlStatus == .waitingToPlayAtSpecifiedRate
     return [
-      "trackId": activeTrackId ?? NSNull(),
+      "trackId": activeTrackId.map { $0 as Any } ?? NSNull(),
       "isPlaying": rate > 0,
       "isBuffering": buffering,
       "positionSeconds": current.isFinite ? max(0, current) : 0,
       "durationSeconds": duration.isFinite ? max(0, duration) : 0,
       "bufferedSeconds": bufferedPosition(item: item),
       "playbackRate": rate > 0 ? rate : 1,
-      "error": lastError ?? NSNull()
+      "error": lastError.map { $0 as Any } ?? NSNull()
     ]
   }
 
