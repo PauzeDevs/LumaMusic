@@ -188,3 +188,9 @@ The following capabilities are in scope. Each must have a defined implementation
 - Media3's custom audio processor chain applies to decoded PCM processing; this does not claim DSP on encoded passthrough/offload paths.
 - iOS now returns an explicit unsupported error for Audio Lab changes until its AVAudioEngine graph is implemented; its AVPlayer transport remains separate.
 - No app-provider migration has been done: the existing app still does not route its user-facing playback through this new module. No Android build, iOS build, unit test run, emulator test, or device test has been completed for this increment.
+
+
+### Android DSP hot-path allocation reduction — 17 November 2026
+- Replaced per-audio-block coefficient-array and coefficient-object creation in the Android five-band EQ with preallocated reusable coefficient storage.
+- Biquad coefficient updates now copy primitive values into existing filter instances. This removes those avoidable allocations from the decoded-PCM processing loop.
+- This is a targeted allocation reduction, not a measured performance claim. Native compilation, DSP tests, and device profiling are still required.
