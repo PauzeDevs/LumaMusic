@@ -1,4 +1,4 @@
-import { requireOptionalNativeModule, EventEmitter, type EventSubscription } from "expo-modules-core";
+import { requireOptionalNativeModule, type EventSubscription } from "expo-modules-core";
 import type {
   AudioEngineCapabilities,
   AudioEngineState,
@@ -17,11 +17,11 @@ type NativeAudioEngineModule = {
   setPlaybackRate(rate: number): Promise<void>;
   setAudioLab(configuration: AudioLabConfiguration): Promise<void>;
   release(): Promise<void>;
-  addListener?: (eventName: "onStateChange", listener: (state: AudioEngineState) => void) => EventSubscription;
+  addListener: (eventName: "onStateChange", listener: (state: AudioEngineState) => void) => EventSubscription;
 };
 
 const nativeModule = requireOptionalNativeModule<NativeAudioEngineModule>("LumaAudioEngine");
-const emitter = nativeModule ? new EventEmitter(nativeModule as never) : null;
+
 
 export const isNativeAudioEngineAvailable = Boolean(nativeModule);
 
@@ -72,6 +72,6 @@ export async function releaseNativeAudioEngine(): Promise<void> {
 }
 
 export function addNativeAudioStateListener(listener: (state: AudioEngineState) => void): EventSubscription | null {
-  if (!emitter) return null;
-  return emitter.addListener("onStateChange", listener);
+  if (!nativeModule) return null;
+  return nativeModule.addListener("onStateChange", listener);
 }
