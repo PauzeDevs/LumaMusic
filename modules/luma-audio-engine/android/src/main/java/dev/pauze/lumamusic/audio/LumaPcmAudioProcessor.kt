@@ -22,6 +22,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
   private var limiterEnabled = false
   private var encoding = C.ENCODING_INVALID
 
+  @Synchronized
   override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
     if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
       inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT
@@ -53,9 +54,8 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     val bytesPerSample = if (encoding == C.ENCODING_PCM_FLOAT) 4 else 2
     val sampleCount = bytes / bytesPerSample
     val channels = inputAudioFormat.channelCount
-    if (sampleCount == 0 || sampleCount % channels != 0) {
-      inputBuffer.position(inputBuffer.limit())
-      return
+    require(bytes % bytesPerSample == 0 && sampleCount > 0 && sampleCount % channels == 0) {
+      "PCM buffer must contain complete interleaved frames."
     }
 
     if (scratch.size < sampleCount) scratch = FloatArray(sampleCount)
