@@ -70,7 +70,8 @@ jobs:
           disable-animations: true
           script: |
             set -euo pipefail
-            APK="$GITHUB_WORKSPACE/stress-app-debug.apk"
+            APK="${{ github.workspace }}/stress-app-debug.apk"
+            if [ ! -s "$APK" ]; then echo "Debug APK missing or empty: $APK"; ls -lah "${{ github.workspace }}"; exit 1; fi
             PACKAGE="dev.pauze.lumamusic"
             mkdir -p stress-results
             adb install -r "$APK"
