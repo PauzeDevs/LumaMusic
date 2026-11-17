@@ -160,3 +160,12 @@ The following capabilities are in scope. Each must have a defined implementation
 - iOS native transport is not implemented; the Swift file is only a standalone DSP prototype.
 - No native build, TypeScript check, emulator test, or physical-device playback test has been run for this increment. The repository currently reports no GitHub Actions runs on `master`.
 - Do not treat this as a usable replacement player or as a completed Mochy-equivalent engine yet.
+
+
+### Native transport progress — 17 November 2026 (continued)
+- Added an initial iOS Expo module adapter using AVPlayer, with load/play/pause/seek/rate commands, track-scoped state events, buffering/progress reporting, HTTP headers, and catalogue-duration fallback.
+- Registered the iOS implementation alongside the Android implementation in the local Expo module config.
+- iOS reports DSP capabilities as unavailable until an AVAudioEngine processing graph is actually connected.
+- The existing app already configures background audio through its current Expo audio plugins and uses `PlaybackNotificationManager` in `AudioPlayerProvider`. Do not add a second competing notification/player-control stack during migration. The native engine must take ownership cleanly and replace the existing notification bridge only after transport integration is verified.
+- The iOS adapter is not yet integrated into `AudioPlayerProvider`, does not yet own Now Playing / remote-command metadata, and has not been compiled or tested on a simulator or device.
+- The Android adapter likewise remains a prototype transport and is not yet integrated into the provider or a foreground `MediaSessionService`.
