@@ -19,7 +19,7 @@ class LumaRenderersFactory(
   ): AudioSink {
     return DefaultAudioSink.Builder(context)
       .setEnableFloatOutput(enableFloatOutput)
-      .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
+      .setEnableAudioTrackPlaybackParams(enableAudioOutputPlaybackParams)
       .setAudioProcessors(arrayOf<AudioProcessor>(pcmProcessor))
       .build()
   }
