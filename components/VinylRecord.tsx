@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Image, StyleSheet, View } from "react-native";
-import { useTheme } from "../theme/useTheme";
 
 type Props = {
   artwork?: string | null;
@@ -11,7 +10,6 @@ type Props = {
 
 /** A physical-looking record. The grooves, label and raised spindle rotate as one disc. */
 export function VinylRecord({ artwork, isPlaying, artworkFailed, onArtworkError }: Props) {
-  const { colors } = useTheme();
   const rotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
