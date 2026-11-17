@@ -1,12 +1,11 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  # A deliberate workflow-file update on main can publish a release.
-  # Ordinary application commits do not publish APKs.
+  # APK builds are never triggered by pushes to master.
+  # Publishing remains an explicit workflow_dispatch action.
   push:
     branches:
       - main
-      - master
     paths:
       - .github/workflows/android-apk.yml
   workflow_dispatch:
