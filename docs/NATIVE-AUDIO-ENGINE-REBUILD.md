@@ -178,3 +178,13 @@ The following capabilities are in scope. Each must have a defined implementation
 - Added Android JVM regression tests for transparent low-level bypass, first-transient limiting, interleaved-frame validation, and DSP state reset.
 - Added JUnit 4.13.2 to the audio-engine Android module's test dependencies.
 - These tests are committed but have not been executed in this environment. No Android or iOS compilation is claimed.
+
+### Android decoded-PCM DSP milestone — 17 November 2026
+- Added a Media3 AudioProcessor that accepts PCM16 and PCM float blocks, preserves the input format, converts into a reusable float scratch buffer, runs the independent Luma DSP core, and writes processed samples into Media3's output buffer.
+- Added a custom DefaultRenderersFactory / DefaultAudioSink configuration that inserts this processor into the decoded PCM processing chain. This is the first connection between the DSP core and the native Android playback output path.
+- Added a native setAudioLab bridge for the five-band EQ, preamp, and limiter settings. The limiter is opt-in by default; no EQ or limiter is silently imposed on a new playback session.
+- Added Android processor tests for PCM16 passthrough and rejection of unsupported PCM formats.
+- Malformed partial PCM frames are rejected rather than silently discarded.
+- Media3's custom audio processor chain applies to decoded PCM processing; this does not claim DSP on encoded passthrough/offload paths.
+- iOS now returns an explicit unsupported error for Audio Lab changes until its AVAudioEngine graph is implemented; its AVPlayer transport remains separate.
+- No app-provider migration has been done: the existing app still does not route its user-facing playback through this new module. No Android build, iOS build, unit test run, emulator test, or device test has been completed for this increment.
