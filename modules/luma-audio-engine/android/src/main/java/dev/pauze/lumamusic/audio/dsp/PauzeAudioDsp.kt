@@ -6,7 +6,6 @@ import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Standalone, allocation-conscious DSP core for LumaMusic.
