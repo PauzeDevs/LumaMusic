@@ -336,7 +336,7 @@ export async function searchYouTubeMusicAlbums(query: string, limit = 20): Promi
   if (!normalized) return [];
   const payload = await searchRequest(normalized, FILTER_ALBUMS);
   return uniqueById(searchItems(payload)
-    .map(mapRelease)
+    .map((item) => mapRelease(item))
     .filter((item): item is MusicRelease => Boolean(item))
     .filter((item) => /^(MPRE|OLAK|M)/.test(item.browseId)))
     .slice(0, limit);
