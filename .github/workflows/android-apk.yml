@@ -1,15 +1,25 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  # Stable APK releases are published only when manually requested.
+  # APK builds are always manual. Test is the safe default; stable publishing
+  # requires explicitly selecting the stable channel in the Actions UI.
   workflow_dispatch:
+    inputs:
+      release_channel:
+        description: "Test APK (artifact only) or publish a stable GitHub release"
+        required: true
+        type: choice
+        default: test
+        options:
+          - test
+          - stable
 
 permissions:
   contents: write
 
 concurrency:
   group: lumamusic-android-release-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -68,13 +78,14 @@ jobs:
       - name: Upload architecture APK
         uses: actions/upload-artifact@v4
         with:
-          name: lumamusic-${{ matrix.abi }}
+          name: lumamusic-${{ github.event.inputs.release_channel }}-${{ matrix.abi }}
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
           retention-days: 14
 
   release:
-    name: Publish Luna Music Nightly - Stable
+    name: Publish LumaMusic stable release
+    if: github.event.inputs.release_channel == 'stable'
     needs: build
     runs-on: ubuntu-latest
     steps:
