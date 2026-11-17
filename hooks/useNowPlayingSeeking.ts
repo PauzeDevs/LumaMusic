@@ -9,9 +9,20 @@ export function useNowPlayingSeeking(
   const [progressLeft, setProgressLeft] = useState(0);
   const progressRef = useRef<View>(null);
 
-  const seekFromScreenX = useCallback((screenX: number) => {
-    if (progressWidth <= 0 || duration <= 0 || !Number.isFinite(screenX)) return;
-    const fraction = Math.max(0, Math.min(1, (screenX - progressLeft) / progressWidth));
+  const measureProgress = useCallback(() => {
+    requestAnimationFrame(() => {
+      progressRef.current?.measureInWindow((x, _y, width) => {
+        if (width > 0) {
+          setProgressLeft(x);
+          setProgressWidth(width);
+        }
+      });
+    });
+  }, []);
+
+  const seekFromPageX = useCallback((pageX: number) => {
+    if (progressWidth <= 0 || duration <= 0 || !Number.isFinite(pageX)) return;
+    const fraction = Math.max(0, Math.min(1, (pageX - progressLeft) / progressWidth));
     void seekTo(duration * fraction);
   }, [progressWidth, progressLeft, duration, seekTo]);
 
@@ -21,19 +32,13 @@ export function useNowPlayingSeeking(
     onMoveShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponderCapture: () => true,
     onPanResponderTerminationRequest: () => false,
-    onPanResponderGrant: (_event, gesture) => seekFromScreenX(gesture.x0),
-    onPanResponderMove: (_event, gesture) => seekFromScreenX(gesture.moveX),
-    onPanResponderRelease: (_event, gesture) => seekFromScreenX(gesture.moveX)
-  }), [seekFromScreenX]);
+    onPanResponderGrant: (event) => {
+      measureProgress();
+      seekFromPageX(event.nativeEvent.pageX);
+    },
+    onPanResponderMove: (event) => seekFromPageX(event.nativeEvent.pageX),
+    onPanResponderRelease: (event) => seekFromPageX(event.nativeEvent.pageX)
+  }), [measureProgress, seekFromPageX]);
 
-  const onProgressLayout = useCallback(() => {
-    requestAnimationFrame(() => {
-      progressRef.current?.measureInWindow((x, _y, width) => {
-        setProgressLeft(x);
-        setProgressWidth(width);
-      });
-    });
-  }, []);
-
-  return { progressRef, progressPanResponder, onProgressLayout };
+  return { progressRef, progressPanResponder, onProgressLayout: measureProgress };
 }
