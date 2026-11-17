@@ -176,13 +176,16 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) {
+  const surfaceBackground = surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.12)" : "rgba(255,255,255,0.12)") : surfaceStyle === "frosted" ? (isDark ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.66)") : (isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.42)");
+  const surfaceBorder = surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.86)";
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
   contentTarget: { flex: 1, minHeight: 0 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
   headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
-  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.82)" },
+  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
   brandLogo: { width: 30, height: 30, borderRadius: 9 },
   brandName: { color: colors.text, fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
@@ -228,10 +231,10 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", marginTop: 26, paddingHorizontal: 8 },
-  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", shadowColor: "#000000", shadowOpacity: isDark ? 0.18 : 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder, alignItems: "center", justifyContent: "center", shadowColor: "#000000", shadowOpacity: isDark ? 0.18 : 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   playFace: { width: 58, height: 58, borderRadius: 29, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 10, marginTop: 14, flexShrink: 0 },
-  extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
+  extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
   bottomGlass: { flexShrink: 0, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.86)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.12)" : "rgba(255,255,255,0.12)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)") : (isDark ? "rgba(24,24,28,0.22)" : "rgba(255,255,255,0.22)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
   bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: surfaceStyle === "liquid" ? (isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)") : "transparent" },
