@@ -13,6 +13,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.util.concurrent.atomic.AtomicBoolean
@@ -38,7 +39,7 @@ class LumaAudioEngineModule : Module() {
 
     OnCreate {
       released.set(false)
-      val context = appContext.reactContext
+      val context = appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available.")
       player = ExoPlayer.Builder(context).build().apply {
         setAudioAttributes(
@@ -49,19 +50,13 @@ class LumaAudioEngineModule : Module() {
           true
         )
         addListener(object : Player.Listener {
-          override fun onPlaybackStateChanged(playbackState: Int) {
-            emitState(this@apply)
-          }
-          override fun onIsPlayingChanged(isPlaying: Boolean) {
-            emitState(this@apply)
-          }
+          override fun onPlaybackStateChanged(playbackState: Int) = emitState(this@apply)
+          override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(this@apply)
           override fun onPlayerError(error: PlaybackException) {
             lastError = error.message ?: "Playback failed."
             emitState(this@apply)
           }
-          override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            emitState(this@apply)
-          }
+          override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(this@apply)
         })
       }
       handler.removeCallbacks(progressEmitter)
@@ -81,72 +76,93 @@ class LumaAudioEngineModule : Module() {
       )
     }
 
-    AsyncFunction("getState") {
-      stateMap(player)
+    AsyncFunction("getState") { promise: Promise ->
+      runOnMain(promise) { stateMap(player) }
     }
 
-    AsyncFunction("load") { track: Map<String, Any?>, startPositionSeconds: Double? ->
-      val current = requirePlayer()
-      val id = track["id"] as? String ?: throw IllegalArgumentException("Track id is required.")
-      val uri = track["uri"] as? String ?: throw IllegalArgumentException("Track URI is required.")
-      require(uri.isNotBlank()) { "Track URI cannot be empty." }
-      val title = track["title"] as? String ?: ""
-      val artist = track["artist"] as? String ?: ""
-      val headers = (track["headers"] as? Map<*, *>)?.entries
-        ?.mapNotNull { (key, value) ->
-          if (key is String && value is String) key to value else null
-        }?.toMap().orEmpty()
+    AsyncFunction("load") { track: Map<String, Any?>, startPositionSeconds: Double?, promise: Promise ->
+      runOnMain(promise) {
+        val current = requirePlayer()
+        val id = track["id"] as? String ?: throw IllegalArgumentException("Track id is required.")
+        val uri = track["uri"] as? String ?: throw IllegalArgumentException("Track URI is required.")
+        require(uri.isNotBlank()) { "Track URI cannot be empty." }
+        val title = track["title"] as? String ?: ""
+        val artist = track["artist"] as? String ?: ""
+        val headers = (track["headers"] as? Map<*, *>)?.entries
+          ?.mapNotNull { (key, value) ->
+            if (key is String && value is String) key to value else null
+          }?.toMap().orEmpty()
 
-      activeTrackId = id
-      lastError = null
-      val httpFactory = DefaultHttpDataSource.Factory()
-        .setUserAgent("LumaMusic/0.1")
-        .setAllowCrossProtocolRedirects(true)
-        .setDefaultRequestProperties(headers)
-      val dataSourceFactory = DefaultDataSource.Factory(current.applicationLooper.let {
-        appContext.reactContext ?: throw IllegalStateException("React context is not available.")
-      }, httpFactory)
-      val sourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-      current.setMediaSource(sourceFactory.createMediaSource(
-        MediaItem.Builder()
-          .setUri(Uri.parse(uri))
-          .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
-          .build()
-      ))
-      val startMs = ((startPositionSeconds ?: 0.0).coerceAtLeast(0.0) * 1000.0).toLong()
-      current.prepare()
-      if (startMs > 0L) current.seekTo(startMs)
-      emitState(current)
+        activeTrackId = id
+        lastError = null
+        val context = appContext.reactContext?.applicationContext
+          ?: throw IllegalStateException("React context is not available.")
+        val httpFactory = DefaultHttpDataSource.Factory()
+          .setUserAgent("LumaMusic/0.1")
+          .setAllowCrossProtocolRedirects(true)
+          .setDefaultRequestProperties(headers)
+        val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
+        val sourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+        current.setMediaSource(sourceFactory.createMediaSource(
+          MediaItem.Builder()
+            .setUri(Uri.parse(uri))
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
+            .build()
+        ))
+        val startMs = ((startPositionSeconds ?: 0.0).coerceAtLeast(0.0) * 1000.0).toLong()
+        current.prepare()
+        if (startMs > 0L) current.seekTo(startMs)
+        emitState(current)
+        null
+      }
     }
 
-    AsyncFunction("play") {
-      requirePlayer().play()
-      emitState(requirePlayer())
+    AsyncFunction("play") { promise: Promise ->
+      runOnMain(promise) { requirePlayer().play(); emitState(requirePlayer()); null }
     }
 
-    AsyncFunction("pause") {
-      requirePlayer().pause()
-      emitState(requirePlayer())
+    AsyncFunction("pause") { promise: Promise ->
+      runOnMain(promise) { requirePlayer().pause(); emitState(requirePlayer()); null }
     }
 
-    AsyncFunction("seekTo") { positionSeconds: Double ->
-      require(positionSeconds.isFinite() && positionSeconds >= 0.0) { "Seek position must be finite and non-negative." }
-      requirePlayer().seekTo((positionSeconds * 1000.0).toLong())
-      emitState(requirePlayer())
+    AsyncFunction("seekTo") { positionSeconds: Double, promise: Promise ->
+      runOnMain(promise) {
+        require(positionSeconds.isFinite() && positionSeconds >= 0.0) { "Seek position must be finite and non-negative." }
+        requirePlayer().seekTo((positionSeconds * 1000.0).toLong())
+        emitState(requirePlayer())
+        null
+      }
     }
 
-    AsyncFunction("setPlaybackRate") { rate: Double ->
-      require(rate.isFinite() && rate in 0.5..2.0) { "Playback rate must be between 0.5x and 2.0x." }
-      requirePlayer().setPlaybackSpeed(rate.toFloat())
-      emitState(requirePlayer())
+    AsyncFunction("setPlaybackRate") { rate: Double, promise: Promise ->
+      runOnMain(promise) {
+        require(rate.isFinite() && rate in 0.5..2.0) { "Playback rate must be between 0.5x and 2.0x." }
+        requirePlayer().setPlaybackSpeed(rate.toFloat())
+        emitState(requirePlayer())
+        null
+      }
     }
 
-    AsyncFunction("release") {
-      releasePlayer()
+    AsyncFunction("release") { promise: Promise ->
+      runOnMain(promise) { releasePlayer(); null }
     }
 
     OnDestroy {
-      releasePlayer()
+      if (Looper.myLooper() == Looper.getMainLooper()) {
+        releasePlayer()
+      } else {
+        handler.post { releasePlayer() }
+      }
+    }
+  }
+
+  private fun <T> runOnMain(promise: Promise, action: () -> T) {
+    handler.post {
+      try {
+        promise.resolve(action())
+      } catch (error: Throwable) {
+        promise.reject("E_LUMA_AUDIO", error.message ?: "Native audio operation failed.", error)
+      }
     }
   }
 
