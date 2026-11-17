@@ -346,8 +346,8 @@ export async function getYouTubeMusicPlaylistTracks(playlistId: string, limit = 
   const cleanId = playlistId.replace(/^youtube-playlist:/i, "").trim();
   const browseId = cleanId.startsWith("VL") ? cleanId : `VL${cleanId}`;
   const payload = await innerTubePost(BROWSE_URL, { browseId });
-  const items = collectRenderers(payload, "musicResponsiveListItemRenderer");
-  return uniqueById(items.map(mapTrack).filter((item): item is MusicTrack => Boolean(item))).slice(0, Math.max(1, Math.min(limit, 500)));
+  // Playlist pages use the same bounded continuation traversal as artist/release catalogues.
+  return browseTracksWithContinuation(payload, Math.max(1, Math.min(limit, 500)));
 }
 
 export async function openTrackInYouTubeMusic(track: MusicTrack): Promise<void> {

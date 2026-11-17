@@ -16,6 +16,7 @@ function ThemedNavigator() {
     <StatusBar style={isDark ? "light" : "dark"} />
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" }, animation: "fade_from_bottom", animationDuration: 320 }}>
       <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
+      <Stack.Screen name="privacy" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
       <Stack.Screen name="account" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
       <Stack.Screen name="appearance" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
       <Stack.Screen name="modules" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
