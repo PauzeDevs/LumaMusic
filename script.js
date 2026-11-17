@@ -1,6 +1,0 @@
-const year=document.getElementById("year");if(year)year.textContent=String(new Date().getFullYear());
-const menu=document.querySelector(".menu"),nav=document.querySelector(".topbar nav");
-if(menu&&nav){menu.addEventListener("click",()=>{const open=menu.getAttribute("aria-expanded")==="true";menu.setAttribute("aria-expanded",String(!open));nav.classList.toggle("open",!open);});nav.querySelectorAll("a").forEach(link=>link.addEventListener("click",()=>{menu.setAttribute("aria-expanded","false");nav.classList.remove("open");}));document.addEventListener("click",event=>{if(!nav.contains(event.target)&&!menu.contains(event.target)){menu.setAttribute("aria-expanded","false");nav.classList.remove("open");}});}
-const tourImage=document.getElementById("tour-image");
-const tourTabs=document.querySelectorAll(".tour-tabs button");
-tourTabs.forEach(tab=>tab.addEventListener("click",()=>{if(!tourImage)return;tourTabs.forEach(item=>{item.classList.remove("active");item.setAttribute("aria-selected","false");});tab.classList.add("active");tab.setAttribute("aria-selected","true");tourImage.style.opacity="0";window.setTimeout(()=>{tourImage.src=tab.dataset.image;tourImage.alt="LumaMusic "+tab.dataset.title+" screen";tourImage.onload=()=>{tourImage.style.opacity="1";};},120);}));
