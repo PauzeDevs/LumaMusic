@@ -27,37 +27,48 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     private val filters = Array(channels) { Array(frequencies.size) { Biquad() } }
     private var preamp = 1.0
     private var targetPreamp = 1.0
-    private var limiterEnabled = true
     private var limiterEnvelope = 0.0
     private val release = exp(-1.0 / (0.080 * rate))
-    private var enabled = false
+    // UI/configuration writes publish immutable snapshots; the audio thread reads
+    // one volatile reference per buffer and never waits on a configuration lock.
+    @Volatile private var requestedConfig = DspConfig(
+        equalizerEnabled = false,
+        bandDb = FloatArray(frequencies.size),
+        preampDb = 0f,
+        limiterEnabled = false
+    )
 
-    @Synchronized
     fun configureEqualizer(isEnabled: Boolean, bandDb: FloatArray, preampDb: Float = 0f) {
         require(bandDb.size == frequencies.size) { "Exactly 5 EQ bands are required" }
-        enabled = isEnabled
-        for (i in bandDb.indices) targetGains[i] = if (isEnabled) bandDb[i].coerceIn(-12f, 12f).toDouble() else 0.0
-        targetPreamp = if (isEnabled) dbToLinear(preampDb.coerceIn(-12f, 6f).toDouble()) else 1.0
+        require(preampDb.isFinite()) { "Preamp must be finite" }
+        require(bandDb.all { it.isFinite() }) { "EQ gains must be finite" }
+        val current = requestedConfig
+        requestedConfig = current.copy(
+            equalizerEnabled = isEnabled,
+            bandDb = bandDb.copyOf(),
+            preampDb = preampDb.coerceIn(-12f, 6f)
+        )
     }
 
-    @Synchronized
     fun setLimiterEnabled(value: Boolean) {
-        limiterEnabled = value
-        if (!value) limiterEnvelope = 0.0
+        requestedConfig = requestedConfig.copy(limiterEnabled = value)
     }
 
     /** Process a complete interleaved Float32 PCM block in place. */
-    @Synchronized
     fun process(samples: FloatArray, validSamples: Int = samples.size) {
         require(validSamples in 0..samples.size)
         require(validSamples % channels == 0) { "PCM block must contain complete frames" }
         if (validSamples == 0) return
 
-        // Smooth parameter changes at block boundaries to avoid zipper noise.
+        val config = requestedConfig
         for (band in gains.indices) {
-            gains[band] += (targetGains[band] - gains[band]) * 0.35
+            val requestedGain = if (config.equalizerEnabled) config.bandDb[band].coerceIn(-12f, 12f).toDouble() else 0.0
+            targetGains[band] = requestedGain
+            gains[band] += (requestedGain - gains[band]) * 0.35
         }
-        preamp += (targetPreamp - preamp) * 0.35
+        val requestedPreamp = if (config.equalizerEnabled) dbToLinear(config.preampDb.toDouble()) else 1.0
+        targetPreamp = requestedPreamp
+        preamp += (requestedPreamp - preamp) * 0.35
 
         val coefficients = Array(frequencies.size) { band ->
             designPeaking(frequencies[band], gains[band], 1.0)
@@ -72,14 +83,14 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
             for (channel in 0 until channels) {
                 val sample = samples[index + channel].toDouble() * preamp
                 var value = sample
-                if (enabled) {
+                if (config.equalizerEnabled) {
                     for (band in frequencies.indices) value = filters[channel][band].process(value)
                 }
                 samples[index + channel] = value.toFloat()
                 peak = maxOf(peak, abs(value))
             }
 
-            if (limiterEnabled) {
+            if (config.limiterEnabled) {
                 // Instantaneous attack prevents the first transient from escaping
                 // above full scale; only gain recovery is smoothed.
                 limiterEnvelope = if (peak >= limiterEnvelope) {
@@ -94,7 +105,6 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         }
     }
 
-    @Synchronized
     fun reset() {
         filters.forEach { channelFilters -> channelFilters.forEach { it.reset() } }
         limiterEnvelope = 0.0
@@ -116,6 +126,13 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     }
 
     private fun dbToLinear(db: Double) = 10.0.pow(db / 20.0)
+
+    private data class DspConfig(
+        val equalizerEnabled: Boolean,
+        val bandDb: FloatArray,
+        val preampDb: Float,
+        val limiterEnabled: Boolean
+    )
 
     private data class Coefficients(val b0: Double, val b1: Double, val b2: Double, val a1: Double, val a2: Double)
 
