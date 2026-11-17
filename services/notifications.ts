@@ -1,4 +1,23 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
+
+const TOKEN_STORAGE_KEY = "lumamusic-expo-push-token";
+
+export type NotificationPreferences = {
+  newMusic: boolean;
+  artistReleases: boolean;
+  appAnnouncements: boolean;
+};
+
+function getSupabaseConfig() {
+  const extra = Constants.expoConfig?.extra;
+  const url = extra?.supabaseUrl as string | undefined;
+  const key = extra?.supabasePublishableKey as string | undefined;
+  if (!url || !key) throw new Error("Supabase notification configuration is missing.");
+  return { url, key };
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -7,7 +26,9 @@ Notifications.setNotificationHandler({
     shouldPlaySound: true,
     shouldSetBadge: false
   })
-});async function callRegistrationRpc(token: string, preferences: NotificationPreferences) {
+});
+
+async function callRegistrationRpc(token: string, preferences: NotificationPreferences): Promise<void> {
   const { url, key } = getSupabaseConfig();
   const response = await fetch(`${url}/rest/v1/rpc/register_device_push_token`, {
     method: "POST",
@@ -29,6 +50,35 @@ Notifications.setNotificationHandler({
     throw new Error(`Notification registration failed (${response.status}): ${detail}`);
   }
 }
+
+export async function registerForPushNotifications(
+  preferences: NotificationPreferences
+): Promise<string | null> {
+  const current = await Notifications.getPermissionsAsync();
+  const permission = current.granted ? current : await Notifications.requestPermissionsAsync();
+  if (!permission.granted) return null;
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("lumamusic-updates", {
+      name: "LumaMusic updates",
+      description: "New music, followed-artist releases and app announcements",
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 180, 100, 180],
+      lightColor: "#F04455"
+    });
+  }
+
+  const projectId = Constants.easConfig?.projectId ??
+    Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) throw new Error("Expo project ID is missing from the app configuration.");
+
+  const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+  const token = tokenResponse.data;
+  await callRegistrationRpc(token, preferences);
+  await AsyncStorage.setItem(TOKEN_STORAGE_KEY, token);
+  return token;
+}
+
 export async function syncNotificationPreferences(
   preferences: NotificationPreferences
 ): Promise<void> {
@@ -37,3 +87,9 @@ export async function syncNotificationPreferences(
   await callRegistrationRpc(token, preferences);
 }
 
+export async function registerIfAlreadyAllowed(
+  preferences: NotificationPreferences
+): Promise<void> {
+  const permission = await Notifications.getPermissionsAsync();
+  if (permission.granted) await registerForPushNotifications(preferences);
+}

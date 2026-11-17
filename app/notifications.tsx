@@ -18,9 +18,24 @@ export default function NotificationsScreen() {
   const artistReleases = useNotificationPreferences((state) => state.artistReleases);
   const newMusic = useNotificationPreferences((state) => state.newMusic);
   const appAnnouncements = useNotificationPreferences((state) => state.appAnnouncements);
-  const setArtistReleases = useNotificationPreferences((state) => state.setArtistReleases);
-  const setNewMusic = useNotificationPreferences((state) => state.setNewMusic);
-  const setAppAnnouncements = useNotificationPreferences((state) => state.setAppAnnouncements);
+
+  const updatePreference = async (key: "newMusic" | "artistReleases" | "appAnnouncements", enabled: boolean) => {
+    const setters = useNotificationPreferences.getState();
+    if (key === "newMusic") setters.setNewMusic(enabled);
+    if (key === "artistReleases") setters.setArtistReleases(enabled);
+    if (key === "appAnnouncements") setters.setAppAnnouncements(enabled);
+    const state = useNotificationPreferences.getState();
+    try {
+      await syncNotificationPreferences({
+        newMusic: state.newMusic,
+        artistReleases: state.artistReleases,
+        appAnnouncements: state.appAnnouncements
+      });
+    } catch (error) {
+      Alert.alert("Preference saved on this device", error instanceof Error ? error.message : "Cloud sync failed.");
+    }
+  };
+
 
   const refreshPermission = useCallback(async () => {
     try {
