@@ -1,5 +1,6 @@
 import { Linking } from "react-native";
 import type { MusicArtist, MusicPlaylist, MusicTrack } from "../types/music";
+import { requestInnerTubeJson } from "./innerTubeRequest";
 
 const SEARCH_URL = "https://music.youtube.com/youtubei/v1/search?prettyPrint=false";
 const BROWSE_URL = "https://music.youtube.com/youtubei/v1/browse?prettyPrint=false";
@@ -150,35 +151,15 @@ function uniqueById<T extends { id: string }>(items: T[]): T[] {
 }
 
 async function innerTubePost(url: string, body: Obj): Promise<Obj> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Origin: "https://music.youtube.com",
-      Referer: "https://music.youtube.com/",
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    },
-    body: JSON.stringify({ context: CONTEXT, ...body })
-  });
-
-  if (!response.ok) {
-    throw new Error("YouTube Music InnerTube request failed (" + response.status + "). Please try again.");
-  }
-  const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentLength > 5 * 1024 * 1024) {
-    throw new Error("YouTube Music returned an unusually large response. Please try again.");
-  }
-  const bodyText = await response.text();
-  if (bodyText.length > 5 * 1024 * 1024) {
-    throw new Error("YouTube Music returned an unusually large response. Please try again.");
-  }
-  try {
-    return JSON.parse(bodyText) as Obj;
-  } catch {
-    throw new Error("YouTube Music returned an invalid response. Please try again.");
-  }
+  const isSearch = url.includes("/search");
+  const isNext = url.includes("/next");
+  const isContinuation = typeof body.continuation === "string";
+  const cacheTtlMs = isSearch ? 90_000 : isNext ? 20_000 : isContinuation ? 120_000 : 300_000;
+  return requestInnerTubeJson(url, { context: CONTEXT, ...body }, {
+    cacheTtlMs,
+    timeoutMs: 8_000,
+    maxRetries: 2
+  }) as Promise<Obj>;
 }
 
 async function searchRequest(query: string, params?: string): Promise<Obj> {

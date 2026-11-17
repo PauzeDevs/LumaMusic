@@ -1,6 +1,7 @@
 import type { MusicTrack } from "../types/music";
 import { resolveWithNewPipe } from "./newPipeResolver";
 import { resolveYouTubePoTokens } from "./poTokenResolver";
+import { requestInnerTubeJson } from "./innerTubeRequest";
 
 export type ResolvedYouTubeAudio = {
   url: string;
@@ -145,53 +146,41 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
  * Resolves a playable audio stream directly through YouTube's InnerTube /player API.
  * Keeps InnerTube as the primary resolver and falls back to NewPipe on Android only if all InnerTube clients fail.
  */
-export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
-  const videoId = extractYouTubeVideoId(track);
-  if (!videoId) {
-    throw new Error("Missing YouTube video ID for this track.");
-  }
+const inFlightResolutions = new Map<string, Promise<ResolvedYouTubeAudio>>();
 
-  // Check if we already have a non-expired stream URL cached (with 5-min safety buffer)
-  if (forceRefresh) streamCache.delete(videoId);
-  const cached = forceRefresh ? null : getCachedStream(videoId);
-  if (cached) return cached;
-
+async function resolveUncachedStream(track: MusicTrack, videoId: string): Promise<ResolvedYouTubeAudio> {
   const errors: string[] = [];
-  // Race the profiles and use the first successful playable stream.
-  // Promise.allSettled would wait for every slow/failing client before returning.
-  const controllers: AbortController[] = [];
-  const profileAttempts = INNERTUBE_PLAYER_CLIENTS.map(async (profile) => {
-    const controller = new AbortController();
-    controllers.push(controller);
-    const timeout = setTimeout(() => controller.abort(), 7000);
+  const deadline = Date.now() + 18_000;
+  let resolvedStream: ResolvedYouTubeAudio | null = null;
+
+  // Use the preferred client first and fall back sequentially. Racing all four
+  // profiles creates request bursts and can aggravate upstream throttling.
+  for (const profile of INNERTUBE_PLAYER_CLIENTS) {
+    if (Date.now() >= deadline) break;
     try {
-      const response = await fetch(PLAYER_URL, {
-        method: "POST",
-        signal: controller.signal,
+      const payload = await requestInnerTubeJson(PLAYER_URL, {
+        context: profile.context,
+        videoId,
+        racyCheckOk: true,
+        contentCheckOk: true
+      }, {
+        timeoutMs: Math.min(5_000, Math.max(1_000, deadline - Date.now())),
+        maxRetries: 0,
         headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
           "User-Agent": profile.userAgent,
           "X-YouTube-Client-Name": profile.clientId,
-          "X-YouTube-Client-Version": profile.context.client.clientVersion,
-          Origin: "https://www.youtube.com"
-        },
-        body: JSON.stringify({
-          context: profile.context,
-          videoId,
-          racyCheckOk: true,
-          contentCheckOk: true
-        })
+          "X-YouTube-Client-Version": profile.context.client.clientVersion
+        }
       });
-      if (!response.ok) throw new Error(`${profile.name}: HTTP ${response.status}`);
-      const payload: Record<string, any> = await response.json();
-      const status = payload?.playabilityStatus?.status;
+      const playabilityStatus = payload.playabilityStatus as Record<string, any> | undefined;
+      const status = playabilityStatus?.status;
       if (status !== "OK") {
-        const reason = payload?.playabilityStatus?.reason || status || "Unavailable";
-        throw new Error(`${profile.name}: ${String(reason)}`);
+        const reason = playabilityStatus?.reason || status || "Unavailable";
+        errors.push(profile.name + ": " + String(reason));
+        continue;
       }
 
-      const streamingData = payload?.streamingData;
+      const streamingData = payload?.streamingData as Record<string, any> | undefined;
       const adaptiveFormats: Record<string, any>[] = Array.isArray(streamingData?.adaptiveFormats) ? streamingData.adaptiveFormats : [];
       const formats: Record<string, any>[] = Array.isArray(streamingData?.formats) ? streamingData.formats : [];
       const audioStreams = [...adaptiveFormats, ...formats].filter((fmt) =>
@@ -206,53 +195,45 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
       });
       const bestFormat = audioStreams[0];
       const hlsManifestUrl: string | undefined = streamingData?.hlsManifestUrl;
-      if (!bestFormat && !hlsManifestUrl) throw new Error(`${profile.name}: no direct audio stream URL`);
+      if (!bestFormat && !hlsManifestUrl) {
+        errors.push(profile.name + ": no direct audio stream URL");
+        continue;
+      }
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
-      const durationFromPlayer = Number(payload?.videoDetails?.lengthSeconds || 0);
+      const durationFromPlayer = Number((payload?.videoDetails as Record<string, any> | undefined)?.lengthSeconds || 0);
       const durationFromFormat = bestFormat?.approxDurationMs ? Math.round(Number(bestFormat.approxDurationMs) / 1000) : 0;
       const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
-      return {
+      resolvedStream = {
         url: bestFormat ? bestFormat.url : hlsManifestUrl!,
         mimeType: bestFormat ? bestFormat.mimeType : "application/x-mpegURL",
         durationSeconds: durationFromPlayer || durationFromFormat || fallbackDuration,
         bitrate: bestFormat ? Number(bestFormat.bitrate || 128000) : undefined,
         userAgent: profile.userAgent,
         expiresAt: Date.now() + expiresInSeconds * 1000
-      } satisfies ResolvedYouTubeAudio;
-    } finally {
-      clearTimeout(timeout);
+      };
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(profile.name + ": " + message);
+      // A 429 is a provider-wide throttle signal. Do not multiply it by trying
+      // every client identity; move directly to the Android fallback instead.
+      if (/HTTP 429/.test(message)) break;
     }
-  });
-
-  let resolvedStream: ResolvedYouTubeAudio;
-  try {
-    resolvedStream = await Promise.any(profileAttempts);
-    // Stop redundant client requests as soon as one profile supplies a stream.
-    controllers.forEach((controller) => controller.abort());
-  } catch (error) {
-    const failures = error instanceof AggregateError
-      ? error.errors.map((item) => item instanceof Error ? item.message : String(item))
-      : [error instanceof Error ? error.message : String(error)];
-    errors.push(...failures);
-    resolvedStream = null as unknown as ResolvedYouTubeAudio;
   }
+
   if (resolvedStream) {
     cacheStream(videoId, resolvedStream);
     return resolvedStream;
   }
 
-  // Android fallback: NewPipe uses its own extraction implementation.
-  // The InnerTube clients above remain the primary path and are never modified
-  // or bypassed when one of them returns a playable stream.
+  // Android fallback remains available when all permitted InnerTube attempts fail.
   try {
     const newPipeResult = await resolveWithNewPipe(videoId);
     if (newPipeResult?.url) {
       const expiryMatch = newPipeResult.url.match(/[?&]expire=(\d+)/);
       const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
       const newPipeUrl = new URL(newPipeResult.url);
-      // PoTokens are optional and only requested for the Android extraction
-      // fallback. A slow or unavailable BotGuard WebView never blocks playback.
       const poToken = await resolvePoTokenQuickly(videoId);
       if (poToken && poToken.expiresAt > Date.now() + 30_000) {
         newPipeUrl.searchParams.set("pot", poToken.contentToken);
@@ -260,25 +241,38 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
       const resolved: ResolvedYouTubeAudio = {
         url: newPipeUrl.toString(),
         mimeType: newPipeResult.mimeType || "audio/*",
-        durationSeconds:
-          newPipeResult.durationSeconds ||
-          Math.max(0, Math.round((track.durationMs || 0) / 1000)),
+        durationSeconds: newPipeResult.durationSeconds || Math.max(0, Math.round((track.durationMs || 0) / 1000)),
         bitrate: newPipeResult.bitrate > 0 ? newPipeResult.bitrate : undefined,
         userAgent: newPipeResult.userAgent,
-        expiresAt: parsedExpiry > Date.now()
-          ? parsedExpiry
-          : Date.now() + 30 * 60 * 1000
+        expiresAt: parsedExpiry > Date.now() ? parsedExpiry : Date.now() + 30 * 60 * 1000
       };
       cacheStream(videoId, resolved);
       return resolved;
     }
   } catch (error) {
-    errors.push(
-      error instanceof Error ? error.message : `NewPipe: ${String(error)}`
-    );
+    errors.push(error instanceof Error ? error.message : "NewPipe: " + String(error));
   }
 
-  throw new Error(
-    `Could not stream "${track.title}". (${errors.join(" | ") || "No playable stream"})`
-  );
+  throw new Error(`Could not stream "${track.title}". (${errors.join(" | ") || "No playable stream"})`);
+}
+
+export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
+  const videoId = extractYouTubeVideoId(track);
+  if (!videoId) throw new Error("Missing YouTube video ID for this track.");
+
+  if (forceRefresh) streamCache.delete(videoId);
+  else {
+    const cached = getCachedStream(videoId);
+    if (cached) return cached;
+  }
+
+  // Prefetch and immediate playback of the same track share one resolver job.
+  const existing = inFlightResolutions.get(videoId);
+  if (existing) return existing;
+
+  const request = resolveUncachedStream(track, videoId).finally(() => {
+    if (inFlightResolutions.get(videoId) === request) inFlightResolutions.delete(videoId);
+  });
+  inFlightResolutions.set(videoId, request);
+  return request;
 }
