@@ -7,6 +7,7 @@ import { AudioPlayerProvider } from "../providers/AudioPlayerProvider";
 import PoTokenWebViewHost from "../components/PoTokenWebViewHost";
 import { GlassBlurTarget } from "../modules/liquid-glass/src/GlassBlurTarget";
 import { useTheme } from "../theme/useTheme";
+import { CrashReports } from "../components/CrashReports";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, gcTime: 2 * 60_000, retry: 1, refetchOnWindowFocus: false } } });
 function ThemedNavigator() {
@@ -29,4 +30,4 @@ function ThemedNavigator() {
     </Stack>
   </View></GlassBlurTarget>;
 }
-export default function RootLayout() { return <QueryClientProvider client={queryClient}><AudioPlayerProvider><><PoTokenWebViewHost /><ThemedNavigator /></></AudioPlayerProvider></QueryClientProvider>; }
+export default function RootLayout() { return <QueryClientProvider client={queryClient}><AudioPlayerProvider><><PoTokenWebViewHost /><ThemedNavigator /><CrashReports /></></AudioPlayerProvider></QueryClientProvider>; }
