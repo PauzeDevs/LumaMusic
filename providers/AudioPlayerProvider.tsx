@@ -238,6 +238,17 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const isCurrentSource = () =>
       sourceInstance === localSourceSequence.current &&
       usePlayerStore.getState().currentTrack?.id === trackId;
+    // Keep remote YouTube streams on the Audio element direct-output path.
+    // The native MediaElementAudioSourceNode DSP route can interrupt streaming
+    // on Android, so Audio Lab processing is reserved for imported local files.
+    if (isExternalTrack(latestTrack)) {
+      try {
+        element.play();
+      } catch (error) {
+        setPlaybackError(error instanceof Error ? error.message : "Could not start this audio stream.");
+      }
+      return;
+    }
 
     const startElement = () => {
       // AudioContext.resume() can settle after the user has selected another
