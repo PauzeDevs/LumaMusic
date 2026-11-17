@@ -23,6 +23,7 @@ class LumaAudioEngineModule : Module() {
   private val handler = Handler(Looper.getMainLooper())
   private val released = AtomicBoolean(false)
   private var activeTrackId: String? = null
+  private var catalogDurationSeconds: Double = 0.0
   private var lastError: String? = null
 
   private val progressEmitter = object : Runnable {
@@ -88,6 +89,7 @@ class LumaAudioEngineModule : Module() {
         require(uri.isNotBlank()) { "Track URI cannot be empty." }
         val title = track["title"] as? String ?: ""
         val artist = track["artist"] as? String ?: ""
+        catalogDurationSeconds = (track["durationSeconds"] as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
         val headers = (track["headers"] as? Map<*, *>)?.entries
           ?.mapNotNull { (key, value) ->
             if (key is String && value is String) key to value else null
@@ -175,7 +177,8 @@ class LumaAudioEngineModule : Module() {
       "positionSeconds" to 0.0, "durationSeconds" to 0.0, "bufferedSeconds" to 0.0,
       "playbackRate" to 1.0, "error" to lastError
     )
-    val duration = current.duration.takeIf { it != C.TIME_UNSET && it >= 0L } ?: 0L
+    val duration = current.duration.takeIf { it != C.TIME_UNSET && it > 0L }
+      ?: (catalogDurationSeconds * 1000.0).toLong()
     return mapOf(
       "trackId" to activeTrackId,
       "isPlaying" to current.isPlaying,
