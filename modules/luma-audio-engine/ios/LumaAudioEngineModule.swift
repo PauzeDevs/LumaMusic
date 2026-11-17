@@ -105,6 +105,10 @@ public class LumaAudioEngineModule: Module {
       self.emitState()
     }
 
+    AsyncFunction("setAudioLab") { (_: [String: Any]) throws -> Void in
+      throw NSError(domain: "LumaAudioEngine", code: 5, userInfo: [NSLocalizedDescriptionKey: "Audio Lab DSP is not yet connected to the iOS playback graph."])
+    }
+
     AsyncFunction("release") {
       self.releasePlayer()
     }
