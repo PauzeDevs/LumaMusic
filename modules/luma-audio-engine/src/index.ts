@@ -3,6 +3,7 @@ import type {
   AudioEngineCapabilities,
   AudioEngineState,
   AudioEngineTrack,
+  AudioLabConfiguration,
   AudioSourceKind,
 } from "../../../services/audioEngine/types";
 
@@ -14,6 +15,7 @@ type NativeAudioEngineModule = {
   pause(): Promise<void>;
   seekTo(positionSeconds: number): Promise<void>;
   setPlaybackRate(rate: number): Promise<void>;
+  setAudioLab(configuration: AudioLabConfiguration): Promise<void>;
   release(): Promise<void>;
   addListener?: (eventName: "onStateChange", listener: (state: AudioEngineState) => void) => EventSubscription;
 };
@@ -58,6 +60,11 @@ export async function seekNativeAudio(positionSeconds: number): Promise<void> {
 export async function setNativeAudioPlaybackRate(rate: number): Promise<void> {
   if (!nativeModule) throw new Error("Native audio engine is not installed in this build.");
   return nativeModule.setPlaybackRate(rate);
+}
+
+export async function setNativeAudioLab(configuration: AudioLabConfiguration): Promise<void> {
+  if (!nativeModule) throw new Error("Native audio engine is not installed in this build.");
+  return nativeModule.setAudioLab(configuration);
 }
 
 export async function releaseNativeAudioEngine(): Promise<void> {
