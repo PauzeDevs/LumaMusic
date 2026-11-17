@@ -169,3 +169,5 @@ The following capabilities are in scope. Each must have a defined implementation
 - The existing app already configures background audio through its current Expo audio plugins and uses `PlaybackNotificationManager` in `AudioPlayerProvider`. Do not add a second competing notification/player-control stack during migration. The native engine must take ownership cleanly and replace the existing notification bridge only after transport integration is verified.
 - The iOS adapter is not yet integrated into `AudioPlayerProvider`, does not yet own Now Playing / remote-command metadata, and has not been compiled or tested on a simulator or device.
 - The Android adapter likewise remains a prototype transport and is not yet integrated into the provider or a foreground `MediaSessionService`.
+
+- Added a CocoaPods specification for the local iOS Expo module so the Swift implementation has a native iOS pod target during autolinking.
