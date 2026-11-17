@@ -23,7 +23,7 @@ function formatTime(seconds: number) {
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const artworkSize = Math.max(180, Math.min(windowWidth - 44, windowHeight * 0.34, 360));
+  const artworkSize = Math.max(180, Math.min(windowWidth - 36, windowHeight * 0.34, 360));
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -120,11 +120,20 @@ export default function NowPlayingScreen() {
           </Pressable>
         </View>
         <View style={styles.progressArea}>
-            <View ref={progressRef} style={[
-              styles.progressTrack,
-              progressBarStyle === "classic" && styles.progressTrackClassic,
-              progressBarStyle === "waveform" && styles.progressTrackWaveform
-            ]} onLayout={onProgressLayout} {...progressPanResponder.panHandlers}>
+            <View
+              ref={progressRef}
+              style={styles.progressTouchArea}
+              onLayout={onProgressLayout}
+              {...progressPanResponder.panHandlers}
+              accessibilityRole="adjustable"
+              accessibilityLabel="Playback position"
+              accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+            >
+              <View pointerEvents="none" style={[
+                styles.progressTrack,
+                progressBarStyle === "classic" && styles.progressTrackClassic,
+                progressBarStyle === "waveform" && styles.progressTrackWaveform
+              ]}>
               {progressBarStyle === "waveform" ? (
                 <View style={styles.waveformBars}>
                   {Array.from({ length: 42 }, (_, index) => {
@@ -139,6 +148,7 @@ export default function NowPlayingScreen() {
                   <View style={[styles.progressThumb, progressBarStyle === "classic" && styles.progressThumbClassic, { left: `${progress}%`, borderColor: accentColor }]} />
                 </>
               )}
+              </View>
             </View>
             <View style={styles.timeRow}>
               <Text style={styles.time}>{formatTime(playbackPosition)}</Text>
@@ -180,14 +190,14 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   const surfaceBackground = surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.12)" : "rgba(255,255,255,0.12)") : surfaceStyle === "frosted" ? (isDark ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.66)") : (isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.42)");
   const surfaceBorder = surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.86)";
   return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
+  safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 16 },
   contentTarget: { flex: 1, minHeight: 0 },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 6 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
-  headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
-  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder },
+  headerLeading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
-  brandLogo: { width: 30, height: 30, borderRadius: 9 },
+  brandLogo: { width: 28, height: 28, borderRadius: 9 },
   brandName: { color: colors.text, fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
   headerCopy: { position: "absolute", left: 52, right: 52, top: 0, bottom: 0, alignItems: "center", justifyContent: "center", gap: 3 },
   overline: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 1.7 },
@@ -207,6 +217,7 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   qualityText: { color: colors.muted, fontSize: 10, fontWeight: "700", letterSpacing: 0.35 },
   like: { padding: 8 },
   progressArea: { marginTop: 20 },
+  progressTouchArea: { minHeight: 38, justifyContent: "center", marginHorizontal: -2, paddingHorizontal: 2 },
   externalPlayback: { marginTop: 24, minHeight: 92, alignItems: "center", justifyContent: "center", gap: 10 },
   externalPlaybackHeader: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
   externalPlaybackText: { color: colors.muted, fontSize: 10 },
