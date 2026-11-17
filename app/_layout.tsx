@@ -20,6 +20,7 @@ function ThemedNavigator() {
       <Stack.Screen name="appearance" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
       <Stack.Screen name="modules" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
       <Stack.Screen name="now-playing" options={{ presentation: "card", animation: "slide_from_bottom", animationDuration: 360 }} />
+      <Stack.Screen name="now-playing-customizer" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
       <Stack.Screen name="lyrics" options={{ presentation: "card", animation: "fade_from_bottom", animationDuration: 320 }} />
       <Stack.Screen name="stats" options={{ presentation: "card", animation: "fade_from_bottom", animationDuration: 320 }} />
       <Stack.Screen name="queue" options={{ presentation: "card", animation: "slide_from_right", animationDuration: 300 }} />
