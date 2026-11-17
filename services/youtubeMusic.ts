@@ -395,18 +395,31 @@ export type MusicRelease = {
   trackCount: number;
 };
 
-function mapRelease(item: Obj): MusicRelease | null {
+function mapRelease(item: Obj, shelfTitle = ""): MusicRelease | null {
   const browseId = browseIdFor(item);
   const title = titleFor(item).trim();
   if (!browseId || !title) return null;
-  const subtitle = readText(item.subtitle ?? item.subtitleText ?? item.shortBylineText ??
-    item.subtitle?.runs ?? item.subtitle?.simpleText ??
-    item.subtitle?.musicResponsiveListItemRenderer?.text ??
-    item.subtitle?.musicTwoRowItemRenderer?.subtitle);
-  const details = subtitle || readText(item.subtitle);
-  const normalized = details.toLowerCase();
-  const kind = /\bep\b/.test(normalized) ? "ep" : /\bsingle\b/.test(normalized) ? "single" : "album";
+
+  // YouTube Music has returned release metadata in several renderer shapes.
+  const subtitleCandidates = [
+    item.subtitle,
+    item.subtitleText,
+    item.shortBylineText,
+    item.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text,
+    item.subtitle?.runs,
+    item.subtitle?.simpleText,
+    item.subtitle?.musicResponsiveListItemRenderer?.text,
+    item.subtitle?.musicTwoRowItemRenderer?.subtitle
+  ];
+  const details = subtitleCandidates.map(readText).find((value) => value.trim().length > 0) ?? "";
+  const normalized = (details + " " + shelfTitle).toLowerCase();
+  const kind = /\bep\b/.test(normalized)
+    ? "ep"
+    : /\bsingle\b/.test(details.toLowerCase())
+      ? "single"
+      : "album";
   const countMatch = details.match(/(\d+)\s*(?:songs?|tracks?)/i);
+
   return {
     id: "youtube-release:" + browseId,
     browseId,
@@ -418,33 +431,99 @@ function mapRelease(item: Obj): MusicRelease | null {
   };
 }
 
+/** Finds the dedicated "See all" browse endpoints behind artist release shelves. */
+function artistReleaseBrowseTargets(root: Obj): Array<{ browseId: string; params?: string; shelfTitle: string }> {
+  const targets: Array<{ browseId: string; params?: string; shelfTitle: string }> = [];
+  const shelves = [
+    ...collectRenderers(root, "musicCarouselShelfRenderer"),
+    ...collectRenderers(root, "musicShelfRenderer")
+  ];
+
+  for (const shelf of shelves) {
+    const shelfTitle = readText(
+      shelf.header?.musicCarouselShelfBasicHeaderRenderer?.title ??
+      shelf.header?.musicShelfHeaderRenderer?.title ??
+      shelf.title
+    );
+    const endpoints = [
+      shelf.header?.musicCarouselShelfBasicHeaderRenderer?.moreContentButton?.buttonRenderer?.navigationEndpoint?.browseEndpoint,
+      shelf.bottomEndpoint?.browseEndpoint,
+      shelf.bottomEndpoint,
+      shelf.header?.musicShelfHeaderRenderer?.moreContentButton?.buttonRenderer?.navigationEndpoint?.browseEndpoint
+    ];
+    for (const endpoint of endpoints) {
+      const browseId = endpoint?.browseId;
+      if (typeof browseId !== "string" || !browseId) continue;
+      targets.push({
+        browseId,
+        ...(typeof endpoint.params === "string" ? { params: endpoint.params } : {}),
+        shelfTitle
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  return targets.filter((target) => {
+    const key = target.browseId + "|" + (target.params ?? "");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 8);
+}
+
 /** Reads the artist's catalogue shelves, including album, EP and single cards. */
 export async function getYouTubeMusicArtistReleases(artistId: string, limit = 30): Promise<MusicRelease[]> {
-  const browseId = artistId.trim();
-  if (!browseId.startsWith("UC")) return [];
-  const collected: MusicRelease[] = [];
-  const seenTokens = new Set<string>();
-  let payload = await innerTubePost(BROWSE_URL, { browseId });
+  const artistBrowseId = artistId.trim();
+  if (!artistBrowseId.startsWith("UC")) return [];
 
-  // Artist pages can split discography shelves across continuation responses.
-  // Follow those pages so older albums, EPs and singles are not silently omitted.
-  for (let page = 0; page < 12; page += 1) {
+  const collected: MusicRelease[] = [];
+  const seenBrowseTargets = new Set<string>();
+  const seenTokens = new Set<string>();
+  const pending: Array<{ browseId?: string; params?: string; continuation?: string; shelfTitle: string }> = [];
+  const initialPayload = await innerTubePost(BROWSE_URL, { browseId: artistBrowseId });
+
+  const enqueueShelfTargets = (payload: Obj) => {
+    for (const target of artistReleaseBrowseTargets(payload)) {
+      const key = target.browseId + "|" + (target.params ?? "");
+      if (seenBrowseTargets.has(key)) continue;
+      seenBrowseTargets.add(key);
+      pending.push({ browseId: target.browseId, params: target.params, shelfTitle: target.shelfTitle });
+    }
+  };
+
+  const consume = (payload: Obj, shelfTitle = "") => {
     const cards = [
       ...collectRenderers(payload, "musicTwoRowItemRenderer"),
       ...collectRenderers(payload, "musicResponsiveListItemRenderer")
     ];
     collected.push(...cards
-      .map(mapRelease)
+      .map((card) => mapRelease(card, shelfTitle))
       .filter((item): item is MusicRelease => Boolean(item))
       .filter((item) => /^(MPRE|OLAK|M)/.test(item.browseId)));
+    enqueueShelfTargets(payload);
+  };
+
+  consume(initialPayload);
+
+  // Visit the "See all" endpoints: recent EPs can be absent from the artist
+  // landing-page preview while their individual tracks are already searchable.
+  let pagesVisited = 0;
+  while (pending.length > 0 && pagesVisited < 8 && uniqueById(collected).length < limit) {
+    const target = pending.shift()!;
+    const payload = await innerTubePost(BROWSE_URL, target.continuation
+      ? { continuation: target.continuation }
+      : { browseId: target.browseId, ...(target.params ? { params: target.params } : {}) });
+    consume(payload, target.shelfTitle);
 
     const token = continuationTokens(payload).find((candidate) => !seenTokens.has(candidate));
-    if (!token || uniqueById(collected).length >= limit) break;
-    seenTokens.add(token);
-    payload = await innerTubePost(BROWSE_URL, { continuation: token });
+    if (token && pagesVisited < 7) {
+      seenTokens.add(token);
+      pending.push({ continuation: token, shelfTitle: target.shelfTitle });
+    }
+    pagesVisited += 1;
   }
 
-  return uniqueById(collected).slice(0, limit);
+  return uniqueById(collected).slice(0, Math.max(1, Math.min(limit, 120)));
 }
 
 /** Loads all playable tracks from an album, EP or single browse page. */
