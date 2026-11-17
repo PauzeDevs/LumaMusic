@@ -3,7 +3,8 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Animated, Easing, Image, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
+import { BlurTargetView, BlurView } from "expo-blur";
+import { VinylRecord } from "../components/VinylRecord";
 import type { ThemePalette } from "../theme/colors";
 import type { SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
@@ -38,6 +39,7 @@ export default function NowPlayingScreen() {
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
   const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
+  const blurTargetRef = useRef<View | null>(null);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
   const { artworkScale, artworkFloat } = useNowPlayingArtworkMotion(isPlaying, motionStyle, animationIntensity);
@@ -82,7 +84,7 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 44 : surfaceStyle === "frosted" ? 72 : surfaceStyle === "clear" ? 88 : 0} style={styles.ambientBlur} />
+      <BlurTargetView ref={blurTargetRef} style={styles.contentTarget}>
       <View style={styles.header}>
         <View style={styles.headerLeading}>
           <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Go back">
@@ -90,13 +92,23 @@ export default function NowPlayingScreen() {
           </Pressable>
           <View style={styles.brand}><Image source={require("../assets/lumamusic-icon.png")} style={styles.brandLogo} /><Text style={styles.brandName}>LumaMusic</Text></View>
         </View>
-        <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => router.push("/now-playing-customizer")} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Customize player"><Ionicons name="color-palette-outline" size={20} color={colors.text} /></Pressable>
+          <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
+        </View>
       </View>
       <View style={styles.main}>
-        <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }] }]}>
-          {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
-          {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
-        </Animated.View>
+        {playerStyle === "vinyl" ? (
+          <Animated.View style={[styles.vinylFrame, { transform: [{ translateY: artworkFloat }, { scale: artworkScale }] }]}>
+            <VinylRecord artwork={track.artwork} isPlaying={isPlaying} artworkFailed={artworkFailed} onArtworkError={() => setArtworkFailed(true)} />
+          </Animated.View>
+        ) : (
+          <Animated.View style={[styles.artFrame, playerStyle === "poster" && styles.posterFrame, { borderRadius: playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }] }]}>
+            {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
+            {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
+            {playerStyle === "poster" ? <View pointerEvents="none" style={styles.posterStamp}><Text style={styles.posterStampText}>NOW PLAYING</Text></View> : null}
+          </Animated.View>
+        )}
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
@@ -146,7 +158,8 @@ export default function NowPlayingScreen() {
             <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
         </View>
       </View>
-      <View style={styles.bottomGlass}><BlurView tint={blurTint} intensity={92} style={StyleSheet.absoluteFill} /><View pointerEvents="none" style={styles.bottomSheen} /><View style={styles.bottom}>
+      </BlurTargetView>
+      <View style={styles.bottomGlass}><BlurView blurTarget={blurTargetRef} blurMethod="dimezisBlurViewSdk31Plus" tint={blurTint} intensity={surfaceStyle === "liquid" ? 42 : surfaceStyle === "frosted" ? 76 : surfaceStyle === "clear" ? 22 : 0} style={StyleSheet.absoluteFill} /><View pointerEvents="none" style={styles.bottomSheen} /><View style={styles.bottom}>
         <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
           <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
         </Pressable>
@@ -163,12 +176,16 @@ export default function NowPlayingScreen() {
   );
 }
 
-function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
+function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) {
+  const surfaceBackground = surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.12)" : "rgba(255,255,255,0.12)") : surfaceStyle === "frosted" ? (isDark ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.66)") : (isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.42)");
+  const surfaceBorder = surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.86)";
+  return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
-  ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
+  contentTarget: { flex: 1, minHeight: 0 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
   headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
-  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.82)" },
+  headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
   brandLogo: { width: 30, height: 30, borderRadius: 9 },
   brandName: { color: colors.text, fontSize: 15, fontWeight: "800", letterSpacing: -0.3 },
@@ -177,6 +194,10 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   headerTitle: { color: colors.muted, fontSize: 12, lineHeight: 16, fontWeight: "600", includeFontPadding: false, textAlign: "center" },
   main: { flex: 1, minHeight: 0, justifyContent: "space-around", paddingTop: 8, paddingBottom: 12 },
   artFrame: { width: artworkSize, maxWidth: "100%", alignSelf: "center", flexShrink: 0, aspectRatio: 1, borderRadius: 8, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 14, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: isDark ? 0.28 : 0.10, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  vinylFrame: { width: artworkSize, maxWidth: "100%", alignSelf: "center", aspectRatio: 1, marginBottom: 14, alignItems: "center", justifyContent: "center" },
+  posterFrame: { width: artworkSize * 0.76, aspectRatio: 0.76, borderRadius: 16 },
+  posterStamp: { position: "absolute", left: 14, bottom: 14, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7, backgroundColor: "rgba(0,0,0,0.58)", borderWidth: 1, borderColor: "rgba(255,255,255,0.22)" },
+  posterStampText: { color: "#FFFFFF", fontSize: 8, fontWeight: "900", letterSpacing: 1.6 },
   artwork: { width: "100%", height: "100%" },
   artworkFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
   trackInfo: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
@@ -210,12 +231,12 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   status: { color: colors.muted, fontSize: 10, textAlign: "center", marginTop: 12 },
   error: { color: colors.danger, fontSize: 10, textAlign: "center", marginTop: 12 },
   controls: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", marginTop: 26, paddingHorizontal: 8 },
-  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", shadowColor: "#000000", shadowOpacity: isDark ? 0.18 : 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  play: { width: 72, height: 72, borderRadius: 36, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder, alignItems: "center", justifyContent: "center", shadowColor: "#000000", shadowOpacity: isDark ? 0.18 : 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   playFace: { width: 58, height: 58, borderRadius: 29, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 10, marginTop: 14, flexShrink: 0 },
-  extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
+  extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: surfaceBackground, borderWidth: 1, borderColor: surfaceBorder },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottomGlass: { flexShrink: 0, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.18)" : "rgba(255,255,255,0.2)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.68)" : "rgba(255,255,255,0.68)") : (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+  bottomGlass: { flexShrink: 0, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.86)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.12)" : "rgba(255,255,255,0.12)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)") : (isDark ? "rgba(24,24,28,0.22)" : "rgba(255,255,255,0.22)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
   bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: surfaceStyle === "liquid" ? (isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)") : "transparent" },
   bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 8 },
   bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
