@@ -37,6 +37,14 @@ jobs:
             label: 32-bit ARM
             asset: LumaMusic-armeabi-v7a.apk
     steps:
+      - name: Check stable release source branch
+        if: github.event.inputs.release_channel == 'stable'
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Stable APK releases can only be published from main. Selected ref: $GITHUB_REF"
+            exit 1
+          fi
+
       - name: Check out repository
         uses: actions/checkout@v5
 
