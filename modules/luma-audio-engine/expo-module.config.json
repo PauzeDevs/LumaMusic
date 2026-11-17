@@ -1,16 +1,10 @@
 {
   "platforms": [
-    "apple",
     "android"
   ],
   "android": {
     "modules": [
       "dev.pauze.lumamusic.audio.LumaAudioEngineModule"
-    ]
-  },
-  "apple": {
-    "modules": [
-      "LumaAudioEngineModule"
     ]
   }
 }
