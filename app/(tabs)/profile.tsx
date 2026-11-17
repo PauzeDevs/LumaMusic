@@ -1,0 +1,139 @@
+import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import type { ThemePalette } from "../../theme/colors";
+import { useTheme } from "../../theme/useTheme";
+import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
+import { GlassSurface } from "../../components/GlassSurface";
+import { PlaylistStack } from "../../components/PlaylistStack";
+import { usePlayerStore } from "../../store/player";
+import { useLibraryStore } from "../../store/library";
+import { router } from "expo-router";
+
+const settings = [
+  { icon: "stats-chart-outline", title: "Listening Stats", subtitle: "Your Replay, listening time and top tracks" },
+  { icon: "person-outline", title: "Account", subtitle: "Your LumaMusic profile" },
+  { icon: "notifications-outline", title: "Notifications", subtitle: "New music and updates" },
+  { icon: "extension-puzzle-outline", title: "Modules", subtitle: "Add features and build your own look" },
+  { icon: "color-palette-outline", title: "Appearance", subtitle: "Colours, motion and listening layout" },
+  { icon: "musical-notes-outline", title: "Playback", subtitle: "Playback, progress and sound controls" },
+  { icon: "shield-checkmark-outline", title: "Privacy", subtitle: "Your data and listening activity" },
+  { icon: "information-circle-outline", title: "About LumaMusic", subtitle: "Version 0.1.0 · PauzeDevs" }
+] as const;
+
+export default function ProfileScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = createStyles(colors, isDark);
+  const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const localPlaylists = useLibraryStore((state) => state.playlists);
+  return (
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
+        <View style={styles.topline}><View style={styles.liveDot} /><Text style={styles.eyebrow}>YOUR PERSONAL SPACE</Text></View>
+        <Text style={styles.title}>Made for you.</Text>
+        <Text style={styles.intro}>Your music world, tuned to your taste.</Text>
+        <GlassSurface style={styles.profileCard} contentStyle={styles.profileCardContent}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>P</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name}>Music listener</Text>
+            <Text style={styles.handle}>Your LumaMusic profile</Text>
+          </View>
+          <View style={styles.profileBadge}><Ionicons name="sparkles" size={13} color={colors.accent} /></View>
+        </GlassSurface>
+        <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Your listening</Text><Text style={styles.sectionMeta}>NOW</Text></View>
+        <View style={styles.nowCard}>
+          <View style={styles.nowIcon}><Ionicons name="musical-notes" size={20} color={colors.mint} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.nowTitle}>{currentTrack ? currentTrack.title : "Nothing playing right now"}</Text>
+            <Text style={styles.nowSub}>{currentTrack ? currentTrack.artist + (isPlaying ? " · Playing in LumaMusic" : " · In LumaMusic player") : "Pick a track and let the room fill up."}</Text>
+          </View>
+          <View style={[styles.statusPill, currentTrack && styles.statusPillActive]}><Text style={styles.statusText}>{currentTrack ? (isPlaying ? "PLAYING" : "PAUSED") : "IDLE"}</Text></View>
+        </View>
+        <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Your playlists</Text><Text style={styles.sectionMeta}>{localPlaylists.length} SAVED</Text></View>
+        <PlaylistStack items={localPlaylists.map((playlist) => ({
+          id: playlist.id,
+          title: playlist.name,
+          subtitle: playlist.tracks.length + " tracks · On this device",
+          artwork: playlist.tracks[0]?.artwork,
+          onPress: () => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })
+        }))} />
+        <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Preferences</Text><Text style={styles.sectionMeta}>PERSONALISE</Text></View>
+        <View style={styles.settings}>
+          {settings.map((item, index) => (
+            <Pressable key={item.title} onPress={() => {
+              if (item.title === "Listening Stats") {
+                router.push("/stats");
+              } else if (item.title === "Playback") {
+                router.push("/audio-settings");
+              } else if (item.title === "Privacy") {
+                Alert.alert("Clear local library?", "This removes liked songs, listening history and local playlists from this device.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Clear library", style: "destructive", onPress: () => useLibraryStore.getState().clearLibrary() }
+                ]);
+              } else if (item.title === "Account") {
+                router.push("/account");
+              } else if (item.title === "Notifications") {
+                Alert.alert("Notifications", "Push notifications are not enabled in this build. No notification permission has been requested.");
+              } else if (item.title === "Modules") {
+                router.push("/modules");
+              } else if (item.title === "Appearance") {
+                router.push("/appearance");
+              } else {
+                void Linking.openURL("https://github.com/PauzeDevs/LumaMusic");
+              }
+            }} style={[styles.setting, index === settings.length - 1 && styles.last]} android_ripple={{ color: "rgba(240,90,104,0.08)" }}>
+              <View style={styles.settingIcon}><Ionicons name={item.icon} size={19} color={colors.accent} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingTitle}>{item.title}</Text>
+                <Text style={styles.settingSub}>{item.subtitle}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.subtle} />
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.footerCard}>
+          <Ionicons name="musical-notes" size={16} color={colors.accent} />
+          <Text style={styles.footer}>Made for the love of listening.{"\n"}LumaMusic by PauzeDevs</Text>
+        </View>
+      </ScrollView>
+      <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
+    </SafeAreaView>
+  );
+}
+
+function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+  content: { paddingHorizontal: 20, paddingBottom: 34 },
+  topline: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
+  eyebrow: { color: colors.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.8 },
+  title: { color: colors.text, fontSize: 33, fontWeight: "800", letterSpacing: -1.2, marginTop: 9 },
+  intro: { color: colors.muted, fontSize: 12, marginTop: 5, marginBottom: 22 },
+  profileCard: { borderRadius: 22, marginBottom: 27 },
+  profileCardContent: { padding: 17, flexDirection: "row", alignItems: "center", gap: 13 },
+  avatar: { width: 49, height: 49, borderRadius: 17, backgroundColor: "rgba(240,90,104,0.16)", borderWidth: 1, borderColor: "rgba(240,90,104,0.24)", alignItems: "center", justifyContent: "center" },
+  avatarText: { color: colors.accent, fontSize: 19, fontWeight: "800" },
+  name: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  handle: { color: colors.muted, fontSize: 11, marginTop: 4 },
+  profileBadge: { width: 30, height: 30, borderRadius: 11, backgroundColor: "rgba(240,90,104,0.1)", alignItems: "center", justifyContent: "center" },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 11, marginTop: 4 },
+  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
+  sectionMeta: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.5 },
+  nowCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 27 },
+  nowIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: colors.surfaceSoft, alignItems: "center", justifyContent: "center" },
+  nowTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
+  nowSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.surfaceSoft },
+  statusPillActive: { backgroundColor: colors.surfaceSoft },
+  statusText: { color: colors.mint, fontSize: 8, fontWeight: "800", letterSpacing: 1 },
+  settings: { borderRadius: 22, paddingHorizontal: 14, paddingVertical: 2, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, shadowColor: "#000000", shadowOpacity: isDark ? 0.28 : 0.09, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  setting: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.065)" },
+  last: { borderBottomWidth: 0 },
+  settingIcon: { width: 43, height: 43, borderRadius: 15, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  settingTitle: { color: colors.text, fontSize: 12, fontWeight: "700" },
+  settingSub: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  footerCard: { marginTop: 25, alignItems: "center", gap: 9, padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  footer: { color: colors.subtle, fontSize: 10, textAlign: "center", lineHeight: 17 }
+}); }

@@ -1,0 +1,10 @@
+{
+  "platforms": [
+    "android"
+  ],
+  "android": {
+    "modules": [
+      "dev.pauze.lumamusic.newpipe.NewPipeExtractorModule"
+    ]
+  }
+}
