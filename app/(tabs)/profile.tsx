@@ -68,14 +68,11 @@ export default function ProfileScreen() {
               } else if (item.title === "Playback") {
                 router.push("/audio-settings");
               } else if (item.title === "Privacy") {
-                Alert.alert("Clear local library?", "This removes liked songs, listening history and local playlists from this device.", [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Clear library", style: "destructive", onPress: () => useLibraryStore.getState().clearLibrary() }
-                ]);
+                router.push("/privacy");
               } else if (item.title === "Account") {
                 router.push("/account");
               } else if (item.title === "Notifications") {
-                Alert.alert("Notifications", "Push notifications are not enabled in this build. No notification permission has been requested.");
+                router.push("/notifications");
               } else if (item.title === "Modules") {
                 router.push("/modules");
               } else if (item.title === "Appearance") {

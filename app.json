@@ -45,6 +45,13 @@
           "enableFFmpeg": true
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "lumamusic-updates",
+          "color": "#F04455"
+        }
+      ],
       "./plugins/withLumaNewPipeDesugaring"
     ],
     "ios": {
