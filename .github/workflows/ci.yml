@@ -7,10 +7,12 @@ on:
       - fix/LunaMusic
       - feature/customizableui
       - main
+      - master
   pull_request:
     branches:
       - main
       - fix/LunaMusic
+      - master
   workflow_dispatch:
 
 permissions:
