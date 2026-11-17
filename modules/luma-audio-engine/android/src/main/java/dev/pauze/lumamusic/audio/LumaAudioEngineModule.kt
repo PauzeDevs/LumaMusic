@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class LumaAudioEngineModule : Module() {
   private var player: ExoPlayer? = null
+  private var pcmProcessor: LumaPcmAudioProcessor? = null
   private val handler = Handler(Looper.getMainLooper())
   private val released = AtomicBoolean(false)
   private var activeTrackId: String? = null
@@ -42,7 +43,8 @@ class LumaAudioEngineModule : Module() {
       released.set(false)
       val context = appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available.")
-      player = ExoPlayer.Builder(context).build().apply {
+      pcmProcessor = LumaPcmAudioProcessor()
+      player = ExoPlayer.Builder(context, LumaRenderersFactory(context, pcmProcessor!!)).build().apply {
         setAudioAttributes(
           AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -67,13 +69,13 @@ class LumaAudioEngineModule : Module() {
     AsyncFunction("getCapabilities") { sourceKind: String ->
       mapOf(
         "nativePlayback" to true,
-        "equalizer" to false,
-        "limiter" to false,
+        "equalizer" to true,
+        "limiter" to true,
         "reverb" to false,
         "spatial" to false,
         "audioTap" to false,
         "sourceKind" to sourceKind,
-        "reasonUnavailable" to "Transport is available; DSP is not connected to the Media3 audio sink yet."
+        "reasonUnavailable" to "Android PCM16/float EQ and peak limiting are connected. Other DSP modules remain unavailable."
       )
     }
 
@@ -145,6 +147,28 @@ class LumaAudioEngineModule : Module() {
       }
     }
 
+    AsyncFunction("setAudioLab") { configuration: Map<String, Any?>, promise: Promise ->
+      runOnMain(promise) {
+        val enabled = configuration["enabled"] as? Boolean ?: false
+        val rawBands = configuration["equalizerDb"] as? List<*>
+          ?: throw IllegalArgumentException("equalizerDb must contain five numeric values.")
+        require(rawBands.size == 5) { "Exactly five EQ band values are required." }
+        val bands = rawBands.map {
+          (it as? Number)?.toFloat()
+            ?: throw IllegalArgumentException("EQ band values must be numeric.")
+        }.toFloatArray()
+        val preamp = (configuration["preampDb"] as? Number)?.toFloat() ?: 0f
+        val limiter = configuration["limiterEnabled"] as? Boolean ?: true
+        require(preamp.isFinite()) { "Preamp must be finite." }
+        require(bands.all { it.isFinite() }) { "EQ gains must be finite." }
+        require(preamp in -12f..6f) { "Preamp must be between -12 and +6 dB." }
+        require(bands.all { it in -12f..12f }) { "EQ gains must be between -12 and +12 dB." }
+        (pcmProcessor ?: throw IllegalStateException("DSP processor is not initialized."))
+          .setAudioLab(enabled, bands, preamp, limiter)
+        null
+      }
+    }
+
     AsyncFunction("release") { promise: Promise ->
       runOnMain(promise) { releasePlayer(); null }
     }
@@ -200,6 +224,7 @@ class LumaAudioEngineModule : Module() {
     handler.removeCallbacks(progressEmitter)
     player?.release()
     player = null
+    pcmProcessor = null
     activeTrackId = null
   }
 }
