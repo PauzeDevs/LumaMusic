@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'dev.pauze.lumamusic.audio'
+version = '0.1.0'
+
+android {
+  namespace "dev.pauze.lumamusic.audio"
+  defaultConfig { versionName project.version.toString() }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+dependencies {
+  implementation 'androidx.media3:media3-exoplayer:1.6.1'
+  implementation 'androidx.media3:media3-datasource:1.6.1'
+  implementation 'androidx.media3:media3-common:1.6.1'
+}
