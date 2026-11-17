@@ -143,14 +143,6 @@ export default function ImportPlaylistScreen() {
       return;
     }
 
-    if (/spotify\.com$/.test(host) || /music\.apple\.com$/.test(host)) {
-      Alert.alert(
-        "Account connection needed",
-        "Spotify and Apple Music playlist links need their official account/API connection before LumaMusic can read the track list. YouTube Music public playlist links can be imported directly right now."
-      );
-      return;
-    }
-
     Alert.alert("Unsupported link", "Use a public YouTube Music playlist link for direct importing, or paste a playlist export below.");
   };
 
@@ -200,7 +192,7 @@ export default function ImportPlaylistScreen() {
           {isImportingLink ? <ActivityIndicator color="#17111F" /> : <Ionicons name="link" size={17} color="#17111F" />}
           <Text style={styles.primaryText}>{isImportingLink ? "Importing playlist…" : "Import playlist link"}</Text>
         </Pressable>
-        <Text style={styles.helper}>Direct link import currently supports public YouTube Music playlists. Spotify and Apple Music need account connections.</Text>
+        <Text style={styles.helper}>Direct link import supports public YouTube Music playlists. You can also import a playlist export below.</Text>
         <View style={styles.sectionDivider}><Text style={styles.sectionDividerText}>OR IMPORT A PLAYLIST EXPORT</Text></View>
         <Text style={styles.label}>PLAYLIST EXPORT</Text>
         <TextInput
