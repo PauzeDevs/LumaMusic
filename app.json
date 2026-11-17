@@ -68,6 +68,13 @@
     },
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9830af86-e68c-471d-976f-ab6f04b9c421"
+      },
+      "supabaseUrl": "https://vzvxcxmoxhyycwzddzbm.supabase.co",
+      "supabasePublishableKey": "sb_publishable_tmnCkDBmig-sKW3x79mLww_G6E-l61c"
     }
   }
 }

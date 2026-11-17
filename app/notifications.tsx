@@ -5,6 +5,7 @@ import { useCallback, useState, type ComponentProps } from "react";
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNotificationPreferences } from "../store/notificationPreferences";
+import { registerForPushNotifications, syncNotificationPreferences } from "../services/notifications";
 import { useTheme } from "../theme/useTheme";
 
 type PermissionState = "loading" | "granted" | "denied" | "undetermined";
@@ -50,6 +51,10 @@ export default function NotificationsScreen() {
       const current = await Notifications.getPermissionsAsync();
       const result = current.granted ? current : await Notifications.requestPermissionsAsync();
       setPermission(result.granted ? "granted" : result.canAskAgain ? "undetermined" : "denied");
+      if (result.granted) {
+        const state = useNotificationPreferences.getState();
+        await registerForPushNotifications({ newMusic: state.newMusic, artistReleases: state.artistReleases, appAnnouncements: state.appAnnouncements });
+      }
       if (!result.granted && !result.canAskAgain) {
         Alert.alert("Notifications are disabled", "Allow LumaMusic notifications in your device settings to receive alerts.", [
           { text: "Not now", style: "cancel" },
@@ -109,19 +114,19 @@ export default function NotificationsScreen() {
 
         <Text style={styles.sectionTitle}>YOUR MUSIC</Text>
         <View style={styles.group}>
-          <SettingRow icon="disc-outline" title="New music" description="Highlights and newly added music" value={newMusic} onChange={setNewMusic} />
+          <SettingRow icon="disc-outline" title="New music" description="Highlights and newly added music" value={newMusic} onChange={(enabled) => { void updatePreference("newMusic", enabled); }} />
           <View style={styles.separator} />
-          <SettingRow icon="person-outline" title="Followed artists" description="New releases from artists you follow" value={artistReleases} onChange={setArtistReleases} />
+          <SettingRow icon="person-outline" title="Followed artists" description="New releases from artists you follow" value={artistReleases} onChange={(enabled) => { void updatePreference("artistReleases", enabled); }} />
         </View>
 
         <Text style={styles.sectionTitle}>FROM LUMAMUSIC</Text>
         <View style={styles.group}>
-          <SettingRow icon="megaphone-outline" title="App announcements" description="Important news, features and app updates" value={appAnnouncements} onChange={setAppAnnouncements} />
+          <SettingRow icon="megaphone-outline" title="App announcements" description="Important news, features and app updates" value={appAnnouncements} onChange={(enabled) => { void updatePreference("appAnnouncements", enabled); }} />
         </View>
 
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={19} color={colors.muted} />
-          <Text style={styles.infoText}>Your choices are saved on this device. Notification permission is now handled here. Remote alerts, including followed-artist release alerts, still require LumaMusic's push service and server registration to be connected.</Text>
+          <Text style={styles.infoText}>Your preferences sync to LumaMusic's notification service. Remote alerts are sent when new music or app announcements are published.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -1,13 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { View } from "react-native";
+import { useEffect } from "react";
 import { DotPattern } from "../components/DotPattern";
 import { StatusBar } from "expo-status-bar";
 import { AudioPlayerProvider } from "../providers/AudioPlayerProvider";
 import PoTokenWebViewHost from "../components/PoTokenWebViewHost";
 import { GlassBlurTarget } from "../modules/liquid-glass/src/GlassBlurTarget";
 import { useTheme } from "../theme/useTheme";
-import "../services/notifications";
+import { registerIfAlreadyAllowed } from "../services/notifications";
+import { useNotificationPreferences } from "../store/notificationPreferences";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, gcTime: 2 * 60_000, retry: 1, refetchOnWindowFocus: false } } });
 function ThemedNavigator() {
@@ -32,4 +34,9 @@ function ThemedNavigator() {
     </Stack>
   </View></GlassBlurTarget>;
 }
-export default function RootLayout() { return <QueryClientProvider client={queryClient}><AudioPlayerProvider><><PoTokenWebViewHost /><ThemedNavigator /></></AudioPlayerProvider></QueryClientProvider>; }
+export default function RootLayout() {
+  useEffect(() => {
+    const preferences = useNotificationPreferences.getState();
+    void registerIfAlreadyAllowed({ newMusic: preferences.newMusic, artistReleases: preferences.artistReleases, appAnnouncements: preferences.appAnnouncements }).catch(() => undefined);
+  }, []);
+  return <QueryClientProvider client={queryClient}><AudioPlayerProvider><><PoTokenWebViewHost /><ThemedNavigator /></></AudioPlayerProvider></QueryClientProvider>; }
