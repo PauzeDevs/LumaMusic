@@ -243,8 +243,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     // on Android, so Audio Lab processing is reserved for imported local files.
     if (isExternalTrack(latestTrack)) {
       try {
-        const resumePosition = pendingResumePositionRef.current;
-        pendingResumePositionRef.current = null;
         if (resumePosition !== null && Number.isFinite(resumePosition) && resumePosition > 0) {
           element.seekToTime(resumePosition);
         }
