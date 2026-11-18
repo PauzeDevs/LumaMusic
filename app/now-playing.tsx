@@ -54,13 +54,24 @@ export default function NowPlayingScreen() {
   useEffect(() => {
     setArtworkFailed(false);
     if (!track?.artwork) return;
+    if (motionStyle === "off") {
+      setPreviousArtwork(null);
+      artworkCrossfade.stopAnimation();
+      artworkCrossfade.setValue(1);
+      return;
+    }
     setPreviousArtwork((current) => current && current !== track.artwork ? current : null);
     artworkCrossfade.stopAnimation();
     artworkCrossfade.setValue(0);
-    Animated.timing(artworkCrossfade, { toValue: 1, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(({ finished }) => {
+    Animated.timing(artworkCrossfade, {
+      toValue: 1,
+      duration: motionStyle === "subtle" ? 260 : 520,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true
+    }).start(({ finished }) => {
       if (finished) setPreviousArtwork(null);
     });
-  }, [track?.id, track?.artwork, artworkCrossfade]);
+  }, [track?.id, track?.artwork, motionStyle, artworkCrossfade]);
   const { progressRef, progressPanResponder, onProgressLayout } = useNowPlayingSeeking(duration, seekTo);
 
   if (!track) {
