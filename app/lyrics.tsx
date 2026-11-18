@@ -30,6 +30,15 @@ export default function LyricsScreen() {
     return active;
   }, [lyrics, position]);
 
+  const activeWordIndex = useMemo(() => {
+    if (lyrics.status !== "available" || activeIndex < 0) return -1;
+    const words = lyrics.lines[activeIndex]?.words;
+    if (!words?.length) return -1;
+    let active = -1;
+    words.forEach((word, index) => { if (word.time <= position) active = index; });
+    return active;
+  }, [lyrics, activeIndex, position]);
+
   useEffect(() => {
     let alive = true;
     if (!track) { setLyrics({ status: "not_found" }); return () => { alive = false; }; }
@@ -88,7 +97,7 @@ export default function LyricsScreen() {
         {lyrics.status === "available" ? <>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricList} showsVerticalScrollIndicator={false}>
             <View style={styles.topFadeSpace} />
-            {lyrics.lines.map((line, index) => <Animated.Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? [styles.activeLine, activeLineStyle] : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Animated.Text>)}
+            {lyrics.lines.map((line, index) => <Animated.Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? [styles.activeLine, activeLineStyle] : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.words?.length ? line.words.map((word, wordIndex) => <Text key={`${word.time}-${wordIndex}`} style={index === activeIndex && wordIndex === activeWordIndex ? styles.activeWord : undefined}>{word.text}</Text>) : line.text}</Animated.Text>)}
             <View style={styles.bottomFadeSpace} />
           </ScrollView>
           <View style={styles.providerFooter}>
@@ -129,6 +138,7 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   bottomFadeSpace: { height: 220 },
   lyricLine: { width: "100%", color: colors.muted, fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
   activeLine: { color: colors.text, fontSize: 27, lineHeight: 36, textShadowColor: colors.accent, textShadowRadius: 10 },
+  activeWord: { color: colors.accent, textShadowColor: colors.accent, textShadowRadius: 8 },
   pastLine: { color: colors.subtle },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
   providerText: { color: colors.subtle, fontSize: 9, textAlign: "center" },
