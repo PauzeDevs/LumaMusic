@@ -819,6 +819,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const duration = nativeState.durationSeconds > 0
         ? nativeState.durationSeconds
         : Math.max(0, track.durationMs / 1000);
+      latest.setDecodedAudioFormat(nativeState.decodedAudioFormat ?? null);
       setPlaybackStatus({
         isPlaying: nativeState.isPlaying,
         isBuffering: nativeState.isBuffering,

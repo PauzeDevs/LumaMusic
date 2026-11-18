@@ -94,6 +94,7 @@ export default function AudioSettingsScreen() {
   const setReverbPreset = usePreferencesStore((state) => state.setReverbPreset);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const streamQuality = usePlayerStore((state) => state.streamQuality);
+  const decodedAudioFormat = usePlayerStore((state) => state.decodedAudioFormat);
   const sourceQuality = getSourceQuality(currentTrack, streamQuality);
   const localPlayback = currentTrack?.source === "local";
   const streamingPlayback = currentTrack?.source === "youtube_music";
@@ -186,6 +187,15 @@ export default function AudioSettingsScreen() {
           <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>MIME TYPE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.mimeType}</Text></View>
           <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>BITRATE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.bitrate}</Text></View>
         </View>
+        {Platform.OS === "android" && isNativeAudioEngineAvailable && streamingPlayback ? <>
+          <Text style={[stylesForScreen.sectionLabel, { marginTop: 18 }]}>DECODED PCM · LIVE</Text>
+          <View style={stylesForScreen.qualityMetaRow}>
+            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>SAMPLE RATE</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.sampleRateHz / 1000).toFixed(decodedAudioFormat.sampleRateHz % 1000 === 0 ? 0 : 1) + " kHz" : "Waiting…"}</Text></View>
+            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CHANNELS</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.channelCount === 1 ? "Mono" : decodedAudioFormat.channelCount === 2 ? "Stereo" : decodedAudioFormat.channelCount + " ch") : "—"}</Text></View>
+            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>PCM PRECISION</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? decodedAudioFormat.bitDepth + "-bit" : "—"}</Text></View>
+          </View>
+          <Text style={stylesForScreen.sourceNote}>Decoded PCM format reported by Media3's audio processor before Luma DSP. This is not a claim about the original master or DAC output.</Text>
+        </> : null}
         <Text style={stylesForScreen.sourceNote}>{sourceQuality.note}</Text>
       </View>
 

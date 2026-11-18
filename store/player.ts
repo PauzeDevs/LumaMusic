@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { MusicTrack } from "../types/music";
+import type { DecodedAudioFormat } from "../services/audioEngine/types";
 
 export type RepeatMode = "off" | "all" | "one";
 export type StreamQuality = { label: "Standard" | "HD" | "Unknown"; bitrateKbps: number | null; codec: string | null };
@@ -13,6 +14,7 @@ type PlayerState = {
   playbackDuration: number;
   playbackError: string | null;
   streamQuality: StreamQuality | null;
+  decodedAudioFormat: DecodedAudioFormat | null;
   playbackRate: number;
   sleepTimerMinutes: number | null;
   queue: MusicTrack[];
@@ -22,6 +24,7 @@ type PlayerState = {
   setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
   setPlaybackError: (error: string | null) => void;
   setStreamQuality: (quality: StreamQuality | null) => void;
+  setDecodedAudioFormat: (format: DecodedAudioFormat | null) => void;
   setPlaybackRate: (rate: number) => void;
   setSleepTimerMinutes: (minutes: number | null) => void;
   removeFromQueue: (trackId: string) => void;
@@ -41,6 +44,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   playbackDuration: 0,
   playbackError: null,
   streamQuality: null,
+  decodedAudioFormat: null,
   playbackRate: 1,
   sleepTimerMinutes: null,
   queue: [],
@@ -62,12 +66,18 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       playbackPosition: 0,
       playbackDuration: track.durationMs / 1000,
       playbackError: null,
-      streamQuality: null
+      streamQuality: null,
+      decodedAudioFormat: null
     });
   },
   setPlaybackStatus: (status) => set(status),
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
   setStreamQuality: (streamQuality) => set({ streamQuality }),
+  setDecodedAudioFormat: (decodedAudioFormat) => set((state) => {
+    const previous = state.decodedAudioFormat;
+    if (previous?.sampleRateHz === decodedAudioFormat?.sampleRateHz && previous?.channelCount === decodedAudioFormat?.channelCount && previous?.pcmEncoding === decodedAudioFormat?.pcmEncoding && previous?.bitDepth === decodedAudioFormat?.bitDepth) return state;
+    return { decodedAudioFormat };
+  }),
   setPlaybackRate: (playbackRate) => {
     if (!Number.isFinite(playbackRate)) return;
     set({ playbackRate: Math.max(0.5, Math.min(2, playbackRate)) });

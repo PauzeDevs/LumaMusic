@@ -213,7 +213,7 @@ class LumaAudioEngineModule : Module() {
     if (current == null) return mapOf(
       "trackId" to activeTrackId, "isPlaying" to false, "isBuffering" to false,
       "positionSeconds" to 0.0, "durationSeconds" to 0.0, "bufferedSeconds" to 0.0,
-      "playbackRate" to 1.0, "error" to lastError, "isEnded" to false
+      "playbackRate" to 1.0, "error" to lastError, "isEnded" to false, "decodedAudioFormat" to pcmProcessor?.getDecodedAudioFormat()
     )
     val duration = current.duration.takeIf { it != C.TIME_UNSET && it > 0L }
       ?: (catalogDurationSeconds * 1000.0).toLong()
@@ -226,7 +226,8 @@ class LumaAudioEngineModule : Module() {
       "bufferedSeconds" to current.bufferedPosition.coerceAtLeast(0L) / 1000.0,
       "playbackRate" to current.playbackParameters.speed.toDouble(),
       "error" to lastError,
-      "isEnded" to (current.playbackState == Player.STATE_ENDED)
+      "isEnded" to (current.playbackState == Player.STATE_ENDED),
+      "decodedAudioFormat" to pcmProcessor?.getDecodedAudioFormat()
     )
   }
 

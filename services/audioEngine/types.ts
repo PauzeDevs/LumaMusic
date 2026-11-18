@@ -24,6 +24,13 @@ export type AudioEngineTrack = {
   sourceKind: AudioSourceKind;
 };
 
+export type DecodedAudioFormat = {
+  sampleRateHz: number;
+  channelCount: number;
+  pcmEncoding: "PCM_16BIT" | "PCM_FLOAT";
+  bitDepth: 16 | 32;
+};
+
 export type AudioEngineState = {
   trackId: string | null;
   isPlaying: boolean;
@@ -34,6 +41,7 @@ export type AudioEngineState = {
   playbackRate: number;
   error: string | null;
   isEnded: boolean;
+  decodedAudioFormat?: DecodedAudioFormat | null;
 };
 
 export type AudioLabConfiguration = {

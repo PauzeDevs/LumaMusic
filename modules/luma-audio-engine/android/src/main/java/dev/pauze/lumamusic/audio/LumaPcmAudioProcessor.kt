@@ -23,6 +23,8 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
   private var reverbPreset = "off"
   private var spatialBalance = 0f
   private var encoding = C.ENCODING_INVALID
+  private var decodedSampleRate = 0
+  private var decodedChannelCount = 0
 
   @Synchronized
   override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -32,6 +34,8 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
       throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
     }
     encoding = inputAudioFormat.encoding
+    decodedSampleRate = inputAudioFormat.sampleRate
+    decodedChannelCount = inputAudioFormat.channelCount
     dsp = PauzeAudioDsp(inputAudioFormat.sampleRate, inputAudioFormat.channelCount).also {
       it.configureEqualizer(equalizerEnabled, bandDb, preampDb)
       it.setLimiterEnabled(limiterEnabled)
@@ -52,6 +56,18 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     dsp?.configureEqualizer(equalizerEnabled, bandDb, preampDb)
     dsp?.setLimiterEnabled(limiterEnabled)
     dsp?.setAudioEffects(reverbPreset, spatialBalance)
+  }
+
+  @Synchronized
+  fun getDecodedAudioFormat(): Map<String, Any?>? {
+    if (decodedSampleRate <= 0 || decodedChannelCount <= 0) return null
+    val isFloat = encoding == C.ENCODING_PCM_FLOAT
+    return mapOf(
+      "sampleRateHz" to decodedSampleRate,
+      "channelCount" to decodedChannelCount,
+      "pcmEncoding" to if (isFloat) "PCM_FLOAT" else "PCM_16BIT",
+      "bitDepth" to if (isFloat) 32 else 16
+    )
   }
 
   override fun queueInput(inputBuffer: ByteBuffer) {
@@ -101,5 +117,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     dsp = null
     scratch = FloatArray(0)
     encoding = C.ENCODING_INVALID
+    decodedSampleRate = 0
+    decodedChannelCount = 0
   }
 }
