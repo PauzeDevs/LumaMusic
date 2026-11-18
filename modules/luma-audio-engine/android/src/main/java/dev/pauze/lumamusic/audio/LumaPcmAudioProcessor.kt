@@ -20,6 +20,8 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
   private var bandDb = floatArrayOf(0f, 0f, 0f, 0f, 0f)
   private var preampDb = 0f
   private var limiterEnabled = false
+  private var reverbPreset = "off"
+  private var spatialBalance = 0f
   private var encoding = C.ENCODING_INVALID
 
   @Synchronized
@@ -33,19 +35,23 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     dsp = PauzeAudioDsp(inputAudioFormat.sampleRate, inputAudioFormat.channelCount).also {
       it.configureEqualizer(equalizerEnabled, bandDb, preampDb)
       it.setLimiterEnabled(limiterEnabled)
+      it.setAudioEffects(reverbPreset, spatialBalance)
     }
     return inputAudioFormat
   }
 
   @Synchronized
-  fun setAudioLab(enabled: Boolean, gainsDb: FloatArray, preamp: Float, limiter: Boolean) {
+  fun setAudioLab(enabled: Boolean, gainsDb: FloatArray, preamp: Float, limiter: Boolean, reverb: String, balance: Float) {
     require(gainsDb.size == 5) { "Exactly five EQ band values are required." }
     equalizerEnabled = enabled
     bandDb = gainsDb.copyOf()
     preampDb = preamp
     limiterEnabled = limiter
+    reverbPreset = reverb
+    spatialBalance = balance
     dsp?.configureEqualizer(equalizerEnabled, bandDb, preampDb)
     dsp?.setLimiterEnabled(limiterEnabled)
+    dsp?.setAudioEffects(reverbPreset, spatialBalance)
   }
 
   override fun queueInput(inputBuffer: ByteBuffer) {

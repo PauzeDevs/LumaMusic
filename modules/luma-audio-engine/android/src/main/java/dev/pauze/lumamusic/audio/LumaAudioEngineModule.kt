@@ -73,11 +73,11 @@ class LumaAudioEngineModule : Module() {
         "nativePlayback" to true,
         "equalizer" to true,
         "limiter" to true,
-        "reverb" to false,
-        "spatial" to false,
+        "reverb" to true,
+        "spatial" to true,
         "audioTap" to false,
         "sourceKind" to sourceKind,
-        "reasonUnavailable" to "Android PCM16/float EQ and peak limiting are connected. Other DSP modules remain unavailable."
+        "reasonUnavailable" to null
       )
     }
 
@@ -162,12 +162,16 @@ class LumaAudioEngineModule : Module() {
         }.toFloatArray()
         val preamp = (configuration["preampDb"] as? Number)?.toFloat() ?: 0f
         val limiter = configuration["limiterEnabled"] as? Boolean ?: true
+        val reverb = configuration["reverbPreset"] as? String ?: "off"
+        val balance = (configuration["spatialBalance"] as? Number)?.toFloat() ?: 0f
         require(preamp.isFinite()) { "Preamp must be finite." }
         require(bands.all { it.isFinite() }) { "EQ gains must be finite." }
         require(preamp in -12f..6f) { "Preamp must be between -12 and +6 dB." }
         require(bands.all { it in -12f..12f }) { "EQ gains must be between -12 and +12 dB." }
+        require(reverb in setOf("off", "room", "studio", "hall")) { "Unsupported reverb preset." }
+        require(balance.isFinite() && balance in -1f..1f) { "Spatial balance must be between -1 and +1." }
         (pcmProcessor ?: throw IllegalStateException("DSP processor is not initialized."))
-          .setAudioLab(enabled, bands, preamp, limiter)
+          .setAudioLab(enabled, bands, preamp, limiter, reverb, balance)
         null
       }
     }

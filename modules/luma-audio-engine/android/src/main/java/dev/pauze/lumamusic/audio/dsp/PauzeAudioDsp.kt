@@ -10,10 +10,9 @@ import kotlin.math.sin
 /**
  * Allocation-conscious DSP core for LumaMusic.
  *
- * Input/output are interleaved Float32 PCM samples. Filter coefficient storage
- * and per-channel biquad state are allocated once; process() reuses them for
- * every decoded PCM block and never builds temporary arrays or coefficient
- * objects on the audio-processing path.
+ * Input/output are interleaved Float32 PCM samples. Filter coefficients,
+ * reverb delay lines and per-channel filter state are allocated once. process()
+ * reuses them for every decoded PCM block.
  */
 class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     init {
@@ -26,17 +25,24 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     private val gains = DoubleArray(frequencies.size)
     private val coefficients = Array(frequencies.size) { Coefficients() }
     private val filters = Array(channels) { Array(frequencies.size) { Biquad() } }
+    private val delayLengths = intArrayOf(29.7, 37.1, 41.1, 43.7).map { (rate * it / 1000.0).toInt().coerceAtLeast(1) }.toIntArray()
+    private val reverbLines = Array(2) { Array(4) { line -> FloatArray(delayLengths[line]) } }
+    private val reverbIndices = Array(2) { IntArray(4) }
+    private val reverbDamped = Array(2) { DoubleArray(4) }
     private var preamp = 1.0
     private var limiterEnvelope = 0.0
+    private var reverbWet = 0.0
+    private var reverbFeedback = 0.55
+    private var spatialBalance = 0.0
     private val release = exp(-1.0 / (0.080 * rate))
 
-    // UI/configuration writes publish immutable snapshots; the audio thread reads
-    // one volatile reference per buffer and never waits on a configuration lock.
     @Volatile private var requestedConfig = DspConfig(
         equalizerEnabled = false,
         bandDb = FloatArray(frequencies.size),
         preampDb = 0f,
-        limiterEnabled = false
+        limiterEnabled = false,
+        reverbPreset = "off",
+        spatialBalance = 0f
     )
 
     fun configureEqualizer(isEnabled: Boolean, bandDb: FloatArray, preampDb: Float = 0f) {
@@ -55,6 +61,15 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         requestedConfig = requestedConfig.copy(limiterEnabled = value)
     }
 
+    fun setAudioEffects(reverbPreset: String, balance: Float) {
+        require(reverbPreset in setOf("off", "room", "studio", "hall")) { "Unsupported reverb preset" }
+        require(balance.isFinite()) { "Spatial balance must be finite" }
+        requestedConfig = requestedConfig.copy(
+            reverbPreset = reverbPreset,
+            spatialBalance = balance.coerceIn(-1f, 1f)
+        )
+    }
+
     /** Process a complete interleaved Float32 PCM block in place. */
     fun process(samples: FloatArray, validSamples: Int = samples.size) {
         require(validSamples in 0..samples.size)
@@ -65,9 +80,7 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         for (band in gains.indices) {
             val requestedGain = if (config.equalizerEnabled) {
                 config.bandDb[band].coerceIn(-12f, 12f).toDouble()
-            } else {
-                0.0
-            }
+            } else 0.0
             gains[band] += (requestedGain - gains[band]) * 0.35
             designPeaking(frequencies[band], gains[band], 1.0, coefficients[band])
         }
@@ -75,12 +88,26 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         val requestedPreamp = if (config.equalizerEnabled) dbToLinear(config.preampDb.toDouble()) else 1.0
         preamp += (requestedPreamp - preamp) * 0.35
 
-        // Copy the reusable five-band design into each channel's independent
-        // filter state. No Array or coefficient objects are created per block.
+        val requestedWet = when (config.reverbPreset) {
+            "room" -> 0.16
+            "studio" -> 0.22
+            "hall" -> 0.30
+            else -> 0.0
+        }
+        val requestedFeedback = when (config.reverbPreset) {
+            "room" -> 0.56
+            "studio" -> 0.68
+            "hall" -> 0.76
+            else -> 0.55
+        }
+        reverbWet += (requestedWet - reverbWet) * 0.35
+        reverbFeedback += (requestedFeedback - reverbFeedback) * 0.2
+        spatialBalance += (config.spatialBalance.toDouble() - spatialBalance) * 0.35
+        val leftGain = if (spatialBalance > 0.0) cos(spatialBalance * PI / 2.0) else 1.0
+        val rightGain = if (spatialBalance < 0.0) cos(-spatialBalance * PI / 2.0) else 1.0
+
         for (channel in 0 until channels) {
-            for (band in frequencies.indices) {
-                filters[channel][band].set(coefficients[band])
-            }
+            for (band in frequencies.indices) filters[channel][band].set(coefficients[band])
         }
 
         var index = 0
@@ -93,8 +120,22 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
                     for (band in frequencies.indices) value = filters[channel][band].process(value)
                 }
                 samples[index + channel] = value.toFloat()
-                peak = maxOf(peak, abs(value))
             }
+
+            if (channels >= 2) {
+                var left = samples[index].toDouble()
+                var right = samples[index + 1].toDouble()
+                if (reverbWet > 0.0001) {
+                    left += processReverb(0, left) * reverbWet
+                    right += processReverb(1, right) * reverbWet
+                }
+                left *= leftGain
+                right *= rightGain
+                samples[index] = left.toFloat()
+                samples[index + 1] = right.toFloat()
+            }
+
+            for (channel in 0 until channels) peak = maxOf(peak, abs(samples[index + channel].toDouble()))
 
             if (config.limiterEnabled) {
                 // Instantaneous attack prevents the first transient from escaping
@@ -113,8 +154,29 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         }
     }
 
+    private fun processReverb(channel: Int, input: Double): Double {
+        var sum = 0.0
+        for (line in 0 until 4) {
+            val index = reverbIndices[channel][line]
+            val delayed = reverbLines[channel][line][index].toDouble()
+            val damped = reverbDamped[channel][line] + (delayed - reverbDamped[channel][line]) * 0.22
+            reverbDamped[channel][line] = damped
+            reverbLines[channel][line][index] = (input + damped * reverbFeedback).toFloat()
+            reverbIndices[channel][line] = if (index + 1 == reverbLines[channel][line].size) 0 else index + 1
+            sum += delayed
+        }
+        return sum * 0.25
+    }
+
     fun reset() {
         filters.forEach { channelFilters -> channelFilters.forEach { it.reset() } }
+        for (channel in 0..1) {
+            for (line in 0 until 4) {
+                reverbLines[channel][line].fill(0f)
+                reverbIndices[channel][line] = 0
+                reverbDamped[channel][line] = 0.0
+            }
+        }
         limiterEnvelope = 0.0
     }
 
@@ -137,7 +199,9 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         val equalizerEnabled: Boolean,
         val bandDb: FloatArray,
         val preampDb: Float,
-        val limiterEnabled: Boolean
+        val limiterEnabled: Boolean,
+        val reverbPreset: String,
+        val spatialBalance: Float
     )
 
     private class Coefficients(
