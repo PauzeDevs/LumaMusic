@@ -106,7 +106,9 @@ export default function AudioSettingsScreen() {
   const streamingPlayback = currentTrack?.source === "youtube_music";
   // Android YouTube streams use the native Media3 + PCM DSP path. Other
   // streaming routes still bypass the Web Audio graph to protect playback.
-  const effectsUnavailableForStream = streamingPlayback && !(Platform.OS === "android" && isNativeAudioEngineAvailable);
+  const nativeDspActive = streamingPlayback && Platform.OS === "android" && isNativeAudioEngineAvailable;
+  const effectsUnavailableForStream = streamingPlayback && !nativeDspActive;
+  const advancedDspUnavailable = Boolean(currentTrack) && !nativeDspActive;
   const [balanceRailWidth, setBalanceRailWidth] = useState(1);
   const setBalanceFromX = (x: number) => setSpatialBalance(Math.max(-1, Math.min(1, (x / balanceRailWidth) * 2 - 1)));
   const balanceResponder = useMemo(() => PanResponder.create({
@@ -147,11 +149,12 @@ export default function AudioSettingsScreen() {
         <View style={[stylesForScreen.bandGrid, (!equalizerEnabled || effectsUnavailableForStream) && { opacity: 0.42 }]} pointerEvents={equalizerEnabled && !effectsUnavailableForStream ? "auto" : "none"}>
           {BANDS.map((band, index) => <GainSlider key={band.label} label={band.label} value={equalizerBands[index] ?? 0} onChange={(value) => setEqualizerBand(index, value)} accent={colors.accent} muted="#38383E" styles={stylesForScreen} />)}
         </View>
-        <View style={{ marginTop: 18 }}><GainSlider label="PREAMP" detail="INPUT GAIN · −12 TO +6 dB" minGain={-12} maxGain={6} value={preampDb} onChange={setPreampDb} accent={colors.accent} muted="#38383E" styles={stylesForScreen} /></View>
+        <View style={{ marginTop: 18, opacity: advancedDspUnavailable ? 0.4 : 1 }} pointerEvents={advancedDspUnavailable ? "none" : "auto"}><GainSlider label="PREAMP" detail="INPUT GAIN · −12 TO +6 dB" minGain={-12} maxGain={6} value={preampDb} onChange={setPreampDb} accent={colors.accent} muted="#38383E" styles={stylesForScreen} /></View>
         <View style={[stylesForScreen.cardHeader, { marginTop: 14 }]}>
           <View style={{ flex: 1 }}><Text style={stylesForScreen.sectionLabel}>PEAK PROTECTION</Text><Text style={stylesForScreen.cardSub}>Prevent digital clipping after tone adjustments.</Text></View>
-          <Pressable onPress={() => setLimiterEnabled(!limiterEnabled)} style={[stylesForScreen.toggle, limiterEnabled && stylesForScreen.toggleOn]}><View style={[stylesForScreen.toggleDot, limiterEnabled && stylesForScreen.toggleDotOn]} /></Pressable>
+          <Pressable disabled={advancedDspUnavailable} onPress={() => setLimiterEnabled(!limiterEnabled)} style={[stylesForScreen.toggle, limiterEnabled && stylesForScreen.toggleOn, advancedDspUnavailable && { opacity: 0.4 }]}><View style={[stylesForScreen.toggleDot, limiterEnabled && stylesForScreen.toggleDotOn]} /></Pressable>
         </View>
+        {advancedDspUnavailable ? <Text style={stylesForScreen.sourceNote}>Preamp and peak protection are currently applied on the native Android streaming path. They are saved for your next supported stream.</Text> : null}
         <View style={stylesForScreen.cardFooter}>
           <Text style={stylesForScreen.smallNote}>{equalizerEnabled ? "EQUALIZER ON" : "EQUALIZER OFF"} · ±12 dB</Text>
           <Pressable onPress={resetEqualizer}><Text style={stylesForScreen.reset}>Reset</Text></Pressable>
@@ -198,7 +201,7 @@ export default function AudioSettingsScreen() {
           <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>MIME TYPE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.mimeType}</Text></View>
           <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>BITRATE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.bitrate}</Text></View>
         </View>
-        {Platform.OS === "android" && isNativeAudioEngineAvailable && streamingPlayback ? <>
+        {nativeDspActive ? <>
           <Text style={[stylesForScreen.sectionLabel, { marginTop: 18 }]}>DECODED PCM · LIVE</Text>
           <View style={stylesForScreen.qualityMetaRow}>
             <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>SAMPLE RATE</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.sampleRateHz / 1000).toFixed(decodedAudioFormat.sampleRateHz % 1000 === 0 ? 0 : 1) + " kHz" : "Waiting…"}</Text></View>
