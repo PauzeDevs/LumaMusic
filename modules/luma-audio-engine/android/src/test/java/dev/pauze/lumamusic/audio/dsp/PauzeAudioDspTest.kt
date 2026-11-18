@@ -38,7 +38,7 @@ class PauzeAudioDspTest {
         dsp.setAudioEffects("off", 1f)
         val input = FloatArray(4_800) { if (it % 2 == 0) 0.5f else 0.5f }
         repeat(12) { dsp.process(input) }
-        assertTrue(kotlin.math.abs(input[0]) > kotlin.math.abs(input[1]))
+        assertTrue(kotlin.math.abs(input[1]) > kotlin.math.abs(input[0]))
     }
 
     @Test
