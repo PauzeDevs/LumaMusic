@@ -13,7 +13,7 @@ class LumaPcmAudioProcessorTest {
   @Test
   fun pcm16PassthroughPreservesSamplesWhenLabIsDisabled() {
     val processor = LumaPcmAudioProcessor()
-    processor.setAudioLab(false, floatArrayOf(0f, 0f, 0f, 0f, 0f), 0f, false)
+    processor.setAudioLab(false, floatArrayOf(0f, 0f, 0f, 0f, 0f), 0f, false, "off", 0f)
     processor.configure(AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_16BIT))
     processor.flush()
 
