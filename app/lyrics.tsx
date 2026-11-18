@@ -1,9 +1,10 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
+import { PageEntrance } from "../components/PageEntrance";
 import { getLyrics, type LyricsState } from "../services/lyrics";
 import { usePlayerStore } from "../store/player";
 import type { ThemePalette } from "../theme/colors";
@@ -18,6 +19,7 @@ export default function LyricsScreen() {
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
   const lineOffsets = useRef<number[]>([]);
+  const activeLineProgress = useRef(new Animated.Value(1)).current;
   const isSynced = lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null);
   const activeIndex = useMemo(() => {
     if (lyrics.status !== "available") return -1;
@@ -36,17 +38,23 @@ export default function LyricsScreen() {
 
   useEffect(() => {
     if (activeIndex >= 0) {
+      activeLineProgress.stopAnimation();
+      activeLineProgress.setValue(0);
+      Animated.timing(activeLineProgress, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
       const lineTop = lineOffsets.current[activeIndex];
       if (lineTop !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, lineTop - 150), animated: true });
     }
-  }, [activeIndex]);
+  }, [activeIndex, activeLineProgress]);
 
   const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
   const openAttribution = () => {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
 
+  const activeLineStyle = { opacity: activeLineProgress, transform: [{ scale: activeLineProgress.interpolate({ inputRange: [0, 1], outputRange: [0.975, 1] }) }] };
+
   return (
+    <PageEntrance>
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityLabel="Go back"><Ionicons name="chevron-down" size={23} color={colors.text} /></Pressable>
@@ -69,7 +77,7 @@ export default function LyricsScreen() {
         {lyrics.status === "available" ? <>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricList} showsVerticalScrollIndicator={false}>
             <View style={styles.topFadeSpace} />
-            {lyrics.lines.map((line, index) => <Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? styles.activeLine : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Text>)}
+            {lyrics.lines.map((line, index) => <Animated.Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? [styles.activeLine, activeLineStyle] : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Animated.Text>)}
             <View style={styles.bottomFadeSpace} />
           </ScrollView>
           <View style={styles.providerFooter}>
@@ -80,6 +88,7 @@ export default function LyricsScreen() {
       </View>
       <View style={styles.bottomBar}><Pressable onPress={() => router.back()} style={styles.backToPlayer}><Ionicons name="chevron-down" size={16} color={colors.text} /><Text style={styles.backText}>Back to player</Text></Pressable><Text style={styles.syncLabel}>{lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null) ? "SYNCED LYRICS" : "LYRICS"}</Text></View>
     </SafeAreaView>
+    </PageEntrance>
   );
 }
 
