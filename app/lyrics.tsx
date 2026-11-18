@@ -20,6 +20,7 @@ export default function LyricsScreen() {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
+  const lyricsRequestId = useRef(0);
   const lineOffsets = useRef<number[]>([]);
   const activeLineProgress = useRef(new Animated.Value(1)).current;
   const isSynced = lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null);
@@ -40,11 +41,20 @@ export default function LyricsScreen() {
   }, [lyrics, activeIndex, position]);
 
   useEffect(() => {
-    let alive = true;
-    if (!track) { setLyrics({ status: "not_found" }); return () => { alive = false; }; }
+    const requestId = ++lyricsRequestId.current;
+    if (!track) {
+      setLyrics({ status: "not_found" });
+      return () => {
+        if (lyricsRequestId.current === requestId) lyricsRequestId.current += 1;
+      };
+    }
     setLyrics({ status: "loading" });
-    getLyrics(track).then((result) => { if (alive) setLyrics(result); });
-    return () => { alive = false; };
+    getLyrics(track).then((result) => {
+      if (lyricsRequestId.current === requestId) setLyrics(result);
+    });
+    return () => {
+      if (lyricsRequestId.current === requestId) lyricsRequestId.current += 1;
+    };
   }, [track?.id]);
 
   useEffect(() => {
@@ -66,7 +76,14 @@ export default function LyricsScreen() {
     }
   }, [activeIndex, activeLineProgress, motionStyle]);
 
-  const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
+  const retry = () => {
+    if (!track) return;
+    const requestId = ++lyricsRequestId.current;
+    setLyrics({ status: "loading" });
+    getLyrics(track).then((result) => {
+      if (lyricsRequestId.current === requestId) setLyrics(result);
+    });
+  };
   const openAttribution = () => {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
