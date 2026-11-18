@@ -25,7 +25,7 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     private val gains = DoubleArray(frequencies.size)
     private val coefficients = Array(frequencies.size) { Coefficients() }
     private val filters = Array(channels) { Array(frequencies.size) { Biquad() } }
-    private val delayLengths = intArrayOf(29.7, 37.1, 41.1, 43.7).map { (rate * it / 1000.0).toInt().coerceAtLeast(1) }.toIntArray()
+    private val delayLengths = doubleArrayOf(29.7, 37.1, 41.1, 43.7).map { (rate * it / 1000.0).toInt().coerceAtLeast(1) }.toIntArray()
     private val reverbLines = Array(2) { Array(4) { line -> FloatArray(delayLengths[line]) } }
     private val reverbIndices = Array(2) { IntArray(4) }
     private val reverbDamped = Array(2) { DoubleArray(4) }
