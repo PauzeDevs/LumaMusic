@@ -9,10 +9,12 @@ import { getLyrics, type LyricsState } from "../services/lyrics";
 import { usePlayerStore } from "../store/player";
 import type { ThemePalette } from "../theme/colors";
 import { useTheme } from "../theme/useTheme";
+import { usePreferencesStore } from "../store/preferences";
 
 export default function LyricsScreen() {
   const { colors, blurTint } = useTheme();
   const styles = createStyles(colors);
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -39,12 +41,21 @@ export default function LyricsScreen() {
   useEffect(() => {
     if (activeIndex >= 0) {
       activeLineProgress.stopAnimation();
-      activeLineProgress.setValue(0);
-      Animated.timing(activeLineProgress, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+      if (motionStyle === "off") {
+        activeLineProgress.setValue(1);
+      } else {
+        activeLineProgress.setValue(0);
+        Animated.timing(activeLineProgress, {
+          toValue: 1,
+          duration: motionStyle === "subtle" ? 160 : 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true
+        }).start();
+      }
       const lineTop = lineOffsets.current[activeIndex];
-      if (lineTop !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, lineTop - 150), animated: true });
+      if (lineTop !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, lineTop - 150), animated: motionStyle !== "off" });
     }
-  }, [activeIndex, activeLineProgress]);
+  }, [activeIndex, activeLineProgress, motionStyle]);
 
   const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
   const openAttribution = () => {
