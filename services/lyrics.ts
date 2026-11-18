@@ -30,7 +30,7 @@ const wordTimestampPattern = /<(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?>/g;
 const metadataPattern = /^\[(?:ar|ti|al|by|re|ve|length|kana|la|au|tool):[^\]]*\]$/i;
 
 function timestampSeconds(minutes: string, seconds: string, fraction?: string): number {
-  return Number(minutes) * 60 + Number(seconds) + (fraction ? Number(\`0.\${fraction}\`) : 0);
+  return Number(minutes) * 60 + Number(seconds) + (fraction ? Number("0." + fraction) : 0);
 }
 
 /** Parses standard LRC, multi-timestamp LRC and enhanced LRC word timestamps. */
