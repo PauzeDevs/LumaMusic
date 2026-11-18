@@ -3,13 +3,14 @@ import { PageEntrance } from "../../components/PageEntrance";
 import { AlbumArtwork } from "../../components/AlbumArtwork";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { TrackRow } from "../../components/TrackRow";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
 import { getYouTubeMusicArtistTracks, getYouTubeMusicArtistReleases, type MusicRelease } from "../../services/youtubeMusic";
+import { usePreferencesStore } from "../../store/preferences";
 
 export default function ArtistScreen() {
   const { colors } = useTheme();
@@ -112,12 +113,55 @@ function ReleaseShelf({ title, releases, colors, onOpen }: { title: string; rele
       <Text style={{ color: colors.text, fontSize: 17, fontWeight: "800" }}>{title}</Text>
       <Text style={{ color: colors.subtle, fontSize: 10, fontWeight: "700" }}>{releases.length} releases</Text>
     </View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 13, paddingRight: 20 }}>
-      {releases.map((release) => <Pressable key={release.id} onPress={() => onOpen(release)} style={{ width: 152, padding: 8, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: colors.border }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 13, paddingRight: 20 }}
+      snapToInterval={165}
+      snapToAlignment="start"
+      decelerationRate="fast"
+      directionalLockEnabled
+    >
+      {releases.map((release) => <ReleaseCard key={release.id} release={release} colors={colors} onPress={() => onOpen(release)} />)}
+    </ScrollView>
+  </View>;
+}
+
+
+function ReleaseCard({ release, colors, onPress }: { release: MusicRelease; colors: ThemePalette; onPress: () => void }) {
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
+  const pressScale = useRef(new Animated.Value(1)).current;
+  const pressOpacity = useRef(new Animated.Value(1)).current;
+  const animatePress = (pressed: boolean) => {
+    if (motionStyle === "off") return;
+    Animated.parallel([
+      Animated.spring(pressScale, { toValue: pressed ? 0.975 : 1, speed: 28, bounciness: 4, useNativeDriver: true }),
+      Animated.timing(pressOpacity, { toValue: pressed ? 0.86 : 1, duration: pressed ? 90 : 140, useNativeDriver: true })
+    ]).start();
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => animatePress(true)}
+      onPressOut={() => animatePress(false)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${release.title}, ${release.kind}`}
+    >
+      <Animated.View style={{
+        width: 152,
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: "rgba(255,255,255,0.045)",
+        borderWidth: 1,
+        borderColor: colors.border,
+        opacity: pressOpacity,
+        transform: [{ scale: pressScale }]
+      }}>
         <AlbumArtwork uri={release.artwork} size={134} radius={15} />
         <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "700", marginTop: 9 }}>{release.title}</Text>
         <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10, marginTop: 3 }}>{release.subtitle}</Text>
-      </Pressable>)}
-    </ScrollView>
-  </View>;
+      </Animated.View>
+    </Pressable>
+  );
 }
