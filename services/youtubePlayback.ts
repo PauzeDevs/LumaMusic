@@ -48,6 +48,33 @@ async function resolvePoTokenQuickly(videoId: string) {
 }
 
 /**
+ * NewPipe resolves YouTube's signed and throttled stream URLs before returning
+ * them. Prefer it on Android; the InnerTube shortcut is retained as fallback.
+ */
+async function resolveNewPipeStream(videoId: string, track: MusicTrack): Promise<ResolvedYouTubeAudio | null> {
+  const result = await resolveWithNewPipe(videoId);
+  if (!result?.url) return null;
+
+  const url = new URL(result.url);
+  const expiry = Number(url.searchParams.get("expire") || 0) * 1000;
+  const poToken = await resolvePoTokenQuickly(videoId);
+  if (poToken && poToken.expiresAt > Date.now() + 30_000) {
+    url.searchParams.set("pot", poToken.contentToken);
+  }
+
+  return {
+    url: url.toString(),
+    mimeType: result.mimeType || "audio/*",
+    durationSeconds: result.durationSeconds > 0
+      ? result.durationSeconds
+      : Math.max(0, Math.round((track.durationMs || 0) / 1000)),
+    bitrate: result.bitrate > 0 ? result.bitrate : undefined,
+    userAgent: result.userAgent,
+    expiresAt: expiry > Date.now() ? expiry : Date.now() + 30 * 60 * 1000
+  };
+}
+
+/**
  * InnerTube client profiles that return direct, unthrottled adaptive audio URLs
  * without requiring a browser JS signature decipherer or external yt-dlp server.
  */
@@ -59,15 +86,15 @@ const INNERTUBE_PLAYER_CLIENTS = [
     name: "VISIONOS",
     clientId: "101",
     userAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+      "com.google.visionos.youtube/1.04(RealityDevice17,1; U; CPU visionOS 26_6_0 like Mac OS X; US)",
     context: {
       client: {
         clientName: "VISIONOS",
-        clientVersion: "1.02",
+        clientVersion: "1.04",
         deviceMake: "Apple",
         deviceModel: "RealityDevice17,1",
         osName: "visionOS",
-        osVersion: "26.5.23O471",
+        osVersion: "26.6.0.23O770",
         hl: "en",
         gl: "US"
       }
@@ -157,6 +184,21 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
   if (cached) return cached;
 
   const errors: string[] = [];
+
+  // Prefer NewPipe on Android. It resolves YouTube signature and n-parameter
+  // transformations before returning a media URL. An undeciphered URL can be
+  // throttled and may stop delivering bytes before the track is complete.
+  try {
+    const newPipeStream = await resolveNewPipeStream(videoId, track);
+    if (newPipeStream) {
+      cacheStream(videoId, newPipeStream);
+      return newPipeStream;
+    }
+  } catch (error) {
+    errors.push(error instanceof Error ? `NewPipe: ${error.message}` : `NewPipe: ${String(error)}`);
+  }
+
+  // InnerTube remains the fallback when native extraction is unavailable.
   // Race the profiles and use the first successful playable stream.
   // Promise.allSettled would wait for every slow/failing client before returning.
   const controllers: AbortController[] = [];
@@ -240,42 +282,6 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
   if (resolvedStream) {
     cacheStream(videoId, resolvedStream);
     return resolvedStream;
-  }
-
-  // Android fallback: NewPipe uses its own extraction implementation.
-  // The InnerTube clients above remain the primary path and are never modified
-  // or bypassed when one of them returns a playable stream.
-  try {
-    const newPipeResult = await resolveWithNewPipe(videoId);
-    if (newPipeResult?.url) {
-      const expiryMatch = newPipeResult.url.match(/[?&]expire=(\d+)/);
-      const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
-      const newPipeUrl = new URL(newPipeResult.url);
-      // PoTokens are optional and only requested for the Android extraction
-      // fallback. A slow or unavailable BotGuard WebView never blocks playback.
-      const poToken = await resolvePoTokenQuickly(videoId);
-      if (poToken && poToken.expiresAt > Date.now() + 30_000) {
-        newPipeUrl.searchParams.set("pot", poToken.contentToken);
-      }
-      const resolved: ResolvedYouTubeAudio = {
-        url: newPipeUrl.toString(),
-        mimeType: newPipeResult.mimeType || "audio/*",
-        durationSeconds:
-          newPipeResult.durationSeconds ||
-          Math.max(0, Math.round((track.durationMs || 0) / 1000)),
-        bitrate: newPipeResult.bitrate > 0 ? newPipeResult.bitrate : undefined,
-        userAgent: newPipeResult.userAgent,
-        expiresAt: parsedExpiry > Date.now()
-          ? parsedExpiry
-          : Date.now() + 30 * 60 * 1000
-      };
-      cacheStream(videoId, resolved);
-      return resolved;
-    }
-  } catch (error) {
-    errors.push(
-      error instanceof Error ? error.message : `NewPipe: ${String(error)}`
-    );
   }
 
   throw new Error(
