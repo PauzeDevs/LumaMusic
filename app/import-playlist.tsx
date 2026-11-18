@@ -15,7 +15,7 @@ import { useLibraryStore } from "../store/library";
 type Match = { entry: ImportedPlaylistEntry; track: MusicTrack };
 
 function normalize(value: string): string {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return value.normalize("NFKC").toLocaleLowerCase().replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 function similarity(left: string, right: string): number {
