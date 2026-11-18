@@ -8,11 +8,12 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /**
- * Standalone, allocation-conscious DSP core for LumaMusic.
+ * Allocation-conscious DSP core for LumaMusic.
  *
- * Input/output are interleaved Float32 PCM samples. This class deliberately
- * does not depend on Mochy Music source code or Android framework classes.
- * A native player adapter is responsible for feeding decoded PCM buffers.
+ * Input/output are interleaved Float32 PCM samples. Filter coefficient storage
+ * and per-channel biquad state are allocated once; process() reuses them for
+ * every decoded PCM block and never builds temporary arrays or coefficient
+ * objects on the audio-processing path.
  */
 class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     init {
@@ -23,12 +24,12 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     private val rate = sampleRate.toDouble()
     private val frequencies = doubleArrayOf(60.0, 250.0, 1_000.0, 4_000.0, 12_000.0)
     private val gains = DoubleArray(frequencies.size)
-    private val targetGains = DoubleArray(frequencies.size)
+    private val coefficients = Array(frequencies.size) { Coefficients() }
     private val filters = Array(channels) { Array(frequencies.size) { Biquad() } }
     private var preamp = 1.0
-    private var targetPreamp = 1.0
     private var limiterEnvelope = 0.0
     private val release = exp(-1.0 / (0.080 * rate))
+
     // UI/configuration writes publish immutable snapshots; the audio thread reads
     // one volatile reference per buffer and never waits on a configuration lock.
     @Volatile private var requestedConfig = DspConfig(
@@ -62,19 +63,24 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
 
         val config = requestedConfig
         for (band in gains.indices) {
-            val requestedGain = if (config.equalizerEnabled) config.bandDb[band].coerceIn(-12f, 12f).toDouble() else 0.0
-            targetGains[band] = requestedGain
+            val requestedGain = if (config.equalizerEnabled) {
+                config.bandDb[band].coerceIn(-12f, 12f).toDouble()
+            } else {
+                0.0
+            }
             gains[band] += (requestedGain - gains[band]) * 0.35
+            designPeaking(frequencies[band], gains[band], 1.0, coefficients[band])
         }
+
         val requestedPreamp = if (config.equalizerEnabled) dbToLinear(config.preampDb.toDouble()) else 1.0
-        targetPreamp = requestedPreamp
         preamp += (requestedPreamp - preamp) * 0.35
 
-        val coefficients = Array(frequencies.size) { band ->
-            designPeaking(frequencies[band], gains[band], 1.0)
-        }
+        // Copy the reusable five-band design into each channel's independent
+        // filter state. No Array or coefficient objects are created per block.
         for (channel in 0 until channels) {
-            for (band in frequencies.indices) filters[channel][band].set(coefficients[band])
+            for (band in frequencies.indices) {
+                filters[channel][band].set(coefficients[band])
+            }
         }
 
         var index = 0
@@ -99,7 +105,9 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
                     release * limiterEnvelope + (1.0 - release) * peak
                 }
                 val gain = if (limiterEnvelope > 0.98) 0.98 / limiterEnvelope else 1.0
-                for (channel in 0 until channels) samples[index + channel] = (samples[index + channel] * gain).toFloat()
+                for (channel in 0 until channels) {
+                    samples[index + channel] = (samples[index + channel] * gain).toFloat()
+                }
             }
             index += channels
         }
@@ -110,19 +118,17 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         limiterEnvelope = 0.0
     }
 
-    private fun designPeaking(frequency: Double, gainDb: Double, q: Double): Coefficients {
+    private fun designPeaking(frequency: Double, gainDb: Double, q: Double, output: Coefficients) {
         val a = 10.0.pow(gainDb / 40.0)
         val w0 = 2.0 * PI * frequency.coerceAtMost(rate * 0.45) / rate
         val alpha = sin(w0) / (2.0 * q)
         val cosW = cos(w0)
         val a0 = 1.0 + alpha / a
-        return Coefficients(
-            (1.0 + alpha * a) / a0,
-            (-2.0 * cosW) / a0,
-            (1.0 - alpha * a) / a0,
-            (-2.0 * cosW) / a0,
-            (1.0 - alpha / a) / a0
-        )
+        output.b0 = (1.0 + alpha * a) / a0
+        output.b1 = (-2.0 * cosW) / a0
+        output.b2 = (1.0 - alpha * a) / a0
+        output.a1 = (-2.0 * cosW) / a0
+        output.a2 = (1.0 - alpha / a) / a0
     }
 
     private fun dbToLinear(db: Double) = 10.0.pow(db / 20.0)
@@ -134,21 +140,47 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         val limiterEnabled: Boolean
     )
 
-    private data class Coefficients(val b0: Double, val b1: Double, val b2: Double, val a1: Double, val a2: Double)
+    private class Coefficients(
+        var b0: Double = 1.0,
+        var b1: Double = 0.0,
+        var b2: Double = 0.0,
+        var a1: Double = 0.0,
+        var a2: Double = 0.0
+    )
 
     private class Biquad {
-        private var c = Coefficients(1.0, 0.0, 0.0, 0.0, 0.0)
+        private var b0 = 1.0
+        private var b1 = 0.0
+        private var b2 = 0.0
+        private var a1 = 0.0
+        private var a2 = 0.0
         private var x1 = 0.0
         private var x2 = 0.0
         private var y1 = 0.0
         private var y2 = 0.0
 
-        fun set(value: Coefficients) { c = value }
+        fun set(value: Coefficients) {
+            b0 = value.b0
+            b1 = value.b1
+            b2 = value.b2
+            a1 = value.a1
+            a2 = value.a2
+        }
+
         fun process(x: Double): Double {
-            val y = c.b0 * x + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2
-            x2 = x1; x1 = x; y2 = y1; y1 = y
+            val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            x2 = x1
+            x1 = x
+            y2 = y1
+            y1 = y
             return y
         }
-        fun reset() { x1 = 0.0; x2 = 0.0; y1 = 0.0; y2 = 0.0 }
+
+        fun reset() {
+            x1 = 0.0
+            x2 = 0.0
+            y1 = 0.0
+            y2 = 0.0
+        }
     }
 }
