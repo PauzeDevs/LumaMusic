@@ -71,6 +71,25 @@ class PauzeAudioDspTest {
     }
 
     @Test
+    fun nonFinitePcmIsSilencedWithoutPoisoningSubsequentAudio() {
+        val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
+        dsp.configureEqualizer(isEnabled = true, bandDb = floatArrayOf(3f, 2f, 0f, -1f, 2f))
+        dsp.setAudioEffects("room", 0f)
+        val damaged = floatArrayOf(Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, 0.2f)
+        repeat(8) { dsp.process(damaged) }
+
+        assertTrue(damaged.all { it.isFinite() })
+        assertEquals(0f, damaged[0], 0f)
+        assertEquals(0f, damaged[1], 0f)
+        assertEquals(0f, damaged[2], 0f)
+
+        val recovery = FloatArray(4_800) { if (it % 2 == 0) 0.2f else -0.2f }
+        repeat(8) { dsp.process(recovery) }
+        assertTrue(recovery.all { it.isFinite() })
+        assertTrue(recovery.any { kotlin.math.abs(it) > 0.01f })
+    }
+
+    @Test
     fun rejectsPartialInterleavedFrames() {
         val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
         try {
