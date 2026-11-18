@@ -48,13 +48,13 @@ export default function ImportPlaylistScreen() {
   const importExportFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ["text/csv", "text/plain", "application/json", "audio/x-mpegurl", "application/vnd.apple.mpegurl"],
+        type: ["text/csv", "text/plain", "application/json", "audio/x-mpegurl", "application/vnd.apple.mpegurl", "audio/x-scpls", "application/pls+xml"],
         copyToCacheDirectory: true
       });
       if (result.canceled) return;
       const asset = result.assets[0];
       const info = await FileSystem.getInfoAsync(asset.uri);
-      if (info.exists && info.size > 512 * 1024) {
+      if (info.exists && (info.size ?? 0) > 512 * 1024) {
         Alert.alert("Export is too large", "Choose a playlist export smaller than 512 KB.");
         return;
       }
@@ -85,7 +85,7 @@ export default function ImportPlaylistScreen() {
       return;
     }
     if (entries.length === 0) {
-      Alert.alert("No tracks found", "Paste a CSV export or a track list with one song per line. Use the format Song Title - Artist.");
+      Alert.alert("No tracks found", "Paste a CSV, TSV, JSON, M3U, PLS, or a track list with one song per line. Use the format Song Title - Artist.");
       return;
     }
     setIsMatching(true);
@@ -179,12 +179,12 @@ export default function ImportPlaylistScreen() {
     if (/spotify\.com$/.test(host) || /music\.apple\.com$/.test(host)) {
       Alert.alert(
         "Account connection needed",
-        "Spotify and Apple Music playlist links need their official account/API connection before LumaMusic can read the track list. YouTube Music public playlist links can be imported directly right now."
+        "LumaMusic can import Spotify and Apple Music playlist exports without connecting your account. Load a CSV, JSON, or text export below; public YouTube Music playlists can be imported directly."
       );
       return;
     }
 
-    Alert.alert("Unsupported link", "Use a public YouTube Music playlist link for direct importing, or paste a playlist export below.");
+    Alert.alert("Unsupported link", "Public YouTube Music playlist links import directly. For Spotify, Apple Music, or Tidal, load a playlist export file below.");
   };
 
   const savePlaylist = () => {
