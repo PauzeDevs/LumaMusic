@@ -51,9 +51,10 @@ function parseDelimited(input: string, delimiter: string): string[][] {
 
 function parseLooseLine(value: string): ImportedPlaylistEntry | null {
   const line = value.replace(/^\uFEFF/, "").replace(/^\s*\d+[\.)]\s*/, "").trim();
-  if (!line || line.startsWith("#")) return null;
+  if (!line) return null;
   const extInf = line.match(/^#EXTINF:[^,]*,(.+)$/i);
   if (extInf) return parseLooseLine(extInf[1]);
+  if (line.startsWith("#")) return null;
   const parts = line.split(/\s+(?:-|–|—|•)\s+/);
   const title = (parts[0] ?? "").trim();
   const artist = parts.length > 1 ? parts.slice(1).join(" - ").trim() : "";
