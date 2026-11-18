@@ -23,10 +23,13 @@ class PauzeAudioDspTest {
         val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
         dsp.setLimiterEnabled(false)
         dsp.configureEqualizer(isEnabled = false, bandDb = floatArrayOf(0f, 0f, 0f, 0f, 0f), preampDb = 6f)
-        val input = FloatArray(4_800) { 0.25f }
-        repeat(12) { dsp.process(input) }
-        assertTrue(input[0] > 0.45f)
-        assertTrue(input[0] < 0.52f)
+        var output = FloatArray(4_800) { 0.25f }
+        repeat(12) {
+            output = FloatArray(4_800) { 0.25f }
+            dsp.process(output)
+        }
+        assertTrue(output[0] > 0.45f)
+        assertTrue(output[0] < 0.52f)
     }
 
     @Test
