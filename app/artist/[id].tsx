@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { PageEntrance } from "../../components/PageEntrance";
 import { AlbumArtwork } from "../../components/AlbumArtwork";
