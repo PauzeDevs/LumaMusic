@@ -1,4 +1,5 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { PageEntrance } from "../../components/PageEntrance";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -78,7 +79,7 @@ export default function PlaylistScreen() {
   );
 
   return (
-    <SafeAreaView style={makeStyles(colors).safe} edges={["top", "bottom"]}>
+    <PageEntrance><SafeAreaView style={makeStyles(colors).safe} edges={["top", "bottom"]}>
       <View style={makeStyles(colors).header}>
         <Pressable onPress={() => router.back()} style={makeStyles(colors).back}><Ionicons name="chevron-back" size={22} color={colors.text} /><Text style={makeStyles(colors).backText}>Back</Text></Pressable>
         {localPlaylist ? <View style={makeStyles(colors).headerActions}>
@@ -140,7 +141,7 @@ export default function PlaylistScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView></PageEntrance>
   );
 }
 
