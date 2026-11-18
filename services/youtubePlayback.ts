@@ -307,7 +307,10 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
   resolutionVersions.set(videoId, version);
   const request = resolveYouTubeMusicAudioUncached(track, videoId)
     .then((stream) => {
-      if (resolutionVersions.get(videoId) === version) cacheStream(videoId, stream);
+      if (resolutionVersions.get(videoId) === version) {
+        cacheStream(videoId, stream);
+        resolutionVersions.delete(videoId);
+      }
       return stream;
     })
     .finally(() => {
