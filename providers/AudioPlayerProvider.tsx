@@ -407,6 +407,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: Math.max(0, track.durationMs / 1000), playbackError: null });
       try {
         const stream = await resolveYouTubeMusicAudio(track, forceStreamRefresh);
+        // Ignore stale resolver results before they can update metadata for a newer selection.
+        if (requestId !== playbackRequestSequence.current) return;
         const bitrateKbps = stream.bitrate && stream.bitrate > 0 ? Math.round(stream.bitrate / 1000) : null;
         // YouTube Music streams are lossy codecs; only label HD when the actual
         // selected stream reports a high bitrate. Never infer lossless from bitrate.
@@ -415,8 +417,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           bitrateKbps,
           codec: stream.mimeType.split(";")[0]?.trim() || null
         });
-        // A slower, older resolver must never replace the song the user selected most recently.
-        if (requestId !== playbackRequestSequence.current) return;
         // Allocate the native effects engine only when playback actually starts.
         ensureAudioContext();
         // Feed the resolved YouTube URL into the native Audio API element so its
