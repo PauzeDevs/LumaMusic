@@ -173,8 +173,8 @@ export default function NowPlayingScreen() {
 
 function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
-  ambientArtwork: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-  ambientBlur: { ...StyleSheet.absoluteFillObject, opacity: 0.92 },
+  ambientArtwork: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%" },
+  ambientBlur: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, opacity: 0.92 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
   headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.82)" },
