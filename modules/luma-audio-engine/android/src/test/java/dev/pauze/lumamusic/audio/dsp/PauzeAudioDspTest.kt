@@ -21,6 +21,7 @@ class PauzeAudioDspTest {
     @Test
     fun limiterCatchesFirstTransientWithoutWaitingForAttackEnvelope() {
         val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
+        dsp.setLimiterEnabled(true)
         val input = floatArrayOf(2f, -2f, 0.5f, -0.5f)
 
         dsp.process(input)
