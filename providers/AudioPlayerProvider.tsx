@@ -484,8 +484,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
               ] as [number, number, number, number, number],
               preampDb: 0,
               limiterEnabled: true,
-              reverbPreset: "off",
-              spatialBalance: 0,
+              reverbPreset,
+              spatialBalance,
               crossfadeSeconds: 0
             });
             await setNativeAudioPlaybackRate(playbackRate);
