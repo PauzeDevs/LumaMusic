@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { isNativeAudioEngineAvailable } from "../modules/luma-audio-engine/src";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { usePlayerStore } from "../store/player";
+import { usePlayerStore, type StreamQuality } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { ThemePalette } from "../theme/colors";
 import type { MusicTrack } from "../types/music";
@@ -51,21 +51,32 @@ function GainSlider({ label, value, onChange, accent, muted, styles }: { label: 
   </View>;
 }
 
-type SourceQualityInfo = { title: string; detail: string; format: string; status: string; note: string };
+type SourceQualityInfo = { title: string; detail: string; format: string; mimeType: string; bitrate: string; status: string; note: string };
 
-function getSourceQuality(track: MusicTrack | null): SourceQualityInfo {
-  if (!track) return { title: "No active source", detail: "Play a track to inspect its source.", format: "UNKNOWN", status: "WAITING", note: "Quality information appears when a source is active." };
-  if (track.source === "youtube_music") return { title: "Provider stream", detail: "Lossless delivery is not confirmed.", format: "YOUTUBE MUSIC", status: "NOT VERIFIED", note: "The current streaming resolver does not expose a verified codec, bitrate, bit depth, or sample rate. LumaMusic will not label this stream lossless." };
+function getSourceQuality(track: MusicTrack | null, streamQuality: StreamQuality | null): SourceQualityInfo {
+  if (!track) return { title: "No active source", detail: "Play a track to inspect its source.", format: "UNKNOWN", mimeType: "Unknown", bitrate: "Unknown", status: "WAITING", note: "Quality information appears when a source is active." };
+  if (track.source === "youtube_music") {
+    const bitrate = streamQuality?.bitrateKbps ? `${streamQuality.bitrateKbps} kbps` : "Unknown";
+    return {
+      title: "Provider stream",
+      detail: streamQuality?.bitrateKbps ? `Resolver-reported stream bitrate: ${bitrate}.` : "Lossless delivery is not confirmed.",
+      format: "YOUTUBE MUSIC",
+      mimeType: streamQuality?.codec?.toUpperCase() ?? "Not exposed",
+      bitrate,
+      status: streamQuality?.bitrateKbps ? streamQuality.label.toUpperCase() : "NOT VERIFIED",
+      note: "These are the stream details exposed by the resolver, not a decoded-output measurement. The current player does not verify bit depth or sample rate, and LumaMusic will not label this stream lossless."
+    };
+  }
   if (track.source === "local" && track.localUri) {
     const cleanUri = track.localUri.split(/[?#]/)[0];
     const extension = cleanUri.includes(".") ? cleanUri.split(".").pop()!.toLowerCase() : "";
     const losslessFormats = ["flac", "wav", "aiff", "aif", "ape", "wv", "tta", "dsf", "dff"];
     const lossyFormats = ["mp3", "aac", "ogg", "opus", "m4a", "wma"];
-    if (losslessFormats.includes(extension)) return { title: "Lossless-capable format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), status: "FORMAT DETECTED", note: "The file extension suggests a lossless format, but the actual codec, bit depth, sample rate, and integrity have not been read from the file yet. Hi-Res is not assumed." };
-    if (lossyFormats.includes(extension)) return { title: "Lossy format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), status: "FORMAT DETECTED", note: "This extension normally indicates a lossy format. The exact codec profile and bitrate are not exposed by the current player." };
-    return { title: "Local audio file", detail: "Audio format not identified.", format: extension ? extension.toUpperCase() : "UNKNOWN", status: "UNKNOWN", note: "The current player does not expose codec or stream metadata for this file." };
+    if (losslessFormats.includes(extension)) return { title: "Lossless-capable format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), mimeType: "Not read", bitrate: "Unknown", status: "FORMAT DETECTED", note: "The file extension suggests a lossless format, but the actual codec, bit depth, sample rate, and integrity have not been read from the file yet. Hi-Res is not assumed." };
+    if (lossyFormats.includes(extension)) return { title: "Lossy format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), mimeType: "Not read", bitrate: "Unknown", status: "FORMAT DETECTED", note: "This extension normally indicates a lossy format. The exact codec profile and bitrate are not exposed by the current player." };
+    return { title: "Local audio file", detail: "Audio format not identified.", format: extension ? extension.toUpperCase() : "UNKNOWN", mimeType: "Not exposed", bitrate: "Unknown", status: "UNKNOWN", note: "The current player does not expose codec or stream metadata for this file." };
   }
-  return { title: "Source metadata unavailable", detail: "No verified audio format information.", format: track.source.toUpperCase(), status: "UNKNOWN", note: "The current source does not expose enough metadata to classify its audio quality." };
+  return { title: "Source metadata unavailable", detail: "No verified audio format information.", format: track.source.toUpperCase(), mimeType: "Not exposed", bitrate: "Unknown", status: "UNKNOWN", note: "The current source does not expose enough metadata to classify its audio quality." };
 }
 
 export default function AudioSettingsScreen() {
@@ -82,6 +93,8 @@ export default function AudioSettingsScreen() {
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
   const setReverbPreset = usePreferencesStore((state) => state.setReverbPreset);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const streamQuality = usePlayerStore((state) => state.streamQuality);
+  const sourceQuality = getSourceQuality(currentTrack, streamQuality);
   const localPlayback = currentTrack?.source === "local";
   const streamingPlayback = currentTrack?.source === "youtube_music";
   // Android YouTube streams use the native Media3 + PCM DSP path. Other
@@ -165,15 +178,15 @@ export default function AudioSettingsScreen() {
         <View style={stylesForScreen.cardHeader}>
           <View style={stylesForScreen.cardIcon}><Ionicons name="disc-outline" size={21} color={colors.accent} /></View>
           <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>04 · SOURCE QUALITY</Text><Text style={stylesForScreen.cardTitle}>Audio quality</Text></View>
-          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>{getSourceQuality(currentTrack).status}</Text></View>
+          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>{sourceQuality.status}</Text></View>
         </View>
-        <Text style={stylesForScreen.cardSub}>{getSourceQuality(currentTrack).title} · {getSourceQuality(currentTrack).detail}</Text>
+        <Text style={stylesForScreen.cardSub}>{sourceQuality.title} · {sourceQuality.detail}</Text>
         <View style={stylesForScreen.qualityMetaRow}>
-          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>FORMAT</Text><Text style={stylesForScreen.qualityMetaValue}>{getSourceQuality(currentTrack).format}</Text></View>
-          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CODEC</Text><Text style={stylesForScreen.qualityMetaValue}>Not exposed</Text></View>
-          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>BITRATE / RATE</Text><Text style={stylesForScreen.qualityMetaValue}>Unknown</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>FORMAT</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.format}</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>MIME TYPE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.mimeType}</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>BITRATE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.bitrate}</Text></View>
         </View>
-        <Text style={stylesForScreen.sourceNote}>{getSourceQuality(currentTrack).note}</Text>
+        <Text style={stylesForScreen.sourceNote}>{sourceQuality.note}</Text>
       </View>
 
       <View style={stylesForScreen.footer}><Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} /><Text style={stylesForScreen.footerText}>Your Audio Lab preferences are saved automatically.</Text></View>
