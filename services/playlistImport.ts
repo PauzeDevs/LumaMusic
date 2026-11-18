@@ -101,20 +101,20 @@ function parseJsonExport(input: string): ImportedPlaylistEntry[] {
 }
 
 function parseLooseLine(value: string): ImportedPlaylistEntry | null {
-  const line = value.replace(/^\\uFEFF/, "").replace(/^\\s*\\d+[\\.)]\\s*/, "").trim();
+  const line = value.replace(/^\uFEFF/, "").replace(/^\s*\d+[.)]\s*/, "").trim();
   if (!line) return null;
 
   const extInf = line.match(/^#EXTINF:[^,]*,(.+)$/i);
   if (extInf) {
-    const fields = extInf[1].split(/\\s+-\\s+/, 2);
+    const fields = extInf[1].split(/\s+-\s+/, 2);
     if (fields.length === 2) return { artist: fields[0].trim(), title: fields[1].trim() };
     return { title: extInf[1].trim(), artist: "" };
   }
-  const plsTitle = line.match(/^Title\\d+\\s*=\\s*(.+)$/i);
+  const plsTitle = line.match(/^Title\d+\s*=\s*(.+)$/i);
   if (plsTitle) return { title: plsTitle[1].trim(), artist: "" };
-  if (line.startsWith("#") || /^File\\d+\\s*=/i.test(line) || /^https?:\\/\\//i.test(line)) return null;
+  if (line.startsWith("#") || /^File\d+\s*=/i.test(line) || /^https?:\/\//i.test(line)) return null;
 
-  const parts = line.split(/\\s+(?:-|–|—|•)\\s+/);
+  const parts = line.split(/\s+(?:-|–|—|•)\s+/);
   const title = (parts[0] ?? "").trim();
   const artist = parts.length > 1 ? parts.slice(1).join(" - ").trim() : "";
   return title ? { title, artist } : null;
@@ -141,7 +141,7 @@ export function parsePlaylistExport(raw: string): ImportedPlaylistEntry[] {
   if (raw.length > 512 * 1024) {
     throw new Error("This playlist export is too large. Please keep it under 512 KB.");
   }
-  const input = raw.replace(/^\\uFEFF/, "").trim();
+  const input = raw.replace(/^\uFEFF/, "").trim();
   if (!input) return [];
 
   if (input.startsWith("{") || input.startsWith("[")) {
@@ -149,8 +149,8 @@ export function parsePlaylistExport(raw: string): ImportedPlaylistEntry[] {
     if (jsonEntries.length > 0) return uniqueEntries(jsonEntries);
   }
 
-  const firstLine = input.split(/\\r?\\n/, 1)[0] ?? "";
-  const delimiter = firstLine.includes("\\t") ? "\\t" : ",";
+  const firstLine = input.split(/\r?\n/, 1)[0] ?? "";
+  const delimiter = firstLine.includes("\t") ? "\t" : ",";
   const rows = parseDelimited(input, delimiter);
   const headers = (rows[0] ?? []).map(normalizeHeader);
   const titleAliases = ["track name", "trackname", "track title", "song title", "song name", "title", "track", "song", "name"];
@@ -166,7 +166,7 @@ export function parsePlaylistExport(raw: string): ImportedPlaylistEntry[] {
     if (entries.length > 0) return uniqueEntries(entries);
   }
 
-  return uniqueEntries(input.split(/\\r?\\n/, 501)
+  return uniqueEntries(input.split(/\r?\n/, 501)
     .map(parseLooseLine)
     .filter((entry): entry is ImportedPlaylistEntry => Boolean(entry)));
 }
