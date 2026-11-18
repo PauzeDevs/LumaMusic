@@ -77,7 +77,6 @@ class LumaAudioEngineModule : Module() {
         "spatial" to true,
         "audioTap" to false,
         "sourceKind" to sourceKind,
-        "reasonUnavailable" to null
       )
     }
 
