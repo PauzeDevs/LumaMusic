@@ -484,8 +484,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
                 equalizerBands[3] ?? 0,
                 equalizerBands[4] ?? 0
               ] as [number, number, number, number, number],
-              preampDb: 0,
-              limiterEnabled: true,
+              preampDb,
+              limiterEnabled,
               reverbPreset,
               spatialBalance,
               crossfadeSeconds: 0
