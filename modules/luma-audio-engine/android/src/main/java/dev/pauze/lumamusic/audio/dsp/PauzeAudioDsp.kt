@@ -114,12 +114,20 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         while (index < validSamples) {
             var peak = 0.0
             for (channel in 0 until channels) {
-                val sample = samples[index + channel].toDouble() * preamp
+                // Decoders should produce finite normalized PCM, but malformed or
+                // damaged frames must never poison filter history or the output track.
+                val rawSample = samples[index + channel]
+                val sample = if (rawSample.isFinite()) rawSample.toDouble() * preamp else 0.0
                 var value = sample
                 if (config.equalizerEnabled) {
                     for (band in frequencies.indices) value = filters[channel][band].process(value)
                 }
-                samples[index + channel] = value.toFloat()
+                samples[index + channel] = if (value.isFinite() && value <= Float.MAX_VALUE && value >= -Float.MAX_VALUE) {
+                    value.toFloat()
+                } else {
+                    filters[channel].forEach { it.reset() }
+                    0f
+                }
             }
 
             if (channels >= 2) {
@@ -158,10 +166,13 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         var sum = 0.0
         for (line in 0 until 4) {
             val index = reverbIndices[channel][line]
-            val delayed = reverbLines[channel][line][index].toDouble()
-            val damped = reverbDamped[channel][line] + (delayed - reverbDamped[channel][line]) * 0.22
+            val stored = reverbLines[channel][line][index].toDouble()
+            val delayed = if (stored.isFinite()) stored else 0.0
+            val previousDamped = if (reverbDamped[channel][line].isFinite()) reverbDamped[channel][line] else 0.0
+            val damped = previousDamped + (delayed - previousDamped) * 0.22
             reverbDamped[channel][line] = damped
-            reverbLines[channel][line][index] = (input + damped * reverbFeedback).toFloat()
+            val feedbackSample = input + damped * reverbFeedback
+            reverbLines[channel][line][index] = if (feedbackSample.isFinite()) feedbackSample.toFloat() else 0f
             reverbIndices[channel][line] = if (index + 1 == reverbLines[channel][line].size) 0 else index + 1
             sum += delayed
         }
@@ -232,7 +243,15 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         }
 
         fun process(x: Double): Double {
+            if (!x.isFinite()) {
+                reset()
+                return 0.0
+            }
             val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            if (!y.isFinite()) {
+                reset()
+                return 0.0
+            }
             x2 = x1
             x1 = x
             y2 = y1
