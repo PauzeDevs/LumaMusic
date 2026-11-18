@@ -52,7 +52,6 @@ export type AudioLabConfiguration = {
   limiterEnabled: boolean;
   reverbPreset: "off" | "room" | "studio" | "hall";
   spatialBalance: number;
-  crossfadeSeconds: number;
 };
 
 export interface NativeAudioEngine {
