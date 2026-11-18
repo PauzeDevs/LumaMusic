@@ -237,7 +237,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       limiterEnabled,
       reverbPreset,
       spatialBalance,
-      crossfadeSeconds: 0
     }).catch(() => undefined);
   }, [equalizerEnabled, equalizerBands, preampDb, limiterEnabled, reverbPreset, spatialBalance]);
 
