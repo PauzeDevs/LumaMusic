@@ -10,12 +10,14 @@ import { ScrollReveal } from "../../components/ScrollReveal";
 import { useSiriRefresh, SiriRefreshOverlay } from "../../components/SiriRefresh";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
+import { usePreferencesStore } from "../../store/preferences";
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import type { ThemePalette } from "../../theme/colors";
 import type { MusicTrack } from "../../types/music";
 
 export default function ListenScreen() {
   const { colors, blurTint, isDark } = useTheme();
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
   const styles = createStyles(colors, isDark);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
@@ -30,9 +32,18 @@ export default function ListenScreen() {
 
   useEffect(() => {
     setHeroFailed(false);
+    heroFade.stopAnimation();
+    if (motionStyle === "off") {
+      heroFade.setValue(1);
+      return;
+    }
     heroFade.setValue(0);
-    Animated.timing(heroFade, { toValue: 1, duration: 650, useNativeDriver: true }).start();
-  }, [heroTrack?.id, heroTrack?.artwork, heroFade]);
+    Animated.timing(heroFade, {
+      toValue: 1,
+      duration: motionStyle === "subtle" ? 300 : 650,
+      useNativeDriver: true
+    }).start();
+  }, [heroTrack?.id, heroTrack?.artwork, motionStyle, heroFade]);
 
   const play = (track: MusicTrack, queue: MusicTrack[]) => {
     void playTrack(track, queue).catch(() => {});
