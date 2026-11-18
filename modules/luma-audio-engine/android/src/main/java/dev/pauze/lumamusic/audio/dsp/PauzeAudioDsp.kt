@@ -117,16 +117,22 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
                 // Decoders should produce finite normalized PCM, but malformed or
                 // damaged frames must never poison filter history or the output track.
                 val rawSample = samples[index + channel]
-                val sample = if (rawSample.isFinite()) rawSample.toDouble() * preamp else 0.0
-                var value = sample
-                if (config.equalizerEnabled) {
-                    for (band in frequencies.indices) value = filters[channel][band].process(value)
-                }
-                samples[index + channel] = if (value.isFinite() && value <= Float.MAX_VALUE && value >= -Float.MAX_VALUE) {
-                    value.toFloat()
-                } else {
+                if (!rawSample.isFinite()) {
+                    // A corrupt frame must not leak a previous filter tail into
+                    // the damaged output sample or leave state for later frames.
                     filters[channel].forEach { it.reset() }
-                    0f
+                    samples[index + channel] = 0f
+                } else {
+                    var value = rawSample.toDouble() * preamp
+                    if (config.equalizerEnabled) {
+                        for (band in frequencies.indices) value = filters[channel][band].process(value)
+                    }
+                    samples[index + channel] = if (value.isFinite() && value <= Float.MAX_VALUE && value >= -Float.MAX_VALUE) {
+                        value.toFloat()
+                    } else {
+                        filters[channel].forEach { it.reset() }
+                        0f
+                    }
                 }
             }
 
@@ -178,7 +184,7 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
             val damped = previousDamped + (delayed - previousDamped) * 0.22
             reverbDamped[channel][line] = damped
             val feedbackSample = input + damped * reverbFeedback
-            reverbLines[channel][line][index] = if (feedbackSample.isFinite()) feedbackSample.toFloat() else 0f
+            reverbLines[channel][line][index] = finiteFloat(feedbackSample)
             reverbIndices[channel][line] = if (index + 1 == reverbLines[channel][line].size) 0 else index + 1
             sum += delayed
         }
