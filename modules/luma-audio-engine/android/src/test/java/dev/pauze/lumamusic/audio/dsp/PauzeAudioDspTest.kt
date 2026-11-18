@@ -90,6 +90,18 @@ class PauzeAudioDspTest {
     }
 
     @Test
+    fun extremeFinitePcmRemainsFiniteAfterReverbAndStereoProcessing() {
+        val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
+        dsp.setLimiterEnabled(false)
+        dsp.setAudioEffects("hall", 0f)
+        val extreme = FloatArray(9_600) { Float.MAX_VALUE }
+        repeat(3) { dsp.process(extreme) }
+
+        assertTrue(extreme.all { it.isFinite() })
+        assertTrue(extreme.all { it >= 0f })
+    }
+
+    @Test
     fun rejectsPartialInterleavedFrames() {
         val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
         try {
