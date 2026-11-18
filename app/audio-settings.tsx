@@ -1,7 +1,8 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useRef, useState } from "react";
-import { Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Image, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { isNativeAudioEngineAvailable } from "../modules/luma-audio-engine/src";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlayerStore } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -83,7 +84,9 @@ export default function AudioSettingsScreen() {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const localPlayback = currentTrack?.source === "local";
   const streamingPlayback = currentTrack?.source === "youtube_music";
-  const effectsUnavailableForStream = streamingPlayback;
+  // Android YouTube streams use the native Media3 + PCM DSP path. Other
+  // streaming routes still bypass the Web Audio graph to protect playback.
+  const effectsUnavailableForStream = streamingPlayback && !(Platform.OS === "android" && isNativeAudioEngineAvailable);
   const [balanceRailWidth, setBalanceRailWidth] = useState(1);
   const setBalanceFromX = (x: number) => setSpatialBalance(Math.max(-1, Math.min(1, (x / balanceRailWidth) * 2 - 1)));
   const balanceResponder = useMemo(() => PanResponder.create({
@@ -128,7 +131,7 @@ export default function AudioSettingsScreen() {
           <Text style={stylesForScreen.smallNote}>{equalizerEnabled ? "EQUALIZER ON" : "EQUALIZER OFF"} · ±12 dB</Text>
           <Pressable onPress={resetEqualizer}><Text style={stylesForScreen.reset}>Reset</Text></Pressable>
         </View>
-        {streamingPlayback ? <Text style={stylesForScreen.sourceNote}>Equalizer is temporarily unavailable for YouTube Music streams. Streaming stays on the stable native playback path so enabling DSP cannot interrupt your song. Your saved EQ settings still apply to imported local tracks.</Text> : localPlayback ? <Text style={stylesForScreen.sourceNote}>Live processing is active for this imported local track.</Text> : <Text style={stylesForScreen.sourceNote}>Your EQ settings are saved and will apply to the next supported track.</Text>}
+        {streamingPlayback && effectsUnavailableForStream ? <Text style={stylesForScreen.sourceNote}>Live EQ is not available on this streaming route. Your saved settings remain available for supported playback.</Text> : streamingPlayback ? <Text style={stylesForScreen.sourceNote}>Live five-band EQ and limiting are processed by LumaMusic’s native Android audio engine.</Text> : localPlayback ? <Text style={stylesForScreen.sourceNote}>Live processing is active for this imported local track.</Text> : <Text style={stylesForScreen.sourceNote}>Your EQ settings are saved and will apply to the next supported track.</Text>}
       </View>
 
       <View style={stylesForScreen.featureCard}>
@@ -146,7 +149,7 @@ export default function AudioSettingsScreen() {
         </View>
         <View style={stylesForScreen.balanceLabels}><Text>LEFT</Text><Text>CENTER</Text><Text>RIGHT</Text></View>
         <Pressable disabled={effectsUnavailableForStream} style={[stylesForScreen.resetBalance, effectsUnavailableForStream && { opacity: 0.35 }]} onPress={() => setSpatialBalance(0)}><Text style={stylesForScreen.reset}>Reset balance</Text></Pressable>
-        <Text style={stylesForScreen.sourceNote}>{streamingPlayback ? "Reverb and stereo balance are temporarily unavailable for YouTube Music streams. They remain available for imported local tracks." : localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply when a supported track is playing."}</Text>
+        <Text style={stylesForScreen.sourceNote}>{streamingPlayback && effectsUnavailableForStream ? "Reverb and stereo balance are not available on this streaming route." : streamingPlayback ? "Reverb and stereo balance are applied by the native Android DSP engine." : localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply when a supported track is playing."}</Text>
       </View>
 
       <View style={stylesForScreen.featureCard}>
