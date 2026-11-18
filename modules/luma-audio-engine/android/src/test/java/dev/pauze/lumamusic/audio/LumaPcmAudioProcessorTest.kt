@@ -17,18 +17,21 @@ class LumaPcmAudioProcessorTest {
     processor.configure(AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_16BIT))
     processor.flush()
 
-    val input = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder())
+    val input = ByteBuffer.allocateDirect(12).order(ByteOrder.nativeOrder())
       .putShort(8_192).putShort((-8_192).toShort())
       .putShort(16_384).putShort((-16_384).toShort())
+      .putShort(Short.MIN_VALUE).putShort(Short.MAX_VALUE)
     input.flip()
 
     processor.queueInput(input)
     val output = processor.output
-    assertEquals(8, output.remaining())
+    assertEquals(12, output.remaining())
     assertEquals(8_192.toShort(), output.getShort())
     assertEquals((-8_192).toShort(), output.getShort())
     assertEquals(16_384.toShort(), output.getShort())
     assertEquals((-16_384).toShort(), output.getShort())
+    assertEquals(Short.MIN_VALUE, output.getShort())
+    assertEquals(Short.MAX_VALUE, output.getShort())
   }
 
   @Test
