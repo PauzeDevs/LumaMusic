@@ -1,4 +1,5 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { PageEntrance } from "../../components/PageEntrance";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -30,7 +31,7 @@ export default function ArtistScreen() {
   const singles = releases.filter((release) => release.kind === "single");
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <PageEntrance><SafeAreaView style={styles.safe} edges={["top"]}>
       <FlatList data={tracks} keyExtractor={(track) => track.id} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} initialNumToRender={10} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews ListHeaderComponent={<>
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
@@ -78,7 +79,7 @@ export default function ArtistScreen() {
           </View>
         ) : null}
 </>} renderItem={({ item: track, index }) => <TrackRow track={track} index={index} showIndex queue={tracks} />} />
-    </SafeAreaView>
+    </SafeAreaView></PageEntrance>
   );
 }
 
