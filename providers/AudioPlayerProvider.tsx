@@ -93,6 +93,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const audioRef = useRef<AudioTagHandle>(null);
   const nativePlaybackActive = useRef(false);
   const nativeEndedHandled = useRef(false);
+  const nativeNotificationState = useRef<string | null>(null);
+  const nativeNotificationProgressBucket = useRef(-1);
   const audioContextRef = useRef<AudioContext | null>(null);
   const impulseCacheRef = useRef<Map<Exclude<ReverbPreset, "off">, ReturnType<AudioContext["createBuffer"]>>>(new Map());
   const graphRef = useRef<AudioGraph | null>(null);
@@ -825,6 +827,25 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         playbackError: nativeState.error ?? null
       });
       useListeningStatsStore.getState().recordProgress(track, nativeState.positionSeconds, nativeState.isPlaying);
+
+      const notificationState = nativeState.isPlaying ? "playing" : "paused";
+      const progressBucket = Math.floor(Math.max(0, nativeState.positionSeconds) / 5);
+      if (
+        nativeNotificationState.current !== notificationState ||
+        nativeNotificationProgressBucket.current !== progressBucket
+      ) {
+        nativeNotificationState.current = notificationState;
+        nativeNotificationProgressBucket.current = progressBucket;
+        void PlaybackNotificationManager.show({
+          title: track.title,
+          artist: track.artist,
+          album: "LumaMusic",
+          ...(track.artwork ? { artwork: track.artwork } : {}),
+          duration,
+          elapsedTime: Math.max(0, nativeState.positionSeconds),
+          state: notificationState
+        }).catch(() => undefined);
+      }
 
       if (nativeState.error) {
         if (automaticRecovery.current.trackId !== track.id) {
