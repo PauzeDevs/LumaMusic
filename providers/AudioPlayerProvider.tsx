@@ -233,11 +233,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       ] as [number, number, number, number, number],
       preampDb: 0,
       limiterEnabled: true,
-      reverbPreset: "off",
-      spatialBalance: 0,
+      reverbPreset,
+      spatialBalance,
       crossfadeSeconds: 0
     }).catch(() => undefined);
-  }, [equalizerEnabled, equalizerBands]);
+  }, [equalizerEnabled, equalizerBands, reverbPreset, spatialBalance]);
 
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
@@ -556,7 +556,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
 
     throw new Error("This track has no supported playback source.");
-  }, [disconnectGraph, ensureAudioContext, player, setPlaybackError, equalizerEnabled, equalizerBands, playbackRate]);
+  }, [disconnectGraph, ensureAudioContext, player, setPlaybackError, equalizerEnabled, equalizerBands, reverbPreset, spatialBalance, playbackRate]);
 
   const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number, resumePosition?: number, forceStreamRefresh = false) => {
     try { await playTrack(track, queue, queueIndex, resumePosition, forceStreamRefresh); }
