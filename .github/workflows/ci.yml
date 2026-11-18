@@ -76,3 +76,7 @@ jobs:
       - name: Compile Android Kotlin sources
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin --no-daemon
+
+      - name: Run Android native unit tests
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --no-daemon
