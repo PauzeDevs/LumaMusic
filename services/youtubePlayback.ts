@@ -169,8 +169,8 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
 }
 
 /**
- * Resolves a playable audio stream directly through YouTube's InnerTube /player API.
- * Keeps InnerTube as the primary resolver and falls back to NewPipe on Android only if all InnerTube clients fail.
+ * Resolves a playable YouTube audio stream. Android uses NewPipe first so signed
+ * and throttled URLs are deciphered; InnerTube client profiles remain fallback.
  */
 export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
   const videoId = extractYouTubeVideoId(track);
