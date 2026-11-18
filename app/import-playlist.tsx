@@ -1,5 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -42,6 +44,37 @@ export default function ImportPlaylistScreen() {
   const [previewed, setPreviewed] = useState(false);
   const createPlaylist = useLibraryStore((state) => state.createPlaylist);
   const addTrackToPlaylist = useLibraryStore((state) => state.addTrackToPlaylist);
+
+  const importExportFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["text/csv", "text/plain", "application/json", "audio/x-mpegurl", "application/vnd.apple.mpegurl"],
+        copyToCacheDirectory: true
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const info = await FileSystem.getInfoAsync(asset.uri);
+      if (info.exists && info.size > 512 * 1024) {
+        Alert.alert("Export is too large", "Choose a playlist export smaller than 512 KB.");
+        return;
+      }
+      const contents = await FileSystem.readAsStringAsync(asset.uri);
+      const entries = parsePlaylistExport(contents);
+      if (entries.length === 0) {
+        Alert.alert("No tracks found", "LumaMusic couldn't find track names and artists in this file. Try a CSV, JSON, M3U, PLS, or text export.");
+        return;
+      }
+      setRawText(contents);
+      setPreviewed(false);
+      if (playlistName.trim() === "Imported playlist") {
+        const suggestedName = asset.name.replace(/\.[^.]+$/, "").trim().slice(0, 50);
+        if (suggestedName) setPlaylistName(suggestedName);
+      }
+      Alert.alert("Playlist export loaded", entries.length + " tracks found. Preview the matches before saving.");
+    } catch (error) {
+      Alert.alert("Couldn't read export", error instanceof Error ? error.message : "Choose a text-based playlist export and try again.");
+    }
+  };
 
   const previewMatches = async () => {
     let entries: ImportedPlaylistEntry[];
@@ -200,7 +233,7 @@ export default function ImportPlaylistScreen() {
           {isImportingLink ? <ActivityIndicator color="#17111F" /> : <Ionicons name="link" size={17} color="#17111F" />}
           <Text style={styles.primaryText}>{isImportingLink ? "Importing playlist…" : "Import playlist link"}</Text>
         </Pressable>
-        <Text style={styles.helper}>Direct link import currently supports public YouTube Music playlists. Spotify and Apple Music need account connections.</Text>
+        <Text style={styles.helper}>Public YouTube Music playlist links import directly. For Spotify, Apple Music, or Tidal, load a playlist export file below.</Text>
         <View style={styles.sectionDivider}><Text style={styles.sectionDividerText}>OR IMPORT A PLAYLIST EXPORT</Text></View>
         <Text style={styles.label}>PLAYLIST EXPORT</Text>
         <TextInput
@@ -213,7 +246,11 @@ export default function ImportPlaylistScreen() {
           style={styles.textInput}
           autoCapitalize="sentences"
         />
-        <Text style={styles.helper}>Supports common CSV column names such as Track Name / Artist Name(s), plus plain text lists. Up to 100 tracks per import.</Text>
+        <Pressable style={[styles.secondaryButton, isMatching && styles.disabledButton]} disabled={isMatching} onPress={() => void importExportFile()}>
+          <Ionicons name="document-attach-outline" size={17} color={colors.accent} />
+          <Text style={styles.secondaryText}>Choose CSV, JSON, M3U, PLS or text file</Text>
+        </Pressable>
+        <Text style={styles.helper}>Supports common exports from Spotify, Apple Music and Tidal. LumaMusic matches track metadata; it doesn't copy account access or audio. Up to 100 tracks per import.</Text>
         <Pressable style={[styles.primaryButton, (!rawText.trim() || isMatching) && styles.disabledButton]} disabled={!rawText.trim() || isMatching} onPress={() => void previewMatches()}>
           {isMatching ? <ActivityIndicator color="#17111F" /> : <Ionicons name="search" size={17} color="#17111F" />}
           <Text style={styles.primaryText}>{isMatching ? "Matching " + progress + " tracks…" : "Preview track matches"}</Text>
@@ -260,6 +297,8 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   nameInput: { color: colors.text, backgroundColor: colors.surface, borderRadius: 13, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: colors.border, fontSize: 12 },
   textInput: { minHeight: 180, maxHeight: 270, color: colors.text, backgroundColor: colors.surface, borderRadius: 15, padding: 14, borderWidth: 1, borderColor: colors.border, fontSize: 11, lineHeight: 17 },
   helper: { color: colors.subtle, fontSize: 10, lineHeight: 15, marginTop: 8 },
+  secondaryButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingVertical: 13, marginTop: 10, backgroundColor: colors.surface },
+  secondaryText: { color: colors.text, fontSize: 12, fontWeight: "700" },
   primaryButton: { minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, paddingHorizontal: 14, borderRadius: 13, backgroundColor: colors.accent, marginTop: 17 },
   disabledButton: { opacity: 0.45 },
   primaryText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
