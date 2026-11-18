@@ -6,7 +6,7 @@ export type LocalPlaylist = { id: string; name: string; tracks: MusicTrack[]; cr
 type LibraryState = {
   likedTracks: MusicTrack[]; recentTracks: MusicTrack[]; localTracks: MusicTrack[]; playlists: LocalPlaylist[];
   toggleLike: (track: MusicTrack) => void; addRecentTrack: (track: MusicTrack) => void;
-  addLocalTracks: (tracks: MusicTrack[]) => void; createPlaylist: (name: string) => void;
+  addLocalTracks: (tracks: MusicTrack[]) => void; addTracksToPlaylist: (playlistId: string, tracks: MusicTrack[]) => void; createPlaylist: (name: string) => void;
   renamePlaylist: (playlistId: string, name: string) => void; deletePlaylist: (playlistId: string) => void;
   clearLibrary: () => void; addTrackToPlaylist: (playlistId: string, track: MusicTrack) => void;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
@@ -32,6 +32,17 @@ export const useLibraryStore = create<LibraryState>()(
       const additions = validTracks.filter((track) => !knownIds.has(track.id) && Boolean(knownIds.add(track.id)));
       return { localTracks: [...additions, ...state.localTracks] };
     }),
+    addTracksToPlaylist: (playlistId, tracks) => set((state) => ({
+      playlists: state.playlists.map((playlist) => {
+        if (playlist.id !== playlistId || !Array.isArray(tracks) || tracks.length === 0) return playlist;
+        const knownIds = new Set(playlist.tracks.map((track) => track.id));
+        const additions = tracks.filter((track) =>
+          typeof track?.id === "string" && track.id.length > 0 &&
+          !knownIds.has(track.id) && Boolean(knownIds.add(track.id))
+        );
+        return additions.length > 0 ? { ...playlist, tracks: [...playlist.tracks, ...additions] } : playlist;
+      })
+    })),
     createPlaylist: (name) => set((state) => {
       const normalizedName = typeof name === "string" ? name.trim() : "";
       if (!normalizedName) return state;

@@ -43,7 +43,7 @@ export default function ImportPlaylistScreen() {
   const [unmatched, setUnmatched] = useState<string[]>([]);
   const [previewed, setPreviewed] = useState(false);
   const createPlaylist = useLibraryStore((state) => state.createPlaylist);
-  const addTrackToPlaylist = useLibraryStore((state) => state.addTrackToPlaylist);
+  const addTracksToPlaylist = useLibraryStore((state) => state.addTracksToPlaylist);
 
   const importExportFile = async () => {
     try {
@@ -163,7 +163,7 @@ export default function ImportPlaylistScreen() {
           Alert.alert("Couldn't create playlist", "Please try again.");
           return;
         }
-        tracks.forEach((track) => addTrackToPlaylist(created.id, track));
+        addTracksToPlaylist(created.id, tracks);
         Alert.alert("Playlist imported", `${tracks.length} tracks added to your LumaMusic library.`, [
           { text: "Open playlist", onPress: () => router.replace({ pathname: "/playlist/[id]", params: { id: created.id, title: created.name } }) },
           { text: "Done", style: "cancel" }
@@ -196,7 +196,7 @@ export default function ImportPlaylistScreen() {
       Alert.alert("Couldn't create playlist", "Please try again.");
       return;
     }
-    matches.forEach((match) => addTrackToPlaylist(created.id, match.track));
+    addTracksToPlaylist(created.id, matches.map((match) => match.track));
     router.replace({ pathname: "/playlist/[id]", params: { id: created.id, title: created.name } });
   };
 
