@@ -488,7 +488,6 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
               limiterEnabled,
               reverbPreset,
               spatialBalance,
-              crossfadeSeconds: 0
             });
             await setNativeAudioPlaybackRate(playbackRate);
             nativePlaybackActive.current = true;
