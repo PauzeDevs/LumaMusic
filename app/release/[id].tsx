@@ -1,5 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { PageEntrance } from "../../components/PageEntrance";
+import { AlbumArtwork } from "../../components/AlbumArtwork";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -32,7 +33,7 @@ export default function ReleaseScreen() {
         <Text style={styles.backText}>Back</Text>
       </Pressable>
       <View style={styles.hero}>
-        <Artwork uri={artwork ?? ""} size={210} radius={20} />
+        <AlbumArtwork uri={artwork ?? ""} size={210} radius={20} />
         <Text style={styles.eyebrow}>{(kind || "release").toUpperCase()}</Text>
         <Text style={styles.title}>{title || "Release"}</Text>
         <Text style={styles.copy}>{query.isLoading ? "Loading tracklist…" : tracks.length + (tracks.length === 1 ? " track" : " tracks")}</Text>

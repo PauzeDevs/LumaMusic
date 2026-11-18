@@ -1,5 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { PageEntrance } from "../../components/PageEntrance";
+import { AlbumArtwork } from "../../components/AlbumArtwork";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -39,7 +40,7 @@ export default function ArtistScreen() {
         </Pressable>
 
         <View style={styles.hero}>
-          <Artwork uri={artistArtwork ?? ""} size={148} radius={74} />
+          <AlbumArtwork uri={artistArtwork ?? ""} size={148} radius={74} />
           <Text style={styles.eyebrow}>ARTIST</Text>
           <Text style={styles.title}>{artistName || "Artist"}</Text>
           <Text style={styles.copy}>Explore tracks and play them without leaving LumaMusic.</Text>
@@ -113,7 +114,7 @@ function ReleaseShelf({ title, releases, colors, onOpen }: { title: string; rele
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 13, paddingRight: 20 }}>
       {releases.map((release) => <Pressable key={release.id} onPress={() => onOpen(release)} style={{ width: 152, padding: 8, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: colors.border }}>
-        <Artwork uri={release.artwork} size={134} radius={15} />
+        <AlbumArtwork uri={release.artwork} size={134} radius={15} />
         <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "700", marginTop: 9 }}>{release.title}</Text>
         <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10, marginTop: 3 }}>{release.subtitle}</Text>
       </Pressable>)}
