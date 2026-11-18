@@ -32,13 +32,15 @@ export function useNowPlayingArtworkMotion(
     }
 
     const intensity = Math.max(0, Math.min(100, animationIntensity)) / 100;
-    const scaleAmount = 0.004 + intensity * 0.008;
-    const floatAmount = 1.5 + intensity * 3;
+    const motionMultiplier = motionStyle === "subtle" ? 0.45 : 1;
+    const scaleAmount = (0.004 + intensity * 0.008) * motionMultiplier;
+    const floatAmount = (1.5 + intensity * 3) * motionMultiplier;
+    const phaseDuration = motionStyle === "subtle" ? 6500 : 4200;
     const ambientMotion = Animated.loop(Animated.sequence([
       Animated.parallel([
         Animated.timing(artworkScale, {
           toValue: 1 + scaleAmount,
-          duration: 4200,
+          duration: phaseDuration,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true
         }),
@@ -52,7 +54,7 @@ export function useNowPlayingArtworkMotion(
       Animated.parallel([
         Animated.timing(artworkScale, {
           toValue: 1 - scaleAmount * 0.35,
-          duration: 8400,
+          duration: phaseDuration * 2,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true
         }),
