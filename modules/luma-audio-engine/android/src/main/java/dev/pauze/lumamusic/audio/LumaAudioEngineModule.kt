@@ -45,29 +45,35 @@ class LumaAudioEngineModule : Module() {
       released.set(false)
       val context = appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available.")
-      pcmProcessor = LumaPcmAudioProcessor()
-      player = ExoPlayer.Builder(context, LumaRenderersFactory(context, pcmProcessor!!))
-        .setLooper(Looper.getMainLooper())
-        .build().apply {
-        setAudioAttributes(
-          AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-            .build(),
-          true
-        )
-        addListener(object : Player.Listener {
-          override fun onPlaybackStateChanged(playbackState: Int) = emitState(this@apply)
-          override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(this@apply)
-          override fun onPlayerError(error: PlaybackException) {
-            lastError = error.message ?: "Playback failed."
-            emitState(this@apply)
+
+      // ExoPlayer checks its application looper on every access, including setup
+      // immediately after build(). Keep construction and all configuration on main.
+      handler.post {
+        if (released.get()) return@post
+        pcmProcessor = LumaPcmAudioProcessor()
+        player = ExoPlayer.Builder(context, LumaRenderersFactory(context, pcmProcessor!!))
+          .setLooper(Looper.getMainLooper())
+          .build().apply {
+            setAudioAttributes(
+              AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build(),
+              true
+            )
+            addListener(object : Player.Listener {
+              override fun onPlaybackStateChanged(playbackState: Int) = emitState(this@apply)
+              override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(this@apply)
+              override fun onPlayerError(error: PlaybackException) {
+                lastError = error.message ?: "Playback failed."
+                emitState(this@apply)
+              }
+              override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(this@apply)
+            })
           }
-          override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(this@apply)
-        })
+        handler.removeCallbacks(progressEmitter)
+        handler.post(progressEmitter)
       }
-      handler.removeCallbacks(progressEmitter)
-      handler.post(progressEmitter)
     }
 
     AsyncFunction("getCapabilities") { sourceKind: String ->
