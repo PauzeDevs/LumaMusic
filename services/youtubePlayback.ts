@@ -315,6 +315,7 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
     })
     .finally(() => {
       if (inFlightResolutions.get(videoId) === request) inFlightResolutions.delete(videoId);
+      if (resolutionVersions.get(videoId) === version) resolutionVersions.delete(videoId);
     });
 
   inFlightResolutions.set(videoId, request);
