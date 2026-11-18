@@ -1,6 +1,7 @@
 import type { MusicTrack } from "../types/music";
 
-export type LyricLine = { time: number | null; text: string };
+export type LyricWord = { time: number; text: string };
+export type LyricLine = { time: number | null; text: string; words?: LyricWord[] };
 export type LyricsState =
   | { status: "unconfigured" | "loading" | "not_found" | "restricted" | "error" }
   | { status: "available"; lines: LyricLine[]; provider: string; copyright?: string; attribution?: { text: string; url?: string } };
@@ -25,24 +26,68 @@ const cache = new Map<string, { expiresAt: number; value: LyricsState }>();
 const MAX_LYRICS_CACHE_ENTRIES = 32;
 const inFlight = new Map<string, Promise<LyricsState>>();
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+const wordTimestampPattern = /<(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?>/g;
+const metadataPattern = /^\[(?:ar|ti|al|by|re|ve|length|kana|la|au|tool):[^\]]*\]$/i;
 
+function timestampSeconds(minutes: string, seconds: string, fraction?: string): number {
+  return Number(minutes) * 60 + Number(seconds) + (fraction ? Number(\`0.\${fraction}\`) : 0);
+}
+
+/** Parses standard LRC, multi-timestamp LRC and enhanced LRC word timestamps. */
 export function parseLrc(value: string): LyricLine[] {
   const lines: LyricLine[] = [];
+  let offsetSeconds = 0;
+
   for (const row of value.split(/\r?\n/)) {
-    const timestamps = [...row.matchAll(timestampPattern)];
-    const text = row.replace(timestampPattern, "").trim();
-    if (!text) continue;
-    if (timestamps.length === 0) {
-      lines.push({ time: null, text });
+    const trimmed = row.trim();
+    const offsetMatch = trimmed.match(/^\[offset:([+-]?\d+)\]$/i);
+    if (offsetMatch) {
+      const offsetMs = Number(offsetMatch[1]);
+      if (Number.isFinite(offsetMs)) offsetSeconds = offsetMs / 1000;
       continue;
     }
-    for (const match of timestamps) {
-      lines.push({
-        time: Number(match[1]) * 60 + Number(match[2]) + (match[3] ? Number(`0.${match[3]}`) : 0),
-        text
+    if (!trimmed || metadataPattern.test(trimmed)) continue;
+
+    const timestamps = [...row.matchAll(timestampPattern)];
+    const content = row.replace(timestampPattern, "");
+    const wordMatches = [...content.matchAll(wordTimestampPattern)];
+    const text = content.replace(wordTimestampPattern, "").trim();
+    if (!text || /^\[[a-z]+:[^\]]*\]$/i.test(text)) continue;
+
+    const words: LyricWord[] = [];
+    if (wordMatches.length > 0) {
+      const firstIndex = wordMatches[0].index ?? 0;
+      const prefix = content.slice(0, firstIndex);
+      if (prefix.trim()) {
+        words.push({
+          time: Math.max(0, (timestamps[0] ? timestampSeconds(timestamps[0][1], timestamps[0][2], timestamps[0][3]) : 0) + offsetSeconds),
+          text: prefix
+        });
+      }
+      wordMatches.forEach((match, index) => {
+        const segmentStart = (match.index ?? 0) + match[0].length;
+        const segmentEnd = index + 1 < wordMatches.length ? (wordMatches[index + 1].index ?? content.length) : content.length;
+        const wordText = content.slice(segmentStart, segmentEnd);
+        if (!wordText.trim()) return;
+        words.push({
+          time: Math.max(0, timestampSeconds(match[1], match[2], match[3]) + offsetSeconds),
+          text: wordText
+        });
       });
     }
+
+    if (timestamps.length === 0) {
+      if (words.length > 0) lines.push({ time: words[0].time, text, words });
+      else lines.push({ time: null, text });
+      continue;
+    }
+
+    for (const match of timestamps) {
+      const lineTime = Math.max(0, timestampSeconds(match[1], match[2], match[3]) + offsetSeconds);
+      lines.push({ time: lineTime, text, ...(words.length > 0 ? { words } : {}) });
+    }
   }
+
   return lines.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 }
 
