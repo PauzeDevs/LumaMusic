@@ -109,12 +109,13 @@ class LumaAudioEngineModule : Module() {
           .setDefaultRequestProperties(headers)
         val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
         val sourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-        current.setMediaSource(sourceFactory.createMediaSource(
-          MediaItem.Builder()
-            .setUri(Uri.parse(uri))
-            .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
-            .build()
-        ))
+        val mediaItemBuilder = MediaItem.Builder()
+          .setUri(Uri.parse(uri))
+          .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
+        (track["mimeType"] as? String)?.substringBefore(";")?.takeIf { it.isNotBlank() }?.let {
+          mediaItemBuilder.setMimeType(it)
+        }
+        current.setMediaSource(sourceFactory.createMediaSource(mediaItemBuilder.build()))
         val startMs = ((startPositionSeconds ?: 0.0).coerceAtLeast(0.0) * 1000.0).toLong()
         current.prepare()
         if (startMs > 0L) current.seekTo(startMs)
@@ -201,7 +202,7 @@ class LumaAudioEngineModule : Module() {
     if (current == null) return mapOf(
       "trackId" to activeTrackId, "isPlaying" to false, "isBuffering" to false,
       "positionSeconds" to 0.0, "durationSeconds" to 0.0, "bufferedSeconds" to 0.0,
-      "playbackRate" to 1.0, "error" to lastError
+      "playbackRate" to 1.0, "error" to lastError, "isEnded" to false
     )
     val duration = current.duration.takeIf { it != C.TIME_UNSET && it > 0L }
       ?: (catalogDurationSeconds * 1000.0).toLong()
@@ -213,7 +214,8 @@ class LumaAudioEngineModule : Module() {
       "durationSeconds" to duration / 1000.0,
       "bufferedSeconds" to current.bufferedPosition.coerceAtLeast(0L) / 1000.0,
       "playbackRate" to current.playbackParameters.speed.toDouble(),
-      "error" to lastError
+      "error" to lastError,
+      "isEnded" to (current.playbackState == Player.STATE_ENDED)
     )
   }
 
