@@ -4,7 +4,7 @@ export type ImportedPlaylistEntry = {
 };
 
 function normalizeHeader(value: string): string {
-  return value.toLocaleLowerCase().normalize("NFKC").replace(/[\\u0300-\\u036f]/g, "").replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
+  return value.toLocaleLowerCase().normalize("NFKC").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 function parseDelimited(input: string, delimiter: string): string[][] {
