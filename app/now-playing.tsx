@@ -213,7 +213,7 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   main: { flex: 1, minHeight: 0, justifyContent: "space-around", paddingTop: 8, paddingBottom: 12 },
   artFrame: { width: artworkSize, maxWidth: "100%", alignSelf: "center", flexShrink: 0, aspectRatio: 1, borderRadius: 8, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 14, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: isDark ? 0.28 : 0.10, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   artwork: { width: "100%", height: "100%" },
-  vinylGrooves: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+  vinylGrooves: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
   vinylGrooveOuter: { position: "absolute", width: "84%", height: "84%", borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
   vinylGrooveInner: { position: "absolute", width: "68%", height: "68%", borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
   vinylSpindle: { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.82)", borderWidth: 1, borderColor: "rgba(0,0,0,0.38)" },
