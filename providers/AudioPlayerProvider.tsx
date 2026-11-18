@@ -1,8 +1,18 @@
 import { Audio, AudioContext, PlaybackNotificationManager, useAudioTagContext, type AudioTagHandle, type ConvolverNode, type GainNode, type MediaElementAudioSourceNode, type StereoPannerNode } from "react-native-audio-api";
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from "expo-audio";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
-import { AppState, View } from "react-native";
+import { AppState, Platform, View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
+import {
+  addNativeAudioStateListener,
+  isNativeAudioEngineAvailable,
+  loadNativeAudioTrack,
+  pauseNativeAudio,
+  playNativeAudio,
+  seekNativeAudio,
+  setNativeAudioLab,
+  setNativeAudioPlaybackRate
+} from "../modules/luma-audio-engine/src";
 import { getYouTubeMusicUpNextTracks } from "../services/youtubeMusic";
 import { useLibraryStore } from "../store/library";
 import { useListeningStatsStore } from "../store/listeningStats";
@@ -22,6 +32,7 @@ type AudioEngineValue = {
   cycleRepeat: () => void;
 };
 const AudioEngineContext = createContext<AudioEngineValue | null>(null);
+const useNativeExternalPlayback = Platform.OS === "android" && isNativeAudioEngineAvailable;
 type ExternalMusicTrack = MusicTrack & { source: "youtube_music" };
 type LocalMusicTrack = MusicTrack & { source: "local"; localUri: string };
 type AudioGraph = { source: MediaElementAudioSourceNode; panner: StereoPannerNode; convolver: ConvolverNode; dry: GainNode; wet: GainNode; filters: ReturnType<AudioContext["createBiquadFilter"]>[] };
@@ -80,6 +91,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const automaticRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const earlyEndRecovery = useRef<{ trackId: string | null; attempts: number }>({ trackId: null, attempts: 0 });
   const audioRef = useRef<AudioTagHandle>(null);
+  const nativePlaybackActive = useRef(false);
+  const nativeEndedHandled = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const impulseCacheRef = useRef<Map<Exclude<ReverbPreset, "off">, ReturnType<AudioContext["createBuffer"]>>>(new Map());
   const graphRef = useRef<AudioGraph | null>(null);
@@ -205,6 +218,25 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
   useEffect(() => applyEqualizer(equalizerEnabled, equalizerBands), [equalizerEnabled, equalizerBands, applyEqualizer]);
 
+  useEffect(() => {
+    if (!nativePlaybackActive.current) return;
+    void setNativeAudioLab({
+      enabled: equalizerEnabled,
+      equalizerDb: [
+        equalizerBands[0] ?? 0,
+        equalizerBands[1] ?? 0,
+        equalizerBands[2] ?? 0,
+        equalizerBands[3] ?? 0,
+        equalizerBands[4] ?? 0
+      ] as [number, number, number, number, number],
+      preampDb: 0,
+      limiterEnabled: true,
+      reverbPreset: "off",
+      spatialBalance: 0,
+      crossfadeSeconds: 0
+    }).catch(() => undefined);
+  }, [equalizerEnabled, equalizerBands]);
+
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
     if (startupTimeoutRef.current) clearTimeout(startupTimeoutRef.current);
@@ -221,6 +253,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       graphRef.current = null;
     }
     impulseCacheRef.current.clear();
+    if (nativePlaybackActive.current) void pauseNativeAudio().catch(() => undefined);
     void audioContextRef.current?.close().catch(() => undefined);
   }, []);
 
@@ -393,6 +426,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
     const queue = nextQueue?.length ? nextQueue : [track];
     if (isLocalTrack(usePlayerStore.getState().currentTrack) || isExternalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
+    if (nativePlaybackActive.current) {
+      nativePlaybackActive.current = false;
+      nativeEndedHandled.current = false;
+      void pauseNativeAudio().catch(() => undefined);
+    }
     // Stop the previous stream immediately; don't let it play underneath a new selection.
     player.pause();
     disconnectGraph();
@@ -415,25 +453,72 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           bitrateKbps,
           codec: stream.mimeType.split(";")[0]?.trim() || null
         });
-        // Allocate the native effects engine only when playback actually starts.
-        ensureAudioContext();
-        // Feed the resolved YouTube URL into the native Audio API element so its
-        // samples pass through the same AudioContext graph as imported local audio.
-        setLocalSource({
-          uri: stream.url,
-          headers: {
-            "User-Agent": stream.userAgent,
-            Origin: "https://www.youtube.com",
-            Referer: "https://www.youtube.com/"
-          },
-          instance: ++localSourceSequence.current
-        });
+        const streamHeaders = {
+          "User-Agent": stream.userAgent,
+          Origin: "https://www.youtube.com",
+          Referer: "https://www.youtube.com/"
+        };
+        let usingNativePlayback = false;
+        if (useNativeExternalPlayback) {
+          try {
+            await loadNativeAudioTrack({
+              id: track.id,
+              uri: stream.url,
+              title: track.title,
+              artist: track.artist,
+              mimeType: stream.mimeType,
+              headers: streamHeaders,
+              durationSeconds: stream.durationSeconds,
+              sourceKind: "youtube_music"
+            }, resumePosition ?? 0);
+            await setNativeAudioLab({
+              enabled: equalizerEnabled,
+              equalizerDb: [
+                equalizerBands[0] ?? 0,
+                equalizerBands[1] ?? 0,
+                equalizerBands[2] ?? 0,
+                equalizerBands[3] ?? 0,
+                equalizerBands[4] ?? 0
+              ] as [number, number, number, number, number],
+              preampDb: 0,
+              limiterEnabled: true,
+              reverbPreset: "off",
+              spatialBalance: 0,
+              crossfadeSeconds: 0
+            });
+            await setNativeAudioPlaybackRate(playbackRate);
+            nativePlaybackActive.current = true;
+            nativeEndedHandled.current = false;
+            usePlayerStore.getState().setPlaybackStatus({
+              isPlaying: false,
+              isBuffering: true,
+              playbackPosition: resumePosition ?? 0,
+              playbackDuration: stream.durationSeconds,
+              playbackError: null
+            });
+            await playNativeAudio();
+            usingNativePlayback = true;
+          } catch {
+            nativePlaybackActive.current = false;
+            void pauseNativeAudio().catch(() => undefined);
+          }
+        }
+        if (!usingNativePlayback) {
+          // Keep the existing audio-element route as a safe fallback and for iOS.
+          ensureAudioContext();
+          setLocalSource({
+            uri: stream.url,
+            headers: streamHeaders,
+            instance: ++localSourceSequence.current
+          });
+        }
         // Do not leave the UI spinning forever if the resolved stream never starts.
         startupTimeoutRef.current = setTimeout(() => {
           startupTimeoutRef.current = null;
           const latest = usePlayerStore.getState();
           if (requestId !== playbackRequestSequence.current || latest.currentTrack?.id !== track.id || !latest.isBuffering) return;
-          audioRef.current?.pause();
+          if (nativePlaybackActive.current) void pauseNativeAudio().catch(() => undefined);
+          else audioRef.current?.pause();
           latest.setPlaybackError("Audio stream did not start within 20 seconds. The stream may be unavailable or blocked. Tap Play to retry.");
         }, 20_000);
         // Warm the next playlist stream while this song is already playing.
@@ -443,10 +528,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         if (nextTrack) {
           void resolveYouTubeMusicAudio(nextTrack).catch(() => undefined);
         }
-        // Keep the loading state until the native Audio API reports playback/buffering status.
-        usePlayerStore.getState().setPlaybackStatus({ isPlaying: false, isBuffering: true, playbackPosition: 0, playbackDuration: stream.durationSeconds, playbackError: null });
+        // Media3 and the Audio API bridge now own their respective status updates.
         return;
       } catch (error) {
+        nativePlaybackActive.current = false;
+        void pauseNativeAudio().catch(() => undefined);
         if (startupTimeoutRef.current) {
           clearTimeout(startupTimeoutRef.current);
           startupTimeoutRef.current = null;
@@ -468,7 +554,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
 
     throw new Error("This track has no supported playback source.");
-  }, [disconnectGraph, ensureAudioContext, player, setPlaybackError]);
+  }, [disconnectGraph, ensureAudioContext, player, setPlaybackError, equalizerEnabled, equalizerBands, playbackRate]);
 
   const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number, resumePosition?: number, forceStreamRefresh = false) => {
     try { await playTrack(track, queue, queueIndex, resumePosition, forceStreamRefresh); }
@@ -492,7 +578,14 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
     if (isExternalTrack(state.currentTrack)) {
-      if (state.isPlaying) {
+      if (nativePlaybackActive.current) {
+        if (state.isPlaying) void pauseNativeAudio();
+        else if (state.playbackError) {
+          void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex, state.playbackPosition);
+        } else {
+          void playNativeAudio();
+        }
+      } else if (state.isPlaying) {
         audioRef.current?.pause();
       } else if (state.playbackError || !audioRef.current) {
         // Expired streams are resolved again instead of trying to resume a dead URL.
@@ -519,8 +612,12 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       // Restart the already-loaded source instead of resolving the stream again.
       // Re-resolving at the end of every song can fail or leave repeat-one silent.
       if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
-        audioRef.current?.seekToTime(0);
-        void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+        if (nativePlaybackActive.current) {
+          void seekNativeAudio(0).then(() => playNativeAudio());
+        } else {
+          audioRef.current?.seekToTime(0);
+          void audioContextRef.current?.resume().then(() => audioRef.current?.play());
+        }
       } else {
         await player.seekTo(0);
         player.play();
@@ -586,7 +683,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       }
     }
 
-    if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.pause();
+    if (nativePlaybackActive.current) void pauseNativeAudio();
+    else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.pause();
     else player.pause();
   }, [playTrackSafely, player]);
 
@@ -595,7 +693,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (state.queue.length === 0 || !state.currentTrack) return;
     const restartCurrentTrack = async () => {
       if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
-        if (audioRef.current) audioRef.current.seekToTime(0);
+        if (nativePlaybackActive.current) void seekNativeAudio(0);
+        else if (audioRef.current) audioRef.current.seekToTime(0);
         else if (isExternalTrack(state.currentTrack)) {
           await playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
         }
@@ -624,6 +723,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     if (!Number.isFinite(rate)) return;
     const safeRate = Math.max(0.5, Math.min(2, rate));
     setPlaybackRateState(safeRate);
+    if (nativePlaybackActive.current) void setNativeAudioPlaybackRate(safeRate).catch(() => undefined);
   }, [setPlaybackRateState]);
 
   const setSleepTimer = useCallback((minutes: number | null) => {
@@ -632,7 +732,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     setSleepTimerMinutesState(minutes);
     if (minutes !== null && minutes > 0) {
       sleepTimerRef.current = setTimeout(() => {
-        if (isLocalTrack(usePlayerStore.getState().currentTrack) || isExternalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
+        if (nativePlaybackActive.current) void pauseNativeAudio();
+        else if (isLocalTrack(usePlayerStore.getState().currentTrack) || isExternalTrack(usePlayerStore.getState().currentTrack)) audioRef.current?.pause();
         else player.pause();
         sleepTimerRef.current = null;
         setSleepTimerMinutesState(null);
@@ -646,7 +747,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const track = state.currentTrack;
     const target = Math.max(0, state.playbackDuration > 0 ? Math.min(seconds, state.playbackDuration) : seconds);
     if (isLocalTrack(track) || isExternalTrack(track)) {
-      audioRef.current?.seekToTime(target);
+      if (nativePlaybackActive.current) await seekNativeAudio(target);
+      else audioRef.current?.seekToTime(target);
       return;
     }
     await player.seekTo(target);
@@ -657,7 +759,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const track = latest.currentTrack;
     if (sourceInstance !== localSourceSequence.current || track?.id !== trackId) return;
     if (latest.sleepTimerMinutes === -1) {
-      audioRef.current?.pause();
+      if (nativePlaybackActive.current) void pauseNativeAudio();
+      else audioRef.current?.pause();
       setSleepTimerMinutesState(null);
       return;
     }
@@ -680,7 +783,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
           const resumeAt = Math.max(0, currentPosition - 2);
           void playTrackSafely(track, latest.queue, latest.currentQueueIndex, resumeAt, true);
         } else {
-          audioRef.current?.pause();
+          if (nativePlaybackActive.current) void pauseNativeAudio();
+          else audioRef.current?.pause();
           const message = "The audio stream ended before the track finished. LumaMusic tried a fresh stream, but it ended early again. Tap Play to retry.";
           setPlaybackStatus({
             isPlaying: false,
@@ -704,23 +808,80 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, [playNext, playTrackSafely, setPlaybackError, setPlaybackStatus, setSleepTimerMinutesState]);
 
   useEffect(() => {
+    if (!useNativeExternalPlayback) return;
+    const subscription = addNativeAudioStateListener((nativeState) => {
+      const latest = usePlayerStore.getState();
+      const track = latest.currentTrack;
+      if (!nativePlaybackActive.current || !isExternalTrack(track) || nativeState.trackId !== track.id) return;
+
+      const duration = nativeState.durationSeconds > 0
+        ? nativeState.durationSeconds
+        : Math.max(0, track.durationMs / 1000);
+      setPlaybackStatus({
+        isPlaying: nativeState.isPlaying,
+        isBuffering: nativeState.isBuffering,
+        playbackPosition: Math.max(0, nativeState.positionSeconds),
+        playbackDuration: duration,
+        playbackError: nativeState.error ?? null
+      });
+      useListeningStatsStore.getState().recordProgress(track, nativeState.positionSeconds, nativeState.isPlaying);
+
+      if (nativeState.error) {
+        if (automaticRecovery.current.trackId !== track.id) {
+          automaticRecovery.current = { trackId: track.id, attempts: 0 };
+        }
+        if (automaticRecovery.current.attempts < 1) {
+          automaticRecovery.current.attempts += 1;
+          void playTrackSafely(track, latest.queue, latest.currentQueueIndex, nativeState.positionSeconds, true);
+        } else {
+          setPlaybackError(nativeState.error);
+        }
+        return;
+      }
+
+      if (nativeState.isEnded) {
+        if (!nativeEndedHandled.current) {
+          nativeEndedHandled.current = true;
+          onLocalAudioEnded(localSourceSequence.current, track.id);
+        }
+      } else {
+        nativeEndedHandled.current = false;
+      }
+    });
+    return () => subscription?.remove();
+  }, [onLocalAudioEnded, playTrackSafely, setPlaybackError, setPlaybackStatus]);
+
+  useEffect(() => {
     const playListener = PlaybackNotificationManager.addEventListener("playbackNotificationPlay", () => {
       const state = usePlayerStore.getState();
-      if (state.currentTrack && (state.playbackError || !audioRef.current)) {
+      if (nativePlaybackActive.current) {
+        if (state.playbackError && state.currentTrack) void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex, state.playbackPosition);
+        else void playNativeAudio();
+      } else if (state.currentTrack && (state.playbackError || !audioRef.current)) {
         void playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex, state.playbackPosition);
       } else {
         void audioContextRef.current?.resume().then(() => audioRef.current?.play());
       }
     });
-    const pauseListener = PlaybackNotificationManager.addEventListener("playbackNotificationPause", () => audioRef.current?.pause());
+    const pauseListener = PlaybackNotificationManager.addEventListener("playbackNotificationPause", () => {
+      if (nativePlaybackActive.current) void pauseNativeAudio();
+      else audioRef.current?.pause();
+    });
     const nextListener = PlaybackNotificationManager.addEventListener("playbackNotificationNextTrack", () => { void playNext(); });
     const previousListener = PlaybackNotificationManager.addEventListener("playbackNotificationPreviousTrack", () => { void playPrevious(); });
-    const seekListener = PlaybackNotificationManager.addEventListener("playbackNotificationSeekTo", (event) => audioRef.current?.seekToTime(event.value));
+    const seekListener = PlaybackNotificationManager.addEventListener("playbackNotificationSeekTo", (event) => {
+      if (nativePlaybackActive.current) void seekNativeAudio(event.value);
+      else audioRef.current?.seekToTime(event.value);
+    });
     const forwardListener = PlaybackNotificationManager.addEventListener("playbackNotificationSkipForward", (event) => {
-      audioRef.current?.seekToTime(usePlayerStore.getState().playbackPosition + event.value);
+      const target = usePlayerStore.getState().playbackPosition + event.value;
+      if (nativePlaybackActive.current) void seekNativeAudio(target);
+      else audioRef.current?.seekToTime(target);
     });
     const backwardListener = PlaybackNotificationManager.addEventListener("playbackNotificationSkipBackward", (event) => {
-      audioRef.current?.seekToTime(Math.max(0, usePlayerStore.getState().playbackPosition - event.value));
+      const target = Math.max(0, usePlayerStore.getState().playbackPosition - event.value);
+      if (nativePlaybackActive.current) void seekNativeAudio(target);
+      else audioRef.current?.seekToTime(target);
     });
     return () => {
       playListener.remove();
