@@ -17,6 +17,9 @@ const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
 // Stream URLs are large signed strings. Keep only a short LRU window for the current listening session.
 const MAX_STREAM_CACHE_ENTRIES = 8;
+// Coalesce playlist prefetch and foreground playback requests for the same video.
+const inFlightResolutions = new Map<string, Promise<ResolvedYouTubeAudio>>();
+const resolutionVersions = new Map<string, number>();
 
 function getCachedStream(videoId: string) {
   const cached = streamCache.get(videoId);
@@ -172,17 +175,7 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
  * Resolves a playable YouTube audio stream. Android uses NewPipe first so signed
  * and throttled URLs are deciphered; InnerTube client profiles remain fallback.
  */
-export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
-  const videoId = extractYouTubeVideoId(track);
-  if (!videoId) {
-    throw new Error("Missing YouTube video ID for this track.");
-  }
-
-  // Check if we already have a non-expired stream URL cached (with 5-min safety buffer)
-  if (forceRefresh) streamCache.delete(videoId);
-  const cached = forceRefresh ? null : getCachedStream(videoId);
-  if (cached) return cached;
-
+async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: string): Promise<ResolvedYouTubeAudio> {
   const errors: string[] = [];
 
   // Prefer NewPipe on Android. It resolves YouTube signature and n-parameter
@@ -191,7 +184,6 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
   try {
     const newPipeStream = await resolveNewPipeStream(videoId, track);
     if (newPipeStream) {
-      cacheStream(videoId, newPipeStream);
       return newPipeStream;
     }
   } catch (error) {
@@ -286,11 +278,42 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
     resolvedStream = null as unknown as ResolvedYouTubeAudio;
   }
   if (resolvedStream) {
-    cacheStream(videoId, resolvedStream);
     return resolvedStream;
   }
 
   throw new Error(
     `Could not stream "${track.title}". (${errors.join(" | ") || "No playable stream"})`
   );
+}
+
+/**
+ * Resolve once per video when possible. A forced retry starts a fresh lookup;
+ * version guards prevent an older, slower request from overwriting its cache.
+ */
+export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
+  const videoId = extractYouTubeVideoId(track);
+  if (!videoId) throw new Error("Missing YouTube video ID for this track.");
+
+  if (forceRefresh) {
+    streamCache.delete(videoId);
+  } else {
+    const cached = getCachedStream(videoId);
+    if (cached) return cached;
+    const pending = inFlightResolutions.get(videoId);
+    if (pending) return pending;
+  }
+
+  const version = (resolutionVersions.get(videoId) ?? 0) + 1;
+  resolutionVersions.set(videoId, version);
+  const request = resolveYouTubeMusicAudioUncached(track, videoId)
+    .then((stream) => {
+      if (resolutionVersions.get(videoId) === version) cacheStream(videoId, stream);
+      return stream;
+    })
+    .finally(() => {
+      if (inFlightResolutions.get(videoId) === request) inFlightResolutions.delete(videoId);
+    });
+
+  inFlightResolutions.set(videoId, request);
+  return request;
 }
