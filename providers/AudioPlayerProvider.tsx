@@ -780,7 +780,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       // against catalogue duration as well as stream metadata to catch truncated
       // direct URLs (for example, a 3-minute song ending around 1:50).
       const remaining = expectedDuration - currentPosition;
-      const earlyEndThreshold = Math.max(12, expectedDuration * 0.08);
+      const earlyEndThreshold = Math.max(3, expectedDuration * 0.015);
       if (expectedDuration > 0 && remaining > earlyEndThreshold) {
         if (earlyEndRecovery.current.attempts < 1) {
           earlyEndRecovery.current.attempts += 1;
