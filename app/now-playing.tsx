@@ -51,6 +51,20 @@ export default function NowPlayingScreen() {
   const [artworkFailed, setArtworkFailed] = useState(false);
   const [previousArtwork, setPreviousArtwork] = useState<string | null>(null);
   const artworkCrossfade = useRef(new Animated.Value(1)).current;
+  const vinylRotation = useRef(new Animated.Value(0)).current;
+  const vinylRotate = vinylRotation.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  useEffect(() => {
+    vinylRotation.stopAnimation();
+    if (playerStyle !== "vinyl" || !isPlaying || motionStyle === "off") return;
+    const spin = Animated.loop(Animated.timing(vinylRotation, {
+      toValue: 1,
+      duration: motionStyle === "subtle" ? 40_000 : 24_000,
+      easing: Easing.linear,
+      useNativeDriver: true
+    }));
+    spin.start();
+    return () => spin.stop();
+  }, [playerStyle, isPlaying, motionStyle, vinylRotation]);
   useEffect(() => {
     setArtworkFailed(false);
     if (!track?.artwork) return;
@@ -111,9 +125,10 @@ export default function NowPlayingScreen() {
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
-        <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }] }]}>
+        <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }, { rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
           {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
           {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
+          {playerStyle === "vinyl" ? <View pointerEvents="none" style={styles.vinylGrooves}><View style={styles.vinylGrooveOuter} /><View style={styles.vinylGrooveInner} /><View style={styles.vinylSpindle} /></View> : null}
         </Animated.View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
@@ -198,6 +213,10 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   main: { flex: 1, minHeight: 0, justifyContent: "space-around", paddingTop: 8, paddingBottom: 12 },
   artFrame: { width: artworkSize, maxWidth: "100%", alignSelf: "center", flexShrink: 0, aspectRatio: 1, borderRadius: 8, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 14, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: isDark ? 0.28 : 0.10, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   artwork: { width: "100%", height: "100%" },
+  vinylGrooves: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+  vinylGrooveOuter: { position: "absolute", width: "84%", height: "84%", borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
+  vinylGrooveInner: { position: "absolute", width: "68%", height: "68%", borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  vinylSpindle: { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.82)", borderWidth: 1, borderColor: "rgba(0,0,0,0.38)" },
   artworkFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
   trackInfo: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
   trackTitle: { color: colors.text, fontSize: 21, lineHeight: 27, fontWeight: "800", letterSpacing: -0.55 },
