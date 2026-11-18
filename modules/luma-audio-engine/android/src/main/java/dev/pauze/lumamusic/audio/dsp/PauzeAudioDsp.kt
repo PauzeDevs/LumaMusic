@@ -139,11 +139,17 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
                 }
                 left *= leftGain
                 right *= rightGain
-                samples[index] = left.toFloat()
-                samples[index + 1] = right.toFloat()
+                samples[index] = finiteFloat(left)
+                samples[index + 1] = finiteFloat(right)
             }
 
-            for (channel in 0 until channels) peak = maxOf(peak, abs(samples[index + channel].toDouble()))
+            // Reverb and stereo processing happen after the first sample guard.
+            // Sanitize once more here so extreme but finite PCM cannot overflow
+            // Float32 when converted back to the Media3 output buffer.
+            for (channel in 0 until channels) {
+                if (!samples[index + channel].isFinite()) samples[index + channel] = 0f
+                peak = maxOf(peak, abs(samples[index + channel].toDouble()))
+            }
 
             if (config.limiterEnabled) {
                 // Instantaneous attack prevents the first transient from escaping
@@ -202,6 +208,11 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         output.b2 = (1.0 - alpha * a) / a0
         output.a1 = (-2.0 * cosW) / a0
         output.a2 = (1.0 - alpha / a) / a0
+    }
+
+    private fun finiteFloat(value: Double): Float {
+        if (!value.isFinite()) return 0f
+        return value.coerceIn(-Float.MAX_VALUE.toDouble(), Float.MAX_VALUE.toDouble()).toFloat()
     }
 
     private fun dbToLinear(db: Double) = 10.0.pow(db / 20.0)
