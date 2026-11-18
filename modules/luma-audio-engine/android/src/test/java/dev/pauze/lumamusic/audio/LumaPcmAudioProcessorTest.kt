@@ -35,6 +35,19 @@ class LumaPcmAudioProcessorTest {
   }
 
   @Test
+  fun reportsDecodedPcmFormatAfterConfiguration() {
+    val processor = LumaPcmAudioProcessor()
+    processor.configure(AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_FLOAT))
+    processor.flush()
+
+    val format = processor.getDecodedAudioFormat()
+    assertEquals(48_000, format?.get("sampleRateHz"))
+    assertEquals(2, format?.get("channelCount"))
+    assertEquals("PCM_FLOAT", format?.get("pcmEncoding"))
+    assertEquals(32, format?.get("bitDepth"))
+  }
+
+  @Test
   fun rejectsNonPcm16OrFloatFormats() {
     val processor = LumaPcmAudioProcessor()
     assertThrows(AudioProcessor.UnhandledAudioFormatException::class.java) {
