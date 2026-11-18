@@ -1,4 +1,5 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { PageEntrance } from "../../components/PageEntrance";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -24,7 +25,7 @@ export default function ReleaseScreen() {
   });
   const tracks = query.data ?? [];
 
-  return <SafeAreaView style={styles.safe} edges={["top"]}>
+  return <PageEntrance><SafeAreaView style={styles.safe} edges={["top"]}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Pressable onPress={() => router.back()} style={styles.back}>
         <Ionicons name="chevron-back" size={22} color={colors.text} />
@@ -41,7 +42,7 @@ export default function ReleaseScreen() {
       {!query.isLoading && !query.isError && tracks.length === 0 ? <View style={styles.state}><Text style={styles.stateCopy}>No tracks were found for this release.</Text></View> : null}
       {tracks.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={tracks} />)}
     </ScrollView>
-  </SafeAreaView>;
+  </SafeAreaView></PageEntrance>;
 }
 
 function createStyles(c: ReturnType<typeof useTheme>["colors"]) { return StyleSheet.create({
