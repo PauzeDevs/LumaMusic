@@ -77,7 +77,9 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
       if (encoding == C.ENCODING_PCM_FLOAT) {
         output.putFloat(value)
       } else {
-        val pcm = (value.coerceIn(-1f, 1f) * 32767f).roundToInt().coerceIn(-32768, 32767)
+        // PCM16 decode uses 32768 as its scale; use the same scale on encode
+        // so negative samples (including Short.MIN_VALUE) round-trip exactly.
+        val pcm = (value.coerceIn(-1f, 1f) * 32768f).roundToInt().coerceIn(-32768, 32767)
         output.putShort(pcm.toShort())
       }
     }
