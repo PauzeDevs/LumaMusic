@@ -7,6 +7,7 @@ import { useTheme } from "../theme/useTheme";
 import { Artwork } from "./Artwork";
 import { usePlayerStore } from "../store/player";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
+import { usePreferencesStore } from "../store/preferences";
 
 const tabs = [
   { name: "index", label: "Listen", icon: "home-outline", activeIcon: "home" },
@@ -24,15 +25,23 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   const playbackPosition = usePlayerStore((s) => s.playbackPosition);
   const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const { togglePlayback } = useAudioEngine();
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
   const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
   const miniEntrance = useRef(new Animated.Value(track ? 1 : 0)).current;
   useEffect(() => {
     if (!track) { miniEntrance.setValue(0); return; }
+    if (motionStyle === "off") { miniEntrance.setValue(1); return; }
     miniEntrance.setValue(0);
-    const entrance = Animated.spring(miniEntrance, { toValue: 1, damping: 19, stiffness: 190, mass: 0.8, useNativeDriver: true });
+    const entrance = Animated.spring(miniEntrance, {
+      toValue: 1,
+      damping: motionStyle === "subtle" ? 25 : 19,
+      stiffness: motionStyle === "subtle" ? 145 : 190,
+      mass: 0.8,
+      useNativeDriver: true
+    });
     entrance.start();
     return () => entrance.stop();
-  }, [track?.id, miniEntrance]);
+  }, [track?.id, motionStyle, miniEntrance]);
   return <View style={[styles.shell, { backgroundColor: surfaceStyle === "matte" ? colors.surfaceElevated : isDark ? (surfaceStyle === "frosted" ? "rgba(18,18,22,0.78)" : "rgba(18,18,22,0.48)") : (surfaceStyle === "frosted" ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.52)"), borderColor: colors.border }]}>
     {showGlass ? <LiquidGlassView cornerRadius={30} style={[StyleSheet.absoluteFill, { opacity: surfaceStyle === "liquid" ? 0.82 : 0.48 }]} /> : null}
     {surfaceStyle !== "matte" ? <View pointerEvents="none" style={[styles.shellSheen, { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)" }]} /> : null}
