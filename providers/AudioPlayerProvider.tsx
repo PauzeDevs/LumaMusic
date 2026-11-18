@@ -595,10 +595,18 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const playPrevious = useCallback(async () => {
     const state = usePlayerStore.getState();
     if (state.queue.length === 0 || !state.currentTrack) return;
+    const restartCurrentTrack = async () => {
+      if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) {
+        if (audioRef.current) audioRef.current.seekToTime(0);
+        else if (isExternalTrack(state.currentTrack)) {
+          await playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
+        }
+        return;
+      }
+      await player.seekTo(0);
+    };
     if (state.repeatMode === "one" || state.playbackPosition > 3) {
-      if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, state.currentQueueIndex);
-      else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
-      else await player.seekTo(0);
+      await restartCurrentTrack();
       return;
     }
     const currentIndex = state.currentQueueIndex;
@@ -611,9 +619,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const candidate = state.queue[index];
       if (isPlayable(candidate)) { await playTrackSafely(candidate, state.queue, index); return; }
     }
-    if (isExternalTrack(state.currentTrack)) await playTrackSafely(state.currentTrack, state.queue, currentIndex);
-    else if (isLocalTrack(state.currentTrack) || isExternalTrack(state.currentTrack)) audioRef.current?.seekToTime(0);
-    else await player.seekTo(0);
+    await restartCurrentTrack();
   }, [playTrackSafely, player]);
 
   const setPlaybackRate = useCallback((rate: number) => {
