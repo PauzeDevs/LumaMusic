@@ -150,34 +150,46 @@ function uniqueById<T extends { id: string }>(items: T[]): T[] {
 }
 
 async function innerTubePost(url: string, body: Obj): Promise<Obj> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Origin: "https://music.youtube.com",
-      Referer: "https://music.youtube.com/",
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    },
-    body: JSON.stringify({ context: CONTEXT, ...body })
-  });
-
-  if (!response.ok) {
-    throw new Error("YouTube Music InnerTube request failed (" + response.status + "). Please try again.");
-  }
-  const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentLength > 5 * 1024 * 1024) {
-    throw new Error("YouTube Music returned an unusually large response. Please try again.");
-  }
-  const bodyText = await response.text();
-  if (bodyText.length > 5 * 1024 * 1024) {
-    throw new Error("YouTube Music returned an unusually large response. Please try again.");
-  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    return JSON.parse(bodyText) as Obj;
-  } catch {
-    throw new Error("YouTube Music returned an invalid response. Please try again.");
+    const response = await fetch(url, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Origin: "https://music.youtube.com",
+        Referer: "https://music.youtube.com/",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      body: JSON.stringify({ context: CONTEXT, ...body })
+    });
+
+    if (!response.ok) {
+      throw new Error("YouTube Music InnerTube request failed (" + response.status + "). Please try again.");
+    }
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    if (contentLength > 5 * 1024 * 1024) {
+      throw new Error("YouTube Music returned an unusually large response. Please try again.");
+    }
+    const bodyText = await response.text();
+    if (bodyText.length > 5 * 1024 * 1024) {
+      throw new Error("YouTube Music returned an unusually large response. Please try again.");
+    }
+    try {
+      return JSON.parse(bodyText) as Obj;
+    } catch {
+      throw new Error("YouTube Music returned an invalid response. Please try again.");
+    }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("YouTube Music request timed out. Check your connection and try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -363,10 +375,10 @@ export async function getYouTubeMusicUpNextTracks(videoId: string, limit = 20): 
  */
 export async function getYouTubeMusicPlaylistTracks(playlistId: string, limit = 100): Promise<MusicTrack[]> {
   const cleanId = playlistId.replace(/^youtube-playlist:/i, "").trim();
+  if (!cleanId) return [];
   const browseId = cleanId.startsWith("VL") ? cleanId : `VL${cleanId}`;
   const payload = await innerTubePost(BROWSE_URL, { browseId });
-  const items = collectRenderers(payload, "musicResponsiveListItemRenderer");
-  return uniqueById(items.map(mapTrack).filter((item): item is MusicTrack => Boolean(item))).slice(0, Math.max(1, Math.min(limit, 500)));
+  return browseTracksWithContinuation(payload, Math.max(1, Math.min(limit, 500)));
 }
 
 export async function openTrackInYouTubeMusic(track: MusicTrack): Promise<void> {
