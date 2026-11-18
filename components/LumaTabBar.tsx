@@ -1,5 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
 import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { router } from "expo-router";
 import { useTheme } from "../theme/useTheme";
@@ -24,15 +25,23 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   const playbackDuration = usePlayerStore((s) => s.playbackDuration);
   const { togglePlayback } = useAudioEngine();
   const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
+  const miniEntrance = useRef(new Animated.Value(track ? 1 : 0)).current;
+  useEffect(() => {
+    if (!track) { miniEntrance.setValue(0); return; }
+    miniEntrance.setValue(0);
+    const entrance = Animated.spring(miniEntrance, { toValue: 1, damping: 19, stiffness: 190, mass: 0.8, useNativeDriver: true });
+    entrance.start();
+    return () => entrance.stop();
+  }, [track?.id, miniEntrance]);
   return <View style={[styles.shell, { backgroundColor: surfaceStyle === "matte" ? colors.surfaceElevated : isDark ? (surfaceStyle === "frosted" ? "rgba(18,18,22,0.78)" : "rgba(18,18,22,0.48)") : (surfaceStyle === "frosted" ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.52)"), borderColor: colors.border }]}>
     {showGlass ? <LiquidGlassView cornerRadius={30} style={[StyleSheet.absoluteFill, { opacity: surfaceStyle === "liquid" ? 0.82 : 0.48 }]} /> : null}
     {surfaceStyle !== "matte" ? <View pointerEvents="none" style={[styles.shellSheen, { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)" }]} /> : null}
-    {track ? <View style={[styles.mini, { backgroundColor: surfaceStyle === "matte" ? colors.surface : isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.28)", borderColor: colors.border }]}>
+    {track ? <Animated.View style={[styles.mini, { opacity: miniEntrance, transform: [{ translateY: miniEntrance.interpolate({ inputRange: [0, 1], outputRange: [13, 0] }) }, { scale: miniEntrance.interpolate({ inputRange: [0, 1], outputRange: [0.975, 1] }) }], backgroundColor: surfaceStyle === "matte" ? colors.surface : isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.28)", borderColor: colors.border }]}>
       {showGlass ? <LiquidGlassView cornerRadius={18} style={[StyleSheet.absoluteFill, { opacity: 0.62 }]} /> : null}
       <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}><Artwork uri={track.artwork} size={42} radius={10} /><View style={styles.miniCopy}><Text numberOfLines={1} style={[styles.miniTitle, { color: colors.text }]}>{track.title}</Text><Text numberOfLines={1} style={[styles.miniArtist, { color: colors.muted }]}>{track.artist}</Text></View></Pressable>
       <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}><Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} /></Pressable>
       <View style={[styles.progressTrack, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.accent }]} /></View>
-    </View> : null}
+    </Animated.View> : null}
     <View style={styles.tabs}>{tabs.map((tab) => {
       const routeIndex = state.routes.findIndex((route) => route.name === tab.name);
       const focused = state.index === routeIndex;
