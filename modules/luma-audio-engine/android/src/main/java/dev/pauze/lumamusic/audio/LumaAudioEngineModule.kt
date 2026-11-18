@@ -46,7 +46,9 @@ class LumaAudioEngineModule : Module() {
       val context = appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available.")
       pcmProcessor = LumaPcmAudioProcessor()
-      player = ExoPlayer.Builder(context, LumaRenderersFactory(context, pcmProcessor!!)).build().apply {
+      player = ExoPlayer.Builder(context, LumaRenderersFactory(context, pcmProcessor!!))
+        .setLooper(Looper.getMainLooper())
+        .build().apply {
         setAudioAttributes(
           AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
