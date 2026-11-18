@@ -33,6 +33,7 @@ export type AudioEngineState = {
   bufferedSeconds: number;
   playbackRate: number;
   error: string | null;
+  isEnded: boolean;
 };
 
 export type AudioLabConfiguration = {
