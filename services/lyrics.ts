@@ -92,7 +92,12 @@ export function parseLrc(value: string): LyricLine[] {
 }
 
 function normalize(value: string): string {
-  return value.toLocaleLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  // Keep Unicode letters and numbers so Punjabi, Hindi and other non-Latin
+  // artist/title metadata can be matched instead of collapsing to empty text.
+  return value.toLocaleLowerCase().normalize("NFKC")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 function recordMatches(record: LrclibRecord, track: MusicTrack): boolean {
@@ -100,6 +105,7 @@ function recordMatches(record: LrclibRecord, track: MusicTrack): boolean {
   const wantedArtist = normalize(track.artist);
   const actualTitle = normalize(record.trackName);
   const actualArtist = normalize(record.artistName);
+  if (!wantedTitle || !wantedArtist || !actualTitle || !actualArtist) return false;
   const titleMatch = actualTitle === wantedTitle || actualTitle.includes(wantedTitle) || wantedTitle.includes(actualTitle);
   const artistMatch = actualArtist === wantedArtist || actualArtist.includes(wantedArtist) || wantedArtist.includes(actualArtist);
   if (!titleMatch || !artistMatch) return false;
