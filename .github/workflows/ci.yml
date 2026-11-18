@@ -79,4 +79,4 @@ jobs:
 
       - name: Run Android native unit tests
         working-directory: android
-        run: ./gradlew testDebugUnitTest --no-daemon
+        run: ./gradlew :pauze-luma-audio-engine:testDebugUnitTest --no-daemon
