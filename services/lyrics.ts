@@ -82,9 +82,14 @@ export function parseLrc(value: string): LyricLine[] {
       continue;
     }
 
+    const baseLineTime = timestamps.length > 0
+      ? timestampSeconds(timestamps[0][1], timestamps[0][2], timestamps[0][3]) + offsetSeconds
+      : 0;
     for (const match of timestamps) {
       const lineTime = Math.max(0, timestampSeconds(match[1], match[2], match[3]) + offsetSeconds);
-      lines.push({ time: lineTime, text, ...(words.length > 0 ? { words } : {}) });
+      const wordShift = lineTime - baseLineTime;
+      const shiftedWords = words.map((word) => ({ ...word, time: Math.max(0, word.time + wordShift) }));
+      lines.push({ time: lineTime, text, ...(shiftedWords.length > 0 ? { words: shiftedWords } : {}) });
     }
   }
 
