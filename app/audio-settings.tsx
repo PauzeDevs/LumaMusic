@@ -30,9 +30,11 @@ const REVERB_OPTIONS: { value: ReverbPreset; label: string; detail: string }[] =
   { value: "hall", label: "Hall", detail: "Wide space" }
 ];
 
-function GainSlider({ label, value, onChange, accent, muted, styles }: { label: string; value: number; onChange: (value: number) => void; accent: string; muted: string; styles: ReturnType<typeof makeStyles> }) {
+function GainSlider({ label, detail, value, onChange, accent, muted, styles, minGain = -12, maxGain = 12 }: { label: string; detail?: string; value: number; onChange: (value: number) => void; accent: string; muted: string; styles: ReturnType<typeof makeStyles>; minGain?: number; maxGain?: number }) {
   const width = useRef(1);
-  const update = (x: number) => onChange(Math.round((Math.max(0, Math.min(width.current, x)) / width.current * 24 - 12) * 10) / 10);
+  const zeroPercent = (0 - minGain) / (maxGain - minGain) * 100;
+  const valuePercent = (value - minGain) / (maxGain - minGain) * 100;
+  const update = (x: number) => onChange(Math.round((Math.max(0, Math.min(width.current, x)) / width.current * (maxGain - minGain) + minGain) * 10) / 10);
   const responder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
@@ -43,11 +45,11 @@ function GainSlider({ label, value, onChange, accent, muted, styles }: { label: 
     <View style={styles.bandLabels}><Text style={styles.bandFrequency}>{label}</Text><Text style={styles.bandValue}>{value > 0 ? "+" : ""}{value.toFixed(1)} dB</Text></View>
     <View onLayout={(event) => { width.current = event.nativeEvent.layout.width; }} {...responder.panHandlers} style={styles.sliderTouch}>
       <View style={[styles.sliderTrack, { backgroundColor: muted }]} />
-      <View style={[styles.sliderZero, { left: "50%" }]} />
-      <View style={[styles.sliderFill, { width: `${Math.abs(value) / 12 * 50}%`, left: value < 0 ? `${50 - Math.abs(value) / 12 * 50}%` : "50%", backgroundColor: accent }]} />
-      <View style={[styles.sliderThumb, { left: `${(value + 12) / 24 * 100}%`, borderColor: accent }]} />
+      <View style={[styles.sliderZero, { left: `${zeroPercent}%` }]} />
+      <View style={[styles.sliderFill, { width: `${Math.abs(valuePercent - zeroPercent)}%`, left: `${Math.min(valuePercent, zeroPercent)}%`, backgroundColor: accent }]} />
+      <View style={[styles.sliderThumb, { left: `${valuePercent}%`, borderColor: accent }]} />
     </View>
-    <Text style={styles.bandHint}>{BANDS.find((band) => band.label === label)?.detail}</Text>
+    <Text style={styles.bandHint}>{detail ?? BANDS.find((band) => band.label === label)?.detail}</Text>
   </View>;
 }
 
@@ -88,6 +90,10 @@ export default function AudioSettingsScreen() {
   const setEqualizerEnabled = usePreferencesStore((state) => state.setEqualizerEnabled);
   const setEqualizerBand = usePreferencesStore((state) => state.setEqualizerBand);
   const resetEqualizer = usePreferencesStore((state) => state.resetEqualizer);
+  const preampDb = usePreferencesStore((state) => state.preampDb);
+  const setPreampDb = usePreferencesStore((state) => state.setPreampDb);
+  const limiterEnabled = usePreferencesStore((state) => state.limiterEnabled);
+  const setLimiterEnabled = usePreferencesStore((state) => state.setLimiterEnabled);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const setSpatialBalance = usePreferencesStore((state) => state.setSpatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
@@ -141,6 +147,11 @@ export default function AudioSettingsScreen() {
         <View style={[stylesForScreen.bandGrid, (!equalizerEnabled || effectsUnavailableForStream) && { opacity: 0.42 }]} pointerEvents={equalizerEnabled && !effectsUnavailableForStream ? "auto" : "none"}>
           {BANDS.map((band, index) => <GainSlider key={band.label} label={band.label} value={equalizerBands[index] ?? 0} onChange={(value) => setEqualizerBand(index, value)} accent={colors.accent} muted="#38383E" styles={stylesForScreen} />)}
         </View>
+        <View style={{ marginTop: 18 }}><GainSlider label="PREAMP" detail="INPUT GAIN · −12 TO +6 dB" minGain={-12} maxGain={6} value={preampDb} onChange={setPreampDb} accent={colors.accent} muted="#38383E" styles={stylesForScreen} /></View>
+        <View style={[stylesForScreen.cardHeader, { marginTop: 14 }]}>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.sectionLabel}>PEAK PROTECTION</Text><Text style={stylesForScreen.cardSub}>Prevent digital clipping after tone adjustments.</Text></View>
+          <Pressable onPress={() => setLimiterEnabled(!limiterEnabled)} style={[stylesForScreen.toggle, limiterEnabled && stylesForScreen.toggleOn]}><View style={[stylesForScreen.toggleDot, limiterEnabled && stylesForScreen.toggleDotOn]} /></Pressable>
+        </View>
         <View style={stylesForScreen.cardFooter}>
           <Text style={stylesForScreen.smallNote}>{equalizerEnabled ? "EQUALIZER ON" : "EQUALIZER OFF"} · ±12 dB</Text>
           <Pressable onPress={resetEqualizer}><Text style={stylesForScreen.reset}>Reset</Text></Pressable>
@@ -192,7 +203,7 @@ export default function AudioSettingsScreen() {
           <View style={stylesForScreen.qualityMetaRow}>
             <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>SAMPLE RATE</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.sampleRateHz / 1000).toFixed(decodedAudioFormat.sampleRateHz % 1000 === 0 ? 0 : 1) + " kHz" : "Waiting…"}</Text></View>
             <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CHANNELS</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.channelCount === 1 ? "Mono" : decodedAudioFormat.channelCount === 2 ? "Stereo" : decodedAudioFormat.channelCount + " ch") : "—"}</Text></View>
-            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>PCM PRECISION</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? decodedAudioFormat.bitDepth + "-bit" : "—"}</Text></View>
+            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>PCM PRECISION</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.pcmEncoding === "PCM_FLOAT" ? "Float32" : "16-bit PCM") : "—"}</Text></View>
           </View>
           <Text style={stylesForScreen.sourceNote}>Decoded PCM format reported by Media3's audio processor before Luma DSP. This is not a claim about the original master or DAC output.</Text>
         </> : null}

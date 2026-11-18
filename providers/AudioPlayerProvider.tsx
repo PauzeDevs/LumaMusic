@@ -118,6 +118,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
   const equalizerEnabled = usePreferencesStore((state) => state.equalizerEnabled);
   const equalizerBands = usePreferencesStore((state) => state.equalizerBands);
+  const preampDb = usePreferencesStore((state) => state.preampDb);
+  const limiterEnabled = usePreferencesStore((state) => state.limiterEnabled);
 
   const bypassEffectsGraph = useCallback(() => {
     const graph = graphRef.current;
@@ -231,13 +233,13 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         equalizerBands[3] ?? 0,
         equalizerBands[4] ?? 0
       ] as [number, number, number, number, number],
-      preampDb: 0,
-      limiterEnabled: true,
+      preampDb,
+      limiterEnabled,
       reverbPreset,
       spatialBalance,
       crossfadeSeconds: 0
     }).catch(() => undefined);
-  }, [equalizerEnabled, equalizerBands, reverbPreset, spatialBalance]);
+  }, [equalizerEnabled, equalizerBands, preampDb, limiterEnabled, reverbPreset, spatialBalance]);
 
   useEffect(() => () => {
     if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
@@ -556,7 +558,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
 
     throw new Error("This track has no supported playback source.");
-  }, [disconnectGraph, ensureAudioContext, player, setPlaybackError, equalizerEnabled, equalizerBands, reverbPreset, spatialBalance, playbackRate]);
+  }, [disconnectGraph, ensureAudioContext, player, setPlaybackError, equalizerEnabled, equalizerBands, preampDb, limiterEnabled, reverbPreset, spatialBalance, playbackRate]);
 
   const playTrackSafely = useCallback(async (track: MusicTrack, queue: MusicTrack[], queueIndex?: number, resumePosition?: number, forceStreamRefresh = false) => {
     try { await playTrack(track, queue, queueIndex, resumePosition, forceStreamRefresh); }

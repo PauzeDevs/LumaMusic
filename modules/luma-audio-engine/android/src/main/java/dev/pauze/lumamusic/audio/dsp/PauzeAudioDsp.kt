@@ -85,7 +85,7 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
             designPeaking(frequencies[band], gains[band], 1.0, coefficients[band])
         }
 
-        val requestedPreamp = if (config.equalizerEnabled) dbToLinear(config.preampDb.toDouble()) else 1.0
+        val requestedPreamp = dbToLinear(config.preampDb.toDouble())
         preamp += (requestedPreamp - preamp) * 0.35
 
         val requestedWet = when (config.reverbPreset) {

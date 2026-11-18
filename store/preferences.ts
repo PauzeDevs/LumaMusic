@@ -10,23 +10,23 @@ export type AppearanceMode = "system" | "light" | "dark";
 export type MotionStyle = "full" | "subtle" | "off";
 export type EqualizerBand = number;
 export type PreferencesState = {
-  progressBarStyle: ProgressBarStyle; spatialBalance: number; reverbPreset: ReverbPreset; equalizerEnabled: boolean; equalizerBands: EqualizerBand[];
+  progressBarStyle: ProgressBarStyle; spatialBalance: number; reverbPreset: ReverbPreset; equalizerEnabled: boolean; equalizerBands: EqualizerBand[]; preampDb: number; limiterEnabled: boolean;
   accentTheme: AccentTheme; appearanceMode: AppearanceMode; motionStyle: MotionStyle; compactRows: boolean;
   playerStyle: PlayerStyle; surfaceStyle: SurfaceStyle; animationIntensity: number;
   setProgressBarStyle: (style: ProgressBarStyle) => void; setSpatialBalance: (balance: number) => void;
-  setEqualizerEnabled: (enabled: boolean) => void; setEqualizerBand: (index: number, gain: number) => void; resetEqualizer: () => void;
+  setEqualizerEnabled: (enabled: boolean) => void; setEqualizerBand: (index: number, gain: number) => void; resetEqualizer: () => void; setPreampDb: (gain: number) => void; setLimiterEnabled: (enabled: boolean) => void;
   setReverbPreset: (preset: ReverbPreset) => void; setAccentTheme: (theme: AccentTheme) => void;
   setAppearanceMode: (mode: AppearanceMode) => void; setMotionStyle: (style: MotionStyle) => void; setCompactRows: (compact: boolean) => void;
   setPlayerStyle: (style: PlayerStyle) => void; setSurfaceStyle: (style: SurfaceStyle) => void; setAnimationIntensity: (intensity: number) => void;
 };
 
 export type PreferencesSnapshot = Pick<PreferencesState,
-  | "progressBarStyle" | "spatialBalance" | "reverbPreset" | "equalizerEnabled" | "equalizerBands"
+  | "progressBarStyle" | "spatialBalance" | "reverbPreset" | "equalizerEnabled" | "equalizerBands" | "preampDb" | "limiterEnabled"
   | "accentTheme" | "appearanceMode" | "motionStyle" | "compactRows"
   | "playerStyle" | "surfaceStyle" | "animationIntensity"
 >;
 export const usePreferencesStore = create<PreferencesState>()(persist((set) => ({
-  progressBarStyle: "apple", spatialBalance: 0, reverbPreset: "off", equalizerEnabled: false, equalizerBands: [0, 0, 0, 0, 0],
+  progressBarStyle: "apple", spatialBalance: 0, reverbPreset: "off", equalizerEnabled: false, equalizerBands: [0, 0, 0, 0, 0], preampDb: 0, limiterEnabled: true,
   accentTheme: "red", appearanceMode: "dark", motionStyle: "full", compactRows: false,
   playerStyle: "standard", surfaceStyle: "matte", animationIntensity: 65,
   setProgressBarStyle: (progressBarStyle) => set({ progressBarStyle }),
@@ -35,6 +35,8 @@ export const usePreferencesStore = create<PreferencesState>()(persist((set) => (
   setEqualizerEnabled: (equalizerEnabled) => set({ equalizerEnabled }),
   setEqualizerBand: (index, gain) => set((state) => ({ equalizerBands: state.equalizerBands.map((value, band) => band === index ? Math.max(-12, Math.min(12, gain)) : value) })),
   resetEqualizer: () => set({ equalizerBands: [0, 0, 0, 0, 0] }),
+  setPreampDb: (preampDb) => { if (Number.isFinite(preampDb)) set({ preampDb: Math.max(-12, Math.min(6, preampDb)) }); },
+  setLimiterEnabled: (limiterEnabled) => set({ limiterEnabled }),
   setAccentTheme: (accentTheme) => set({ accentTheme }),
   setAppearanceMode: (appearanceMode) => set({ appearanceMode }),
   setMotionStyle: (motionStyle) => set({ motionStyle }),
@@ -46,7 +48,7 @@ export const usePreferencesStore = create<PreferencesState>()(persist((set) => (
   name: "lumamusic-preferences", storage: createJSONStorage(() => AsyncStorage),
   partialize: (state) => ({
     progressBarStyle: state.progressBarStyle, spatialBalance: state.spatialBalance, reverbPreset: state.reverbPreset,
-    equalizerEnabled: state.equalizerEnabled, equalizerBands: state.equalizerBands,
+    equalizerEnabled: state.equalizerEnabled, equalizerBands: state.equalizerBands, preampDb: state.preampDb, limiterEnabled: state.limiterEnabled,
     accentTheme: state.accentTheme, appearanceMode: state.appearanceMode, motionStyle: state.motionStyle, compactRows: state.compactRows,
     playerStyle: state.playerStyle, surfaceStyle: state.surfaceStyle, animationIntensity: state.animationIntensity
   })
