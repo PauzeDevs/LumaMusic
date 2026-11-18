@@ -88,7 +88,8 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 44 : surfaceStyle === "frosted" ? 72 : surfaceStyle === "clear" ? 88 : 0} style={styles.ambientBlur} />
+      {track.artwork ? <Animated.Image source={{ uri: track.artwork }} resizeMode="cover" blurRadius={28} style={[styles.ambientArtwork, { opacity: motionStyle === "off" ? 0.08 : 0.2, transform: [{ scale: 1.18 }, { translateY: artworkFloat }] }]} /> : null}
+      <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 58 : surfaceStyle === "frosted" ? 76 : surfaceStyle === "clear" ? 88 : 52} style={styles.ambientBlur} />
       <View style={styles.header}>
         <View style={styles.headerLeading}>
           <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Go back">
@@ -172,7 +173,8 @@ export default function NowPlayingScreen() {
 
 function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
-  ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
+  ambientArtwork: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  ambientBlur: { ...StyleSheet.absoluteFillObject, opacity: 0.92 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
   headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.82)" },
