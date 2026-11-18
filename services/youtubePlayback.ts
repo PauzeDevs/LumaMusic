@@ -247,16 +247,22 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
         return Number(b.bitrate || 0) - Number(a.bitrate || 0);
       });
       const bestFormat = audioStreams[0];
-      const hlsManifestUrl: string | undefined = streamingData?.hlsManifestUrl;
-      if (!bestFormat && !hlsManifestUrl) throw new Error(`${profile.name}: no direct audio stream URL`);
+      const hlsManifestUrl: string | undefined = typeof streamingData?.hlsManifestUrl === "string"
+        ? streamingData.hlsManifestUrl
+        : undefined;
+      const dashManifestUrl: string | undefined = typeof streamingData?.dashManifestUrl === "string"
+        ? streamingData.dashManifestUrl
+        : undefined;
+      const manifestUrl = hlsManifestUrl || dashManifestUrl;
+      if (!bestFormat && !manifestUrl) throw new Error(`${profile.name}: no direct audio stream or supported manifest URL`);
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
       const durationFromPlayer = Number(payload?.videoDetails?.lengthSeconds || 0);
       const durationFromFormat = bestFormat?.approxDurationMs ? Math.round(Number(bestFormat.approxDurationMs) / 1000) : 0;
       const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
       return {
-        url: bestFormat ? bestFormat.url : hlsManifestUrl!,
-        mimeType: bestFormat ? bestFormat.mimeType : "application/x-mpegURL",
+        url: bestFormat ? bestFormat.url : manifestUrl!,
+        mimeType: bestFormat ? bestFormat.mimeType : hlsManifestUrl ? "application/x-mpegURL" : "application/dash+xml",
         durationSeconds: durationFromPlayer || durationFromFormat || fallbackDuration,
         bitrate: bestFormat ? Number(bestFormat.bitrate || 128000) : undefined,
         userAgent: profile.userAgent,
