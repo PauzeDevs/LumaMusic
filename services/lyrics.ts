@@ -1,4 +1,6 @@
 import type { MusicTrack } from "../types/music";
+import { listLyricsProviders, registerBuiltInLyricsProvider } from "./extensions/registry";
+import { LUMA_EXTENSION_API_VERSION } from "./extensions/types";
 
 export type LyricWord = { time: number; text: string };
 export type LyricLine = { time: number | null; text: string; words?: LyricWord[] };
@@ -152,33 +154,37 @@ async function requestJson<T>(url: string): Promise<T | null> {
   }
 }
 
-async function fetchLyricsOvH(track: MusicTrack): Promise<LyricsState> {
-  const artist = encodeURIComponent(track.artist.trim());
-  const title = encodeURIComponent(track.title.trim());
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 9_000);
-  try {
+const lyricsOvHManifest = {
+  id: "dev.pauze.lumamusic.lyrics-ovh",
+  name: "Lyrics.ovh",
+  version: "1.0.0",
+  apiVersion: LUMA_EXTENSION_API_VERSION,
+  description: "Plain-text lyrics fallback provider.",
+  author: "PauzeDevs",
+  kind: "lyrics-provider" as const,
+  permissions: ["lyrics:read-track-metadata", "lyrics:provide"] as const,
+  entrypoint: "built-in:lyrics.ovh"
+};
+
+registerBuiltInLyricsProvider({
+  manifest: lyricsOvHManifest,
+  async searchLyrics(track, signal) {
+    const artist = encodeURIComponent(track.artist.trim());
+    const title = encodeURIComponent(track.title.trim());
     const response = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`, {
-      headers: { Accept: "application/json" },
-      signal: controller.signal
+      headers: { Accept: "application/json" }, signal
     });
-    if (response.status === 404) return { status: "not_found" };
+    if (response.status === 404) return null;
     if (!response.ok) throw new Error(`Lyrics.ovh request failed (${response.status}).`);
     const payload = await response.json() as { lyrics?: unknown };
     const raw = typeof payload.lyrics === "string" ? payload.lyrics.trim() : "";
-    const lines = raw.split(/\r?\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text);
+    const lines = raw.split(/\\r?\\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text);
     return lines.length ? {
-      status: "available",
-      lines,
-      provider: "Lyrics.ovh",
-      copyright: "Plain lyrics provided by Lyrics.ovh",
+      lines, synced: false,
       attribution: { text: "Lyrics source: Lyrics.ovh", url: "https://lyrics.ovh" }
-    } : { status: "not_found" };
-  } finally {
-    clearTimeout(timeout);
+    } : null;
   }
-}
-
+});
 async function fetchLyrics(track: MusicTrack): Promise<LyricsState> {
   const duration = Math.round((track.durationMs ?? 0) / 1000);
   const exactParams = new URLSearchParams({ track_name: track.title, artist_name: track.artist });
@@ -201,14 +207,28 @@ async function fetchLyrics(track: MusicTrack): Promise<LyricsState> {
     primaryFailed = true;
   }
 
-  // Lyrics.ovh only supplies plain text; LRCLIB remains the primary synced source.
-  try {
-    const fallback = await fetchLyricsOvH(track);
-    if (fallback.status === "available") return fallback;
-    return primaryFailed ? { status: "error" } : { status: "not_found" };
-  } catch {
-    return primaryFailed ? { status: "error" } : { status: "not_found" };
+  // Registered providers are fallback-only; LRCLIB remains the primary synced source.
+  for (const provider of listLyricsProviders()) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 9_000);
+    try {
+      const result = await provider.searchLyrics({
+        id: track.id, title: track.title, artist: track.artist, durationMs: track.durationMs
+      }, controller.signal);
+      if (result?.lines.length) return {
+        status: "available",
+        lines: result.lines,
+        provider: provider.manifest.name,
+        copyright: `Lyrics provided by ${provider.manifest.name}`,
+        attribution: result.attribution
+      };
+    } catch {
+      // A failed provider must not prevent trying the next registered fallback.
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+  return primaryFailed ? { status: "error" } : { status: "not_found" };
 }
 
 export function getLyrics(track: MusicTrack): Promise<LyricsState> {
