@@ -121,6 +121,7 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
                     // A corrupt frame must not leak a previous filter tail into
                     // the damaged output sample or leave state for later frames.
                     filters[channel].forEach { it.reset() }
+                    if (channel < reverbLines.size) resetReverbChannel(channel)
                     samples[index + channel] = 0f
                 } else {
                     var value = rawSample.toDouble() * preamp
@@ -171,6 +172,14 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
                 }
             }
             index += channels
+        }
+    }
+
+    private fun resetReverbChannel(channel: Int) {
+        for (line in 0 until 4) {
+            reverbLines[channel][line].fill(0f)
+            reverbIndices[channel][line] = 0
+            reverbDamped[channel][line] = 0.0
         }
     }
 
