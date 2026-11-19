@@ -1,6 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { memo, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { memo, useEffect, useRef, useState } from "react";
+import { Alert, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { MusicTrack } from "../types/music";
 import type { LocalPlaylist } from "../store/library";
 
@@ -20,6 +20,28 @@ export const TrackRow = memo(function TrackRow({ track, index, showIndex = false
   const styles = createStyles(colors);
   const [pickerVisible, setPickerVisible] = useState(false);
   const compactRows = usePreferencesStore((state) => state.compactRows);
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
+  const entrance = useRef(new Animated.Value(motionStyle === "off" ? 1 : 0)).current;
+  const pressScale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    entrance.stopAnimation();
+    if (motionStyle === "off") { entrance.setValue(1); return; }
+    entrance.setValue(0);
+    const delay = Math.min(index ?? 0, 6) * (motionStyle === "subtle" ? 22 : 38);
+    const animation = Animated.sequence([
+      Animated.delay(delay),
+      Animated.parallel([
+        Animated.timing(entrance, { toValue: 1, duration: motionStyle === "subtle" ? 230 : 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(pressScale, { toValue: 1, damping: 22, stiffness: 220, useNativeDriver: true })
+      ])
+    ]);
+    animation.start();
+    return () => animation.stop();
+  }, [entrance, index, motionStyle]);
+  const animatePress = (pressed: boolean) => {
+    if (motionStyle === "off") return;
+    Animated.spring(pressScale, { toValue: pressed ? 0.985 : 1, damping: 18, stiffness: 360, useNativeDriver: true }).start();
+  };
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isLiked = useLibraryStore((state) => state.likedTracks.some((item) => item.id === track.id));
   const playlists = useLibraryStore((state) => state.playlists);
@@ -51,9 +73,10 @@ export const TrackRow = memo(function TrackRow({ track, index, showIndex = false
   };
 
   return (
+    <Animated.View style={{ opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [motionStyle === "subtle" ? 5 : 13, 0] }) }, { scale: pressScale }] }}>
     <View style={[styles.row, compactRows && styles.compactRow]}>
       {showIndex ? <Text style={[styles.index, isCurrent && { color: accent }]}>{String((index ?? 0) + 1).padStart(2, "0")}</Text> : null}
-      <Pressable onPress={handlePlay} style={styles.main}>
+      <Pressable onPress={handlePlay} onPressIn={() => animatePress(true)} onPressOut={() => animatePress(false)} style={styles.main}>
         <Artwork uri={track.artwork} size={52} radius={12} />
         <View style={styles.copy}>
           <Text numberOfLines={1} style={[styles.title, isCurrent && styles.active]}>{track.title}</Text>
@@ -91,6 +114,7 @@ export const TrackRow = memo(function TrackRow({ track, index, showIndex = false
         </View>
       </Modal>
     </View>
+    </Animated.View>
   );
 });
 
