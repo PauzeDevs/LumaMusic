@@ -162,7 +162,7 @@ const lyricsOvHManifest = {
   description: "Plain-text lyrics fallback provider.",
   author: "PauzeDevs",
   kind: "lyrics-provider" as const,
-  permissions: ["lyrics:read-track-metadata", "lyrics:provide"] as const,
+  permissions: ["lyrics:read-track-metadata", "lyrics:provide"],
   entrypoint: "built-in:lyrics.ovh"
 };
 
