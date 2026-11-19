@@ -50,7 +50,7 @@ export default function ArtistScreen() {
 
         {releasesQuery.isLoading ? <View style={styles.releaseLoading}><ActivityIndicator color={colors.accent} /><Text style={styles.stateCopy}>Finding albums and EPs…</Text></View> : null}
         {releasesQuery.isError ? <Pressable onPress={() => releasesQuery.refetch()} style={styles.releaseRetry}><Text style={styles.retryText}>Couldn't load releases · Tap to retry</Text></Pressable> : null}
-        {albums.length > 0 ? <ReleaseShelf title="Albums" releases={albums} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
+        {albums.length > 0 ? <ReleaseShelf title="Albums" releases={albums} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind, artist: artistName || "" } })} /> : null}
         {eps.length > 0 ? <ReleaseShelf title="EPs" releases={eps} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
         {singles.length > 0 ? <ReleaseShelf title="Singles" releases={singles} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
 
