@@ -1,11 +1,11 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Easing, Image, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Alert, Animated, Easing, Image, Modal, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
-import type { SurfaceStyle } from "../store/preferences";
+import type { PlayerStyle, SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
@@ -38,6 +38,7 @@ export default function NowPlayingScreen() {
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
+  const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
   const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
@@ -49,6 +50,7 @@ export default function NowPlayingScreen() {
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
   const isLocalPlayback = track?.source === "local";
   const [artworkFailed, setArtworkFailed] = useState(false);
+  const [stylePickerVisible, setStylePickerVisible] = useState(false);
   const [previousArtwork, setPreviousArtwork] = useState<string | null>(null);
   const artworkCrossfade = useRef(new Animated.Value(1)).current;
   const vinylRotation = useRef(new Animated.Value(0)).current;
@@ -140,10 +142,12 @@ export default function NowPlayingScreen() {
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
-        <Animated.View {...artworkGesture.panHandlers} accessibilityRole="image" accessibilityLabel={`${track.title} artwork. Swipe left or right to change tracks, or swipe down to close the player.`} style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }, { rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
+        <Animated.View {...artworkGesture.panHandlers} accessibilityRole="image" accessibilityLabel={`${track.title} artwork. Swipe left or right to change tracks, swipe down to close, or hold to change player style.`} style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }, { rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
+          <Pressable onLongPress={() => setStylePickerVisible(true)} delayLongPress={420} style={StyleSheet.absoluteFill}>
           {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
           {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
           {playerStyle === "vinyl" ? <View pointerEvents="none" style={styles.vinylGrooves}><View style={styles.vinylGrooveOuter} /><View style={styles.vinylGrooveInner} /><View style={styles.vinylSpindle} /></View> : null}
+          </Pressable>
         </Animated.View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
@@ -207,6 +211,28 @@ export default function NowPlayingScreen() {
           <Ionicons name="options-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Audio</Text>
         </Pressable>
       </View></View>
+      <Modal visible={stylePickerVisible} transparent animationType="fade" onRequestClose={() => setStylePickerVisible(false)}>
+        <Pressable style={styles.stylePickerBackdrop} onPress={() => setStylePickerVisible(false)}>
+          <Pressable style={styles.stylePickerSheet} onPress={() => undefined}>
+            <View style={styles.stylePickerHandle} />
+            <Text style={styles.stylePickerEyebrow}>MAKE IT YOURS</Text>
+            <Text style={styles.stylePickerTitle}>Player appearance</Text>
+            <Text style={styles.stylePickerSubtitle}>Choose how your music looks. Hold the artwork any time to return here.</Text>
+            {([
+              { id: "standard", title: "Flagship", detail: "Clean artwork and focused controls", icon: "disc-outline" },
+              { id: "vinyl", title: "Turntable", detail: "A rotating record-inspired player", icon: "radio-outline" },
+              { id: "poster", title: "Poster", detail: "A bold, framed artwork presentation", icon: "image-outline" }
+            ] as { id: PlayerStyle; title: string; detail: string; icon: "disc-outline" | "radio-outline" | "image-outline" }[]).map((item) => {
+              const selected = playerStyle === item.id;
+              return <Pressable key={item.id} onPress={() => { setPlayerStyle(item.id); setStylePickerVisible(false); }} style={[styles.styleOption, selected && styles.styleOptionSelected]}>
+                <View style={[styles.styleOptionIcon, selected && styles.styleOptionIconSelected]}><Ionicons name={item.icon} size={21} color={selected ? colors.accent : colors.muted} /></View>
+                <View style={styles.styleOptionCopy}><Text style={styles.styleOptionTitle}>{item.title}</Text><Text style={styles.styleOptionDetail}>{item.detail}</Text></View>
+                {selected ? <Ionicons name="checkmark-circle" size={21} color={colors.accent} /> : <Ionicons name="chevron-forward" size={18} color={colors.subtle} />}
+              </Pressable>;
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
       <Text style={styles.disclaimer}>{isLocalPlayback ? "LumaMusic · Local audio" : "LumaMusic"}</Text>
     </SafeAreaView>
   );
@@ -274,6 +300,19 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 8 },
   bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
   bottomText: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "center", includeFontPadding: false, flexShrink: 0, width: "100%" },
+  stylePickerBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.62)", padding: 12 },
+  stylePickerSheet: { borderRadius: 28, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 22, backgroundColor: isDark ? "#1B1B20" : "#F7F6F8", borderWidth: 1, borderColor: colors.border },
+  stylePickerHandle: { alignSelf: "center", width: 38, height: 4, borderRadius: 3, backgroundColor: colors.subtle, marginBottom: 20 },
+  stylePickerEyebrow: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+  stylePickerTitle: { color: colors.text, fontSize: 23, fontWeight: "900", letterSpacing: -0.7, marginTop: 5 },
+  stylePickerSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 6, marginBottom: 16 },
+  styleOption: { minHeight: 70, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 17, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceSoft, marginTop: 8 },
+  styleOptionSelected: { borderColor: colors.accent, backgroundColor: isDark ? "rgba(220,55,75,0.12)" : "rgba(190,35,55,0.07)" },
+  styleOptionIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
+  styleOptionIconSelected: { backgroundColor: isDark ? "rgba(220,55,75,0.16)" : "rgba(190,35,55,0.12)" },
+  styleOptionCopy: { flex: 1, gap: 3 },
+  styleOptionTitle: { color: colors.text, fontSize: 14, fontWeight: "800" },
+  styleOptionDetail: { color: colors.muted, fontSize: 11 },
   disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, paddingBottom: 10 },
   empty: { color: colors.text, textAlign: "center", marginTop: 80 }
 }); }
