@@ -178,7 +178,7 @@ registerBuiltInLyricsProvider({
     if (!response.ok) throw new Error(`Lyrics.ovh request failed (${response.status}).`);
     const payload = await response.json() as { lyrics?: unknown };
     const raw = typeof payload.lyrics === "string" ? payload.lyrics.trim() : "";
-    const lines = raw.split(/\\r?\\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text);
+    const lines = raw.split(/\r?\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text);
     return lines.length ? {
       lines, synced: false,
       attribution: { text: "Lyrics source: Lyrics.ovh", url: "https://lyrics.ovh" }
