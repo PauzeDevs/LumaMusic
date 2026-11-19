@@ -28,7 +28,7 @@ export type LumaExtensionManifest = {
 export type ExtensionValidation = { valid: true; manifest: LumaExtensionManifest } | { valid: false; errors: string[] };
 
 const ID_PATTERN = /^[a-z0-9](?:[a-z0-9.-]{1,62})$/;
-const VERSION_PATTERN = /^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?$/;
+const VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/;
 const PERMISSIONS = new Set<LumaExtensionPermission>([
   "lyrics:read-track-metadata", "lyrics:provide", "metadata:read-track", "metadata:provide",
   "playback:read-state", "playback:control", "library:read", "library:write"
