@@ -3,7 +3,7 @@ package dev.pauze.lumamusic.audio
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import androidx.media3.common.MediaSource
+import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
