@@ -11,7 +11,7 @@ function requirePermission(extensionId: string, permission: ModulePermission): v
     (entry) => entry.manifest.id === extensionId
   );
   if (!extension) throw new Error("This module is not installed.");
-  if (!extension.approvedPermissions.includes(permission)) {
+  if (!extension.manifest.permissions.includes(permission) || !extension.approvedPermissions.includes(permission)) {
     throw new Error(`Permission required: ${permission}`);
   }
 }
