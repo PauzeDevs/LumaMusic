@@ -58,6 +58,8 @@ export default function PlaylistScreen() {
   };
 
   const chooseCover = async () => {
+    if (!localPlaylist) return;
+    const playlistId = localPlaylist.id;
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: ["image/*"], copyToCacheDirectory: true, multiple: false });
       if (result.canceled || !result.assets[0]) return;
@@ -66,7 +68,7 @@ export default function PlaylistScreen() {
       const folder = directory + "playlist-covers/";
       await FileSystem.makeDirectoryAsync(folder, { intermediates: true });
       const extension = result.assets[0].name.includes(".") ? "." + result.assets[0].name.split(".").pop()!.toLowerCase() : ".jpg";
-      const destination = folder + encodeURIComponent(localPlaylist.id) + extension;
+      const destination = folder + encodeURIComponent(playlistId) + extension;
       await FileSystem.copyAsync({ from: result.assets[0].uri, to: destination });
       setDraftCoverUri(destination);
     } catch (error) {
