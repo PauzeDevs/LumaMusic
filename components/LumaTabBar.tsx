@@ -1,7 +1,6 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { useEffect, useRef } from "react";
-import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { router } from "expo-router";
 import { useTheme } from "../theme/useTheme";
 import { Artwork } from "./Artwork";
@@ -19,7 +18,6 @@ type TabBarProps = { state: { index: number; routes: Array<{ name: string }> }; 
 
 export function LumaTabBar({ state, navigation }: TabBarProps) {
   const { colors, isDark, surfaceStyle } = useTheme();
-  const showGlass = surfaceStyle === "liquid" || surfaceStyle === "frosted";
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const playbackPosition = usePlayerStore((s) => s.playbackPosition);
@@ -42,11 +40,8 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
     entrance.start();
     return () => entrance.stop();
   }, [track?.id, motionStyle, miniEntrance]);
-  return <View style={[styles.shell, { backgroundColor: surfaceStyle === "matte" ? colors.surfaceElevated : isDark ? (surfaceStyle === "frosted" ? "rgba(18,18,22,0.78)" : "rgba(18,18,22,0.48)") : (surfaceStyle === "frosted" ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.52)"), borderColor: colors.border }]}>
-    {showGlass ? <LiquidGlassView cornerRadius={30} style={[StyleSheet.absoluteFill, { opacity: surfaceStyle === "liquid" ? 0.82 : 0.48 }]} /> : null}
-    {surfaceStyle !== "matte" ? <View pointerEvents="none" style={[styles.shellSheen, { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)" }]} /> : null}
+  return <View style={[styles.shell, { backgroundColor: surfaceStyle === "matte" ? colors.surfaceElevated : isDark ? (surfaceStyle === "frosted" ? "rgba(18,18,22,0.88)" : "rgba(18,18,22,0.76)") : (surfaceStyle === "frosted" ? "rgba(255,255,255,0.94)" : "rgba(255,255,255,0.84)"), borderColor: colors.border }]}>
     {track ? <Animated.View style={[styles.mini, { opacity: miniEntrance, transform: [{ translateY: miniEntrance.interpolate({ inputRange: [0, 1], outputRange: [13, 0] }) }, { scale: miniEntrance.interpolate({ inputRange: [0, 1], outputRange: [0.975, 1] }) }], backgroundColor: surfaceStyle === "matte" ? colors.surface : isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.28)", borderColor: colors.border }]}>
-      {showGlass ? <LiquidGlassView cornerRadius={18} style={[StyleSheet.absoluteFill, { opacity: 0.62 }]} /> : null}
       <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}><Artwork uri={track.artwork} size={42} radius={10} /><View style={styles.miniCopy}><Text numberOfLines={1} style={[styles.miniTitle, { color: colors.text }]}>{track.title}</Text><Text numberOfLines={1} style={[styles.miniArtist, { color: colors.muted }]}>{track.artist}</Text></View></Pressable>
       <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}><Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} /></Pressable>
       <View style={[styles.progressTrack, { backgroundColor: colors.border }]}><View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.accent }]} /></View>
@@ -55,19 +50,17 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
       const routeIndex = state.routes.findIndex((route) => route.name === tab.name);
       const focused = state.index === routeIndex;
       return <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={[styles.tab, focused && { backgroundColor: surfaceStyle === "matte" ? colors.surfaceSoft : isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)", borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.9)" }]}>
-        {focused && showGlass ? <LiquidGlassView cornerRadius={19} style={StyleSheet.absoluteFill} /> : null}
-        <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.text : colors.subtle} />
+          <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.text : colors.subtle} />
         <Text style={[styles.label, { color: focused ? colors.text : colors.subtle }]}>{tab.label}</Text>
       </Pressable>;
     })}</View>
   </View>;
 }
 const styles = StyleSheet.create({
-  shell: { marginHorizontal: 14, marginBottom: 8, borderRadius: 27, overflow: "hidden", borderWidth: 1, paddingTop: 9, paddingBottom: 10, backgroundColor: "rgba(28,28,32,0.28)", shadowColor: "#000", shadowOpacity: 0.24, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 16 },
-  shellSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1 },
-  mini: { height: 60, marginHorizontal: 9, marginBottom: 8, paddingHorizontal: 10, borderRadius: 18, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 10, overflow: "hidden" },
+  shell: { marginHorizontal: 14, marginBottom: 6, borderRadius: 25, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, paddingTop: 8, paddingBottom: 8, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 18, shadowOffset: { width: 0, height: 7 }, elevation: 10 },
+  mini: { height: 56, marginHorizontal: 8, marginBottom: 7, paddingHorizontal: 9, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center", gap: 9, overflow: "hidden" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }, miniCopy: { flex: 1, gap: 3 },
-  miniTitle: { fontSize: 12, fontWeight: "700" }, miniArtist: { fontSize: 10 }, playButton: { padding: 8 },
+  miniTitle: { fontSize: 13, fontWeight: "700" }, miniArtist: { fontSize: 11 }, playButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   progressTrack: { position: "absolute", bottom: 0, left: 0, right: 0, height: 2 }, progressFill: { height: 2 },
-  tabs: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingTop: 4, paddingHorizontal: 8, gap: 5 }, tab: { flex: 1, minHeight: 58, alignItems: "center", justifyContent: "center", gap: 4, borderRadius: 19, borderWidth: 1, borderColor: "transparent", overflow: "hidden" }, label: { fontSize: 10, fontWeight: "600" }
+  tabs: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingTop: 2, paddingHorizontal: 8, gap: 5 }, tab: { flex: 1, height: 54, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 4, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: "transparent", overflow: "hidden" }, label: { fontSize: 11, fontWeight: "600" }
 });
