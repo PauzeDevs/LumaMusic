@@ -31,7 +31,7 @@ export function validateModuleManifest(input: unknown): ModuleManifest {
     const surfaces = ["liquid", "frosted", "clear", "matte"];
     if (raw.accent !== undefined && !accents.includes(String(raw.accent))) throw new Error("Unsupported appearance accent.");
     if (raw.surface !== undefined && !surfaces.includes(String(raw.surface))) throw new Error("Unsupported appearance surface.");
-    appearance = { accent: raw.accent as ModuleManifest["appearance"]["accent"], surface: raw.surface as ModuleManifest["appearance"]["surface"] };
+    appearance = { accent: raw.accent as NonNullable<ModuleManifest["appearance"]>["accent"], surface: raw.surface as NonNullable<ModuleManifest["appearance"]>["surface"] };
   }
   return { id: value.id, name: value.name.trim(), version: value.version, description: value.description.trim(), permissions: permissions as ModulePermission[], kind: "declarative", ...(appearance ? { appearance } : {}) };
 }
