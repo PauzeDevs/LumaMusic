@@ -55,6 +55,29 @@ function isLocalTrack(track: MusicTrack | null | undefined): track is LocalMusic
 function isPlayable(track: MusicTrack | undefined): track is ExternalMusicTrack | LocalMusicTrack {
   return isExternalTrack(track) || isLocalTrack(track);
 }
+function getCrossfadeNextTrack(state: ReturnType<typeof usePlayerStore.getState>): { track: MusicTrack; index: number } | null {
+  if (!state.currentTrack || state.repeatMode === "one" || state.queue.length < 2) return null;
+  if (state.isShuffled) {
+    const candidates = state.queue.map((track, index) => ({ track, index }))
+      .filter(({ track, index }) => index !== state.currentQueueIndex && isExternalTrack(track));
+    if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
+    if (state.repeatMode === "all") {
+      const index = state.queue.findIndex(isExternalTrack);
+      return index >= 0 ? { track: state.queue[index], index } : null;
+    }
+    return null;
+  }
+  for (let offset = 1; offset <= state.queue.length; offset += 1) {
+    let index = state.currentQueueIndex + offset;
+    if (index >= state.queue.length) {
+      if (state.repeatMode !== "all") return null;
+      index %= state.queue.length;
+    }
+    const track = state.queue[index];
+    if (isExternalTrack(track)) return { track, index };
+  }
+  return null;
+}
 function makeImpulseResponse(context: AudioContext, preset: Exclude<ReverbPreset, "off">) {
   const settings = {
     room: { seconds: 0.42, decay: 3.8, level: 0.65 },
@@ -97,7 +120,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const audioRef = useRef<AudioTagHandle>(null);
   const nativePlaybackActive = useRef(false);
   const nativeEndedHandled = useRef(false);
-  const preloadedNativeNextTrack = useRef<{ track: MusicTrack; fromTrackId: string; requestId: number } | null>(null);
+  const preloadedNativeNextTrack = useRef<{ track: MusicTrack; fromTrackId: string; requestId: number; ready: boolean; starting: boolean } | null>(null);
   const crossfadeTriggeredForTrack = useRef<string | null>(null);
   const nativeNotificationState = useRef<string | null>(null);
   const nativeNotificationProgressBucket = useRef(-1);
@@ -124,6 +147,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
   const equalizerEnabled = usePreferencesStore((state) => state.equalizerEnabled);
   const equalizerBands = usePreferencesStore((state) => state.equalizerBands);
+  const autoCrossfadeEnabled = usePreferencesStore((state) => state.autoCrossfadeEnabled);
   const preampDb = usePreferencesStore((state) => state.preampDb);
   const limiterEnabled = usePreferencesStore((state) => state.limiterEnabled);
 
@@ -226,6 +250,13 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => applyEffects(spatialBalance, reverbPreset), [spatialBalance, reverbPreset, applyEffects]);
+  useEffect(() => {
+    if (autoCrossfadeEnabled) return;
+    preloadedNativeNextTrack.current = null;
+    crossfadeTriggeredForTrack.current = null;
+    void cancelNativeAudioCrossfade().catch(() => undefined);
+  }, [autoCrossfadeEnabled]);
+
   useEffect(() => applyEqualizer(equalizerEnabled, equalizerBands), [equalizerEnabled, equalizerBands, applyEqualizer]);
 
   useEffect(() => {
@@ -426,6 +457,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     pendingResumePositionRef.current = Number.isFinite(resumePosition) && resumePosition !== undefined && resumePosition > 0 ? resumePosition : null;
     if (!isExternalTrack(track) && !isLocalTrack(track)) throw new Error("This track has no supported playback source.");
     const requestId = ++playbackRequestSequence.current;
+    preloadedNativeNextTrack.current = null;
+    crossfadeTriggeredForTrack.current = null;
+    void cancelNativeAudioCrossfade().catch(() => undefined);
     // Invalidate any pending load/resume callbacks from the previous source
     // immediately, including when replaying the same track ID.
     localSourceSequence.current += 1;
@@ -817,6 +851,24 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!useNativeExternalPlayback) return;
+    const subscription = addNativeAudioCrossfadeCompleteListener((event) => {
+      const latest = usePlayerStore.getState();
+      const promoted = latest.queue.find((item) => item.id === event.trackId);
+      if (!promoted || !isExternalTrack(promoted)) return;
+      preloadedNativeNextTrack.current = null;
+      crossfadeTriggeredForTrack.current = null;
+      latest.promoteCrossfadeTrack(promoted);
+      useLibraryStore.getState().addRecentTrack(promoted);
+      useListeningStatsStore.getState().beginTrack();
+      nativeEndedHandled.current = false;
+      nativeNotificationState.current = null;
+      nativeNotificationProgressBucket.current = -1;
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!useNativeExternalPlayback) return;
     const subscription = addNativeAudioStateListener((nativeState) => {
       const latest = usePlayerStore.getState();
       const track = latest.currentTrack;
@@ -834,6 +886,59 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
         playbackError: nativeState.error ?? null
       });
       useListeningStatsStore.getState().recordProgress(track, nativeState.positionSeconds, nativeState.isPlaying);
+      const crossfadePrefs = usePreferencesStore.getState();
+      const remainingSeconds = duration - nativeState.positionSeconds;
+      const shouldCrossfade = crossfadePrefs.autoCrossfadeEnabled &&
+        nativeState.isPlaying && duration > 0 && remainingSeconds <= crossfadePrefs.crossfadeDurationSeconds;
+      const next = getCrossfadeNextTrack(latest);
+      if (!crossfadePrefs.autoCrossfadeEnabled || !next || !nativeState.isPlaying) {
+        if (preloadedNativeNextTrack.current && !preloadedNativeNextTrack.current.starting) {
+          preloadedNativeNextTrack.current = null;
+          void cancelNativeAudioCrossfade().catch(() => undefined);
+        }
+      } else if (
+        !preloadedNativeNextTrack.current ||
+        preloadedNativeNextTrack.current.fromTrackId !== track.id ||
+        preloadedNativeNextTrack.current.track.id !== next.track.id
+      ) {
+        const preload = { track: next.track, fromTrackId: track.id, requestId: playbackRequestSequence.current, ready: false, starting: false };
+        preloadedNativeNextTrack.current = preload;
+        void (async () => {
+          try {
+            const stream = await resolveYouTubeMusicAudio(next.track);
+            const current = usePlayerStore.getState();
+            const currentNext = getCrossfadeNextTrack(current);
+            if (playbackRequestSequence.current !== preload.requestId ||
+              current.currentTrack?.id !== preload.fromTrackId ||
+              !usePreferencesStore.getState().autoCrossfadeEnabled ||
+              currentNext?.track.id !== preload.track.id) return;
+            await prepareNativeNextTrack({
+              id: next.track.id,
+              uri: stream.url,
+              title: next.track.title,
+              artist: next.track.artist,
+              artworkUri: next.track.artwork,
+              mimeType: stream.mimeType,
+              headers: { "User-Agent": stream.userAgent, Origin: "https://www.youtube.com", Referer: "https://www.youtube.com/" },
+              durationSeconds: stream.durationSeconds,
+              sourceKind: "youtube_music"
+            });
+            if (preloadedNativeNextTrack.current === preload) preload.ready = true;
+          } catch {
+            if (preloadedNativeNextTrack.current === preload) preloadedNativeNextTrack.current = null;
+          }
+        })();
+      }
+      const prepared = preloadedNativeNextTrack.current;
+      if (shouldCrossfade && prepared?.ready && !prepared.starting && prepared.fromTrackId === track.id) {
+        prepared.starting = true;
+        crossfadeTriggeredForTrack.current = track.id;
+        void startNativeAudioCrossfade(crossfadePrefs.crossfadeDurationSeconds).catch(() => {
+          if (preloadedNativeNextTrack.current === prepared) preloadedNativeNextTrack.current = null;
+          crossfadeTriggeredForTrack.current = null;
+          void cancelNativeAudioCrossfade().catch(() => undefined);
+        });
+      }
 
       const notificationState = nativeState.isPlaying ? "playing" : "paused";
       const progressBucket = Math.floor(Math.max(0, nativeState.positionSeconds) / 5);
