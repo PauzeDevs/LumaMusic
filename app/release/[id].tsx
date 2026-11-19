@@ -13,14 +13,15 @@ import { useTheme } from "../../theme/useTheme";
 export default function ReleaseScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const params = useLocalSearchParams<{ id: string; title?: string; artwork?: string; kind?: string }>();
+  const params = useLocalSearchParams<{ id: string; title?: string; artwork?: string; kind?: string; artist?: string }>();
   const browseId = Array.isArray(params.id) ? params.id[0] : params.id;
   const title = Array.isArray(params.title) ? params.title[0] : params.title;
   const artwork = Array.isArray(params.artwork) ? params.artwork[0] : params.artwork;
   const kind = Array.isArray(params.kind) ? params.kind[0] : params.kind;
+  const artist = Array.isArray(params.artist) ? params.artist[0] : params.artist;
   const query = useQuery({
     queryKey: ["youtubeMusic", "release", browseId],
-    queryFn: () => getYouTubeMusicReleaseTracks(browseId ?? "", 100),
+    queryFn: () => getYouTubeMusicReleaseTracks(browseId ?? "", 100, { artist, artwork }),
     enabled: Boolean(browseId),
     staleTime: 5 * 60_000
   });
@@ -36,6 +37,7 @@ export default function ReleaseScreen() {
         <AlbumArtwork uri={artwork ?? ""} size={210} radius={20} />
         <Text style={styles.eyebrow}>{(kind || "release").toUpperCase()}</Text>
         <Text style={styles.title}>{title || "Release"}</Text>
+        {artist ? <Text style={styles.artist}>{artist}</Text> : null}
         <Text style={styles.copy}>{query.isLoading ? "Loading tracklist…" : tracks.length + (tracks.length === 1 ? " track" : " tracks")}</Text>
       </View>
       {query.isLoading ? <View style={styles.state}><Ionicons name="musical-notes" size={24} color={colors.accent} /><Text style={styles.stateCopy}>Loading this release…</Text></View> : null}
@@ -54,6 +56,7 @@ function createStyles(c: ReturnType<typeof useTheme>["colors"]) { return StyleSh
   hero: { alignItems: "center", paddingTop: 18, paddingBottom: 25, gap: 9 },
   eyebrow: { color: c.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.8, marginTop: 6 },
   title: { color: c.text, fontSize: 25, fontWeight: "800", textAlign: "center" },
+  artist: { color: c.muted, fontSize: 14, fontWeight: "700", textAlign: "center" },
   copy: { color: c.muted, fontSize: 11 },
   state: { minHeight: 140, alignItems: "center", justifyContent: "center", gap: 9 },
   stateTitle: { color: c.text, fontSize: 14, fontWeight: "800" },
