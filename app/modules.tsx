@@ -10,6 +10,7 @@ import { useCustomizationStore } from "../store/customization";
 import { usePreferencesStore, type AccentTheme, type PlayerStyle, type SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
 import { validateModuleManifest, MODULE_PERMISSION_IDS, type ModuleManifest, type ModulePermission } from "../services/moduleManifest";
+import { resolveModuleRuntime } from "../services/moduleRuntime";
 
 const accents: { id: AccentTheme; label: string; color: string }[] = [
   { id: "red", label: "Velvet", color: "#FA2D48" }, { id: "violet", label: "Amethyst", color: "#B69BFF" },
@@ -146,6 +147,10 @@ export default function ModulesScreen() {
           <Text style={styles.moduleMeta}>v{extension.manifest.version} · {extension.approvedPermissions.length}/{extension.manifest.permissions.length} permissions granted</Text>
           <Text style={styles.moduleFoot}>{extension.manifest.description}</Text>
         </View>
+        {resolveModuleRuntime(extension.manifest, extension.approvedPermissions).status === "ready" ? <Pressable onPress={() => {
+          const runtime = resolveModuleRuntime(extension.manifest, extension.approvedPermissions);
+          if (runtime.status === "ready") applyLook(runtime.appearance.accent ?? activeAccent, runtime.appearance.surface ?? activeSurface);
+        }} style={styles.action}><Text style={styles.actionText}>Apply</Text></Pressable> : null}
         <Pressable onPress={() => { setPermissionEditorId(extension.manifest.id); setApprovedPermissions([...extension.approvedPermissions]); }} style={styles.action}><Text style={styles.actionText}>Permissions</Text></Pressable>
         <Pressable onPress={() => Alert.alert("Remove module?", `Remove ${extension.manifest.name} and revoke its permissions?`, [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeExtension(extension.manifest.id) }])} style={styles.removeButton}><Ionicons name="trash-outline" size={16} color={colors.muted} /></Pressable>
       </GlassSurface>)}
