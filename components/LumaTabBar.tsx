@@ -28,6 +28,12 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   const { togglePlayback } = useAudioEngine();
   const motionStyle = usePreferencesStore((state) => state.motionStyle);
   const progress = playbackDuration > 0 ? Math.min(100, (playbackPosition / playbackDuration) * 100) : 0;
+  const tabScales = useRef(tabs.map(() => new Animated.Value(1))).current;
+  useEffect(() => {
+    if (motionStyle === "off") { tabScales.forEach((value, index) => value.setValue(index === state.index ? 1.08 : 1)); return; }
+    const animations = tabScales.map((value, index) => Animated.spring(value, { toValue: index === state.index ? 1.08 : 1, damping: 17, stiffness: 300, mass: 0.7, useNativeDriver: true }));
+    Animated.parallel(animations).start();
+  }, [state.index, motionStyle, tabScales]);
   const miniEntrance = useRef(new Animated.Value(track ? 1 : 0)).current;
   useEffect(() => {
     if (!track) { miniEntrance.setValue(0); return; }
@@ -57,8 +63,10 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
       const focused = state.index === routeIndex;
       return <Pressable key={tab.name} onPress={() => navigation.navigate(tab.name)} style={[styles.tab, focused && { backgroundColor: surfaceStyle === "matte" ? colors.surfaceSoft : isFrosted ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.055)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)", borderColor: surfaceStyle === "matte" ? colors.border : isFrosted ? "transparent" : isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.9)" }]}>
           {showLiquidGlass ? <LiquidGlassView cornerRadius={19} style={StyleSheet.absoluteFill} /> : null}
-          <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.text : colors.subtle} />
-        <Text style={[styles.label, { color: focused ? colors.text : colors.subtle }]}>{tab.label}</Text>
+          <Animated.View style={{ alignItems: "center", gap: 4, transform: [{ scale: tabScales[routeIndex] ?? 1 }] }}>
+            <Ionicons name={(focused ? tab.activeIcon : tab.icon) as never} size={21} color={focused ? colors.text : colors.subtle} />
+            <Text style={[styles.label, { color: focused ? colors.text : colors.subtle }]}>{tab.label}</Text>
+          </Animated.View>
       </Pressable>;
     })}</View>
   </View>;
