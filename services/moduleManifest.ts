@@ -14,6 +14,9 @@ const PERMISSIONS = new Set<string>(MODULE_PERMISSION_IDS);
 export function validateModuleManifest(input: unknown): ModuleManifest {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Manifest must be a JSON object.");
   const value = input as Record<string, unknown>;
+  const allowedKeys = new Set(["id", "name", "version", "description", "permissions", "kind", "appearance"]);
+  const unknownKeys = Object.keys(value).filter((key) => !allowedKeys.has(key));
+  if (unknownKeys.length) throw new Error(`Unsupported manifest field: ${unknownKeys[0]}`);
   if (value.kind !== "declarative") throw new Error("Only declarative modules are supported. Executable JavaScript is not allowed.");
   if (typeof value.id !== "string" || !ID_PATTERN.test(value.id)) throw new Error("Module ID must be 3–64 characters and use lowercase letters, numbers, dots, underscores or hyphens.");
   if (typeof value.name !== "string" || !value.name.trim() || value.name.length > 48) throw new Error("Module name is required and must be at most 48 characters.");
@@ -27,6 +30,8 @@ export function validateModuleManifest(input: unknown): ModuleManifest {
   if (value.appearance !== undefined) {
     if (!value.appearance || typeof value.appearance !== "object" || Array.isArray(value.appearance)) throw new Error("Appearance must be an object.");
     const raw = value.appearance as Record<string, unknown>;
+    const unknownAppearanceKeys = Object.keys(raw).filter((key) => key !== "accent" && key !== "surface");
+    if (unknownAppearanceKeys.length) throw new Error(`Unsupported appearance field: ${unknownAppearanceKeys[0]}`);
     const accents = ["red", "violet", "blue", "green", "amber", "rose", "arctic", "mono"];
     const surfaces = ["liquid", "frosted", "clear", "matte"];
     if (raw.accent !== undefined && !accents.includes(String(raw.accent))) throw new Error("Unsupported appearance accent.");
