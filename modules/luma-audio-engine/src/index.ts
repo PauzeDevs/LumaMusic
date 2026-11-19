@@ -7,6 +7,11 @@ import type {
   AudioSourceKind,
 } from "../../../services/audioEngine/types";
 
+type NativeAudioEventMap = {
+  onStateChange: AudioEngineState;
+  onCrossfadeComplete: { trackId: string };
+};
+
 type NativeAudioEngineModule = {
   getCapabilities(sourceKind: AudioSourceKind): Promise<AudioEngineCapabilities>;
   getState(): Promise<AudioEngineState>;
@@ -20,8 +25,10 @@ type NativeAudioEngineModule = {
   setPlaybackRate(rate: number): Promise<void>;
   setAudioLab(configuration: AudioLabConfiguration): Promise<void>;
   release(): Promise<void>;
-  addListener(eventName: "onStateChange", listener: (state: AudioEngineState) => void): EventSubscription;
-  addListener(eventName: "onCrossfadeComplete", listener: (event: { trackId: string }) => void): EventSubscription;
+  addListener<K extends keyof NativeAudioEventMap>(
+    eventName: K,
+    listener: (event: NativeAudioEventMap[K]) => void
+  ): EventSubscription;
 };
 
 const nativeModule = requireOptionalNativeModule<NativeAudioEngineModule>("LumaAudioEngine");
