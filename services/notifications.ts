@@ -72,8 +72,21 @@ export async function registerForPushNotifications(
     Constants.expoConfig?.extra?.eas?.projectId;
   if (!projectId) throw new Error("Expo project ID is missing from the app configuration.");
 
-  const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
-  const token = tokenResponse.data;
+  let token: string;
+  try {
+    const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+    token = tokenResponse.data;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const firebaseNotConfigured =
+      /FirebaseApp.*not initialized|Unable to get Firebase Messaging instance|googleServicesFile|Firebase Messaging/i.test(detail);
+    if (Platform.OS === "android" && firebaseNotConfigured) {
+      throw new Error(
+        "Android push notifications are not configured in this build. The app needs its Firebase Android google-services.json for package dev.pauze.lumamusic, added as android.googleServicesFile in app.json, then rebuilt. Device notification permission is already separate and does not enable remote push by itself."
+      );
+    }
+    throw error;
+  }
   await callRegistrationRpc(token, preferences);
   await AsyncStorage.setItem(TOKEN_STORAGE_KEY, token);
   return token;
