@@ -170,7 +170,7 @@ async function browseTracksWithContinuation(
     const pageTracks = rows.map(mapTrack).filter((item): item is MusicTrack => Boolean(item));
     collected.push(...pageTracks.map((track) => ({
       ...track,
-      artist: track.artist && track.artist !== "Unknown Artist" ? track.artist : releaseMetadata?.artist || track.artist,
+      artist: releaseMetadata?.artist || track.artist,
       artwork: releaseMetadata?.artwork || track.artwork
     })));
     const token = continuationTokens(section).find((candidate) => !seenTokens.has(candidate));
