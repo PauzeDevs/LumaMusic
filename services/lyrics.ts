@@ -1,6 +1,6 @@
 import type { MusicTrack } from "../types/music";
 import { listLyricsProviders, registerBuiltInLyricsProvider } from "./extensions/registry";
-import { LUMA_EXTENSION_API_VERSION } from "./extensions/types";
+import { LUMA_EXTENSION_API_VERSION, type LumaExtensionManifest } from "./extensions/types";
 
 export type LyricWord = { time: number; text: string };
 export type LyricLine = { time: number | null; text: string; words?: LyricWord[] };
@@ -154,7 +154,7 @@ async function requestJson<T>(url: string): Promise<T | null> {
   }
 }
 
-const lyricsOvHManifest = {
+const lyricsOvHManifest: LumaExtensionManifest = {
   id: "dev.pauze.lumamusic.lyrics-ovh",
   name: "Lyrics.ovh",
   version: "1.0.0",
