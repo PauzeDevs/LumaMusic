@@ -20,8 +20,8 @@ type NativeAudioEngineModule = {
   setPlaybackRate(rate: number): Promise<void>;
   setAudioLab(configuration: AudioLabConfiguration): Promise<void>;
   release(): Promise<void>;
-  addListener: (eventName: "onStateChange", listener: (state: AudioEngineState) => void) => EventSubscription;
-  addListener: (eventName: "onCrossfadeComplete", listener: (event: { trackId: string }) => void) => EventSubscription;
+  addListener(eventName: "onStateChange", listener: (state: AudioEngineState) => void): EventSubscription;
+  addListener(eventName: "onCrossfadeComplete", listener: (event: { trackId: string }) => void): EventSubscription;
 };
 
 const nativeModule = requireOptionalNativeModule<NativeAudioEngineModule>("LumaAudioEngine");
