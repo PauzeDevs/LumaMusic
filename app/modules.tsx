@@ -84,7 +84,8 @@ export default function ModulesScreen() {
       Alert.alert("Couldn't import module", error instanceof Error ? error.message : "Choose a valid LumaMusic module manifest.");
     }
   };
-\n  const applyLook = (accent: AccentTheme, surface: SurfaceStyle, playerStyle: PlayerStyle = "standard") => {
+
+  const applyLook = (accent: AccentTheme, surface: SurfaceStyle, playerStyle: PlayerStyle = "standard") => {
     setAccent(accent); setSurface(surface); setPlayerStyle(playerStyle);
   };
   const createModule = () => {
@@ -148,7 +149,8 @@ export default function ModulesScreen() {
         <Pressable onPress={() => { setPermissionEditorId(extension.manifest.id); setApprovedPermissions([...extension.approvedPermissions]); }} style={styles.action}><Text style={styles.actionText}>Permissions</Text></Pressable>
         <Pressable onPress={() => Alert.alert("Remove module?", `Remove ${extension.manifest.name} and revoke its permissions?`, [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeExtension(extension.manifest.id) }])} style={styles.removeButton}><Ionicons name="trash-outline" size={16} color={colors.muted} /></Pressable>
       </GlassSurface>)}
-\n      <Text style={styles.sectionTitle}>JS & SOURCE MODULES</Text>
+
+      <Text style={styles.sectionTitle}>JS & SOURCE MODULES</Text>
       
       {installed.map((id, index) => {
         const item = sourceNames[id] ?? catalog.find((entry) => entry.id === id) ?? userModules.find((entry) => entry.id === id);
@@ -208,7 +210,8 @@ export default function ModulesScreen() {
         }} style={styles.saveButton}><Text style={styles.saveText}>{pendingManifest ? "Install module" : "Save permissions"}</Text></Pressable>
       </View></View>
     </Modal>
-\n    <Modal visible={moduleBuilderOpen} transparent animationType="slide" onRequestClose={() => setModuleBuilderOpen(false)}>
+
+    <Modal visible={moduleBuilderOpen} transparent animationType="slide" onRequestClose={() => setModuleBuilderOpen(false)}>
       <View style={styles.modalBackdrop}><View style={styles.sheet}>
         <View style={styles.sheetHandle} />
         <View style={styles.sheetHeader}><View style={{ flex: 1 }}><Text style={styles.sheetEyebrow}>PERSONAL EXTENSION</Text><Text style={styles.sheetTitle}>Create a module</Text></View><Pressable onPress={() => setModuleBuilderOpen(false)} style={styles.closeSheet}><Ionicons name="close" size={20} color={colors.text} /></Pressable></View>
@@ -264,6 +267,7 @@ function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
   createModuleButton: { minHeight: 44, borderRadius: 13, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 18 },
   createModuleText: { color: c.accent, fontSize: 11, fontWeight: "800" },
   moduleBuilderNote: { color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 13 },
+  permissionRow: { minHeight: 54, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingVertical: 8 },
   sectionTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 18, marginBottom: 8 },
   link: { color: c.accent, fontSize: 11, fontWeight: "700" },
   emptyCard: { borderRadius: 19 }, emptyContent: { padding: 18, alignItems: "flex-start", gap: 9 },
