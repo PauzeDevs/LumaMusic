@@ -789,8 +789,11 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     const track = state.currentTrack;
     const target = Math.max(0, state.playbackDuration > 0 ? Math.min(seconds, state.playbackDuration) : seconds);
     if (isLocalTrack(track) || isExternalTrack(track)) {
-      if (nativePlaybackActive.current) await seekNativeAudio(target);
-      else audioRef.current?.seekToTime(target);
+      if (nativePlaybackActive.current) {
+        preloadedNativeNextTrack.current = null;
+        crossfadeTriggeredForTrack.current = null;
+        await seekNativeAudio(target);
+      } else audioRef.current?.seekToTime(target);
       return;
     }
     await player.seekTo(target);
