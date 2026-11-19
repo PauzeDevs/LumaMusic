@@ -12,7 +12,8 @@ const lyricsProviders = new Map<string, LyricsProviderExtension>();
 
 /** Runtime registration is intentionally code-owned in this phase: remote JS is never evaluated. */
 export function registerBuiltInExtension(manifest: LumaExtensionManifest): void {
-  if (registered.has(manifest.id)) throw new Error(`Extension already registered: ${manifest.id}`);
+  const existing = registered.get(manifest.id);
+  if (existing && existing.version !== manifest.version) throw new Error(`Conflicting extension registration: ${manifest.id}`);
   registered.set(manifest.id, manifest);
 }
 
