@@ -152,22 +152,62 @@ async function requestJson<T>(url: string): Promise<T | null> {
   }
 }
 
+async function fetchLyricsOvH(track: MusicTrack): Promise<LyricsState> {
+  const artist = encodeURIComponent(track.artist.trim());
+  const title = encodeURIComponent(track.title.trim());
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9_000);
+  try {
+    const response = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    });
+    if (response.status === 404) return { status: "not_found" };
+    if (!response.ok) throw new Error(`Lyrics.ovh request failed (${response.status}).`);
+    const payload = await response.json() as { lyrics?: unknown };
+    const raw = typeof payload.lyrics === "string" ? payload.lyrics.trim() : "";
+    const lines = raw.split(/\r?\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text);
+    return lines.length ? {
+      status: "available",
+      lines,
+      provider: "Lyrics.ovh",
+      copyright: "Plain lyrics provided by Lyrics.ovh",
+      attribution: { text: "Lyrics source: Lyrics.ovh", url: "https://lyrics.ovh" }
+    } : { status: "not_found" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchLyrics(track: MusicTrack): Promise<LyricsState> {
   const duration = Math.round((track.durationMs ?? 0) / 1000);
   const exactParams = new URLSearchParams({ track_name: track.title, artist_name: track.artist });
   if (duration >= 1 && duration <= 3600) exactParams.set("duration", String(duration));
-
+  let primaryFailed = false;
   try {
     const exact = await requestJson<LrclibRecord>(`${API}/get?${exactParams.toString()}`);
-    if (exact && recordMatches(exact, track)) return toLyricsState(exact);
-
-    // Search fallback handles alternate cuts and small duration metadata differences.
+    if (exact && recordMatches(exact, track)) {
+      const result = toLyricsState(exact);
+      if (result.status === "available") return result;
+    }
     const searchParams = new URLSearchParams({ q: `${track.title} ${track.artist}` });
     const results = await requestJson<LrclibRecord[]>(`${API}/search?${searchParams.toString()}`);
     const match = results?.find((record) => recordMatches(record, track));
-    return match ? toLyricsState(match) : { status: "not_found" };
+    if (match) {
+      const result = toLyricsState(match);
+      if (result.status === "available") return result;
+    }
   } catch {
-    return { status: "error" };
+    primaryFailed = true;
+  }
+
+  // Lyrics.ovh only supplies plain text; LRCLIB remains the primary synced source.
+  try {
+    const fallback = await fetchLyricsOvH(track);
+    if (fallback.status === "available") return fallback;
+    return primaryFailed ? { status: "error" } : { status: "not_found" };
+  } catch {
+    return primaryFailed ? { status: "error" } : { status: "not_found" };
   }
 }
 
