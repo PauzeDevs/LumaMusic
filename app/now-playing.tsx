@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Easing, Image, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, Easing, Image, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
@@ -87,6 +87,21 @@ export default function NowPlayingScreen() {
     });
   }, [track?.id, track?.artwork, motionStyle, artworkCrossfade]);
   const { progressRef, progressPanResponder, onProgressLayout } = useNowPlayingSeeking(duration, seekTo);
+  // Mochy-inspired player gestures: swipe the artwork to change tracks and
+  // swipe down to dismiss. Keep taps and the transport controls untouched.
+  const artworkGesture = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      Math.abs(gesture.dx) > 22 || (gesture.dy > 24 && Math.abs(gesture.dy) > Math.abs(gesture.dx)),
+    onPanResponderRelease: (_event, gesture) => {
+      if (gesture.dx <= -58 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
+        void playNext();
+      } else if (gesture.dx >= 58 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
+        void playPrevious();
+      } else if (gesture.dy >= 82 && gesture.dy > Math.abs(gesture.dx)) {
+        router.back();
+      }
+    }
+  }), [playNext, playPrevious]);
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
@@ -125,7 +140,7 @@ export default function NowPlayingScreen() {
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
-        <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }, { rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
+        <Animated.View {...artworkGesture.panHandlers} accessibilityRole="image" accessibilityLabel={`${track.title} artwork. Swipe left or right to change tracks, or swipe down to close the player.`} style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }, { rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
           {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
           {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
           {playerStyle === "vinyl" ? <View pointerEvents="none" style={styles.vinylGrooves}><View style={styles.vinylGrooveOuter} /><View style={styles.vinylGrooveInner} /><View style={styles.vinylSpindle} /></View> : null}
