@@ -5,8 +5,12 @@ import { AppState, Platform, View } from "react-native";
 import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import {
   addNativeAudioStateListener,
+  addNativeAudioCrossfadeCompleteListener,
+  cancelNativeAudioCrossfade,
   isNativeAudioEngineAvailable,
   loadNativeAudioTrack,
+  prepareNativeNextTrack,
+  startNativeAudioCrossfade,
   pauseNativeAudio,
   playNativeAudio,
   seekNativeAudio,
@@ -93,6 +97,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
   const audioRef = useRef<AudioTagHandle>(null);
   const nativePlaybackActive = useRef(false);
   const nativeEndedHandled = useRef(false);
+  const preloadedNativeNextTrack = useRef<{ track: MusicTrack; fromTrackId: string; requestId: number } | null>(null);
+  const crossfadeTriggeredForTrack = useRef<string | null>(null);
   const nativeNotificationState = useRef<string | null>(null);
   const nativeNotificationProgressBucket = useRef(-1);
   const audioContextRef = useRef<AudioContext | null>(null);
