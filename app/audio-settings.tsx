@@ -94,6 +94,10 @@ export default function AudioSettingsScreen() {
   const setPreampDb = usePreferencesStore((state) => state.setPreampDb);
   const limiterEnabled = usePreferencesStore((state) => state.limiterEnabled);
   const setLimiterEnabled = usePreferencesStore((state) => state.setLimiterEnabled);
+  const autoCrossfadeEnabled = usePreferencesStore((state) => state.autoCrossfadeEnabled);
+  const setAutoCrossfadeEnabled = usePreferencesStore((state) => state.setAutoCrossfadeEnabled);
+  const crossfadeDurationSeconds = usePreferencesStore((state) => state.crossfadeDurationSeconds);
+  const setCrossfadeDurationSeconds = usePreferencesStore((state) => state.setCrossfadeDurationSeconds);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const setSpatialBalance = usePreferencesStore((state) => state.setSpatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
@@ -182,11 +186,23 @@ export default function AudioSettingsScreen() {
 
       <View style={stylesForScreen.featureCard}>
         <View style={stylesForScreen.cardHeader}>
-          <View style={stylesForScreen.cardIcon}><Ionicons name="swap-horizontal-outline" size={21} color="#85858D" /></View>
-          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>03 · TRACK TRANSITIONS</Text><Text style={stylesForScreen.cardTitle}>Crossfade</Text></View>
-          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>IN DEVELOPMENT</Text></View>
+          <View style={stylesForScreen.cardIcon}><Ionicons name="swap-horizontal-outline" size={21} color={colors.accent} /></View>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>03 · TRACK TRANSITIONS</Text><Text style={stylesForScreen.cardTitle}>Auto Crossfade</Text></View>
+          <Pressable onPress={() => setAutoCrossfadeEnabled(!autoCrossfadeEnabled)} style={[stylesForScreen.toggle, autoCrossfadeEnabled && stylesForScreen.toggleOn]}>
+            <View style={[stylesForScreen.toggleDot, autoCrossfadeEnabled && stylesForScreen.toggleDotOn]} />
+          </Pressable>
         </View>
-        <Text style={stylesForScreen.cardSub}>Seamless transitions between tracks need a dual-stream playback path. The current player uses a single active stream, so this control is not exposed as a fake switch.</Text>
+        <Text style={stylesForScreen.cardSub}>Blend the end of a track into the next queued track using two native playback decks. Available for Android YouTube Music streams; unsupported sources keep their normal transitions.</Text>
+        <View style={{ marginTop: 18 }}>
+          <Text style={stylesForScreen.sectionLabel}>OVERLAP LENGTH</Text>
+          <View style={stylesForScreen.presetRow}>
+            {[3, 5, 8, 10].map((seconds) => <Pressable key={seconds} disabled={!autoCrossfadeEnabled} onPress={() => setCrossfadeDurationSeconds(seconds)} style={[stylesForScreen.presetChip, crossfadeDurationSeconds === seconds && { borderColor: colors.accent, backgroundColor: colors.surface } , !autoCrossfadeEnabled && { opacity: 0.4 }]}><Text style={[stylesForScreen.presetText, crossfadeDurationSeconds === seconds && { color: colors.accent }]}>{seconds}s</Text></Pressable>)}
+          </View>
+        </View>
+        <View style={stylesForScreen.cardFooter}>
+          <Text style={stylesForScreen.smallNote}>{autoCrossfadeEnabled ? "AUTO CROSSFADE ON" : "AUTO CROSSFADE OFF"} · {crossfadeDurationSeconds}s</Text>
+          <Text style={stylesForScreen.smallNote}>ANDROID STREAMING</Text>
+        </View>
       </View>
 
       <View style={stylesForScreen.featureCard}>
