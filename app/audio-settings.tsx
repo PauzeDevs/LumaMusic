@@ -175,7 +175,7 @@ export default function AudioSettingsScreen() {
         <View style={[stylesForScreen.balanceTouch, effectsUnavailableForStream && { opacity: 0.4 }]} pointerEvents={effectsUnavailableForStream ? "none" : "auto"} onLayout={(event) => { setBalanceRailWidth(Math.max(1, event.nativeEvent.layout.width)); }} {...balanceResponder.panHandlers}>
           <View style={stylesForScreen.balanceRail}><View style={stylesForScreen.balanceCenter} /><View style={[stylesForScreen.balanceThumb, { left: `${((spatialBalance + 1) / 2) * 100}%` }]} /></View>
         </View>
-        <View style={stylesForScreen.balanceLabels}><Text>LEFT</Text><Text>CENTER</Text><Text>RIGHT</Text></View>
+        <View style={stylesForScreen.balanceLabels}><Text style={stylesForScreen.balanceLabel}>LEFT</Text><Text style={stylesForScreen.balanceLabel}>CENTER</Text><Text style={stylesForScreen.balanceLabel}>RIGHT</Text></View>
         <Pressable disabled={effectsUnavailableForStream} style={[stylesForScreen.resetBalance, effectsUnavailableForStream && { opacity: 0.35 }]} onPress={() => setSpatialBalance(0)}><Text style={stylesForScreen.reset}>Reset balance</Text></Pressable>
         <Text style={stylesForScreen.sourceNote}>{streamingPlayback && effectsUnavailableForStream ? "Reverb and stereo balance are not available on this streaming route." : streamingPlayback ? "Reverb and stereo balance are applied by the native Android DSP engine." : localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply when a supported track is playing."}</Text>
       </View>
@@ -281,7 +281,8 @@ function makeStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.c
   balanceRail: { height: 4, borderRadius: 3, backgroundColor: colors.surfaceSoft, position: "relative" },
   balanceCenter: { position: "absolute", left: "50%", top: -5, width: 1, height: 14, backgroundColor: "#A0A0A8" },
   balanceThumb: { position: "absolute", top: -6, width: 16, height: 16, borderRadius: 9, marginLeft: -8, backgroundColor: "#FFFFFF", borderWidth: 2, borderColor: colors.accent },
-  balanceLabels: { flexDirection: "row", justifyContent: "space-between" },
+  balanceLabels: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  balanceLabel: { flex: 1, color: colors.text, fontSize: 12, fontWeight: "800", textAlign: "center", includeFontPadding: false },
   resetBalance: { alignSelf: "flex-end", paddingVertical: 8 },
   soonPill: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surfaceSoft },
   soonText: { color: "#96969E", fontSize: 7, fontWeight: "900", letterSpacing: 0.6 },
