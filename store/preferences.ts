@@ -13,22 +13,25 @@ export type PreferencesState = {
   progressBarStyle: ProgressBarStyle; spatialBalance: number; reverbPreset: ReverbPreset; equalizerEnabled: boolean; equalizerBands: EqualizerBand[]; preampDb: number; limiterEnabled: boolean;
   accentTheme: AccentTheme; appearanceMode: AppearanceMode; motionStyle: MotionStyle; compactRows: boolean;
   playerStyle: PlayerStyle; surfaceStyle: SurfaceStyle; animationIntensity: number;
+  autoCrossfadeEnabled: boolean; crossfadeDurationSeconds: number;
   setProgressBarStyle: (style: ProgressBarStyle) => void; setSpatialBalance: (balance: number) => void;
   setEqualizerEnabled: (enabled: boolean) => void; setEqualizerBand: (index: number, gain: number) => void; resetEqualizer: () => void; setPreampDb: (gain: number) => void; setLimiterEnabled: (enabled: boolean) => void;
   setReverbPreset: (preset: ReverbPreset) => void; setAccentTheme: (theme: AccentTheme) => void;
   setAppearanceMode: (mode: AppearanceMode) => void; setMotionStyle: (style: MotionStyle) => void; setCompactRows: (compact: boolean) => void;
   setPlayerStyle: (style: PlayerStyle) => void; setSurfaceStyle: (style: SurfaceStyle) => void; setAnimationIntensity: (intensity: number) => void;
+  setAutoCrossfadeEnabled: (enabled: boolean) => void; setCrossfadeDurationSeconds: (seconds: number) => void;
 };
 
 export type PreferencesSnapshot = Pick<PreferencesState,
   | "progressBarStyle" | "spatialBalance" | "reverbPreset" | "equalizerEnabled" | "equalizerBands" | "preampDb" | "limiterEnabled"
   | "accentTheme" | "appearanceMode" | "motionStyle" | "compactRows"
-  | "playerStyle" | "surfaceStyle" | "animationIntensity"
+  | "playerStyle" | "surfaceStyle" | "animationIntensity" | "autoCrossfadeEnabled" | "crossfadeDurationSeconds"
 >;
 export const usePreferencesStore = create<PreferencesState>()(persist((set) => ({
   progressBarStyle: "apple", spatialBalance: 0, reverbPreset: "off", equalizerEnabled: false, equalizerBands: [0, 0, 0, 0, 0], preampDb: 0, limiterEnabled: true,
   accentTheme: "red", appearanceMode: "dark", motionStyle: "full", compactRows: false,
   playerStyle: "standard", surfaceStyle: "matte", animationIntensity: 65,
+  autoCrossfadeEnabled: false, crossfadeDurationSeconds: 5,
   setProgressBarStyle: (progressBarStyle) => set({ progressBarStyle }),
   setSpatialBalance: (spatialBalance) => set({ spatialBalance: Math.max(-1, Math.min(1, spatialBalance)) }),
   setReverbPreset: (reverbPreset) => set({ reverbPreset }),
@@ -43,13 +46,18 @@ export const usePreferencesStore = create<PreferencesState>()(persist((set) => (
   setCompactRows: (compactRows) => set({ compactRows }),
   setPlayerStyle: (playerStyle) => set({ playerStyle }),
   setSurfaceStyle: (surfaceStyle) => set({ surfaceStyle }),
-  setAnimationIntensity: (animationIntensity) => set({ animationIntensity: Math.max(0, Math.min(100, animationIntensity)) })
+  setAnimationIntensity: (animationIntensity) => set({ animationIntensity: Math.max(0, Math.min(100, animationIntensity)) }),
+  setAutoCrossfadeEnabled: (autoCrossfadeEnabled) => set({ autoCrossfadeEnabled }),
+  setCrossfadeDurationSeconds: (crossfadeDurationSeconds) => {
+    if (Number.isFinite(crossfadeDurationSeconds)) set({ crossfadeDurationSeconds: Math.max(1, Math.min(12, crossfadeDurationSeconds)) });
+  }
 }), {
   name: "lumamusic-preferences", storage: createJSONStorage(() => AsyncStorage),
   partialize: (state) => ({
     progressBarStyle: state.progressBarStyle, spatialBalance: state.spatialBalance, reverbPreset: state.reverbPreset,
     equalizerEnabled: state.equalizerEnabled, equalizerBands: state.equalizerBands, preampDb: state.preampDb, limiterEnabled: state.limiterEnabled,
     accentTheme: state.accentTheme, appearanceMode: state.appearanceMode, motionStyle: state.motionStyle, compactRows: state.compactRows,
-    playerStyle: state.playerStyle, surfaceStyle: state.surfaceStyle, animationIntensity: state.animationIntensity
+    playerStyle: state.playerStyle, surfaceStyle: state.surfaceStyle, animationIntensity: state.animationIntensity,
+    autoCrossfadeEnabled: state.autoCrossfadeEnabled, crossfadeDurationSeconds: state.crossfadeDurationSeconds
   })
 }));
