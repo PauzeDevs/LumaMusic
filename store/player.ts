@@ -22,6 +22,7 @@ type PlayerState = {
   repeatMode: RepeatMode;
   setTrack: (track: MusicTrack, queue?: MusicTrack[], queueIndex?: number) => void;
   promoteCrossfadeTrack: (track: MusicTrack) => void;
+  addTracksToQueue: (tracks: MusicTrack[]) => number;
   setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
   setPlaybackError: (error: string | null) => void;
   setStreamQuality: (quality: StreamQuality | null) => void;
@@ -70,6 +71,21 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       streamQuality: null,
       decodedAudioFormat: null
     });
+  },
+  addTracksToQueue: (tracks) => {
+    let added = 0;
+    set((state) => {
+      const queue = [...state.queue];
+      const knownIds = new Set(queue.map((track) => track.id));
+      for (const track of tracks) {
+        if (!track || typeof track.id !== "string" || !track.id || knownIds.has(track.id)) continue;
+        queue.push(track);
+        knownIds.add(track.id);
+        added += 1;
+      }
+      return added > 0 ? { queue } : state;
+    });
+    return added;
   },
   promoteCrossfadeTrack: (track) => set((state) => {
     let index = state.queue.findIndex((item) => item.id === track.id);
