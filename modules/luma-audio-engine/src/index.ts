@@ -11,6 +11,9 @@ type NativeAudioEngineModule = {
   getCapabilities(sourceKind: AudioSourceKind): Promise<AudioEngineCapabilities>;
   getState(): Promise<AudioEngineState>;
   load(track: AudioEngineTrack, startPositionSeconds?: number): Promise<void>;
+  prepareNext(track: AudioEngineTrack): Promise<void>;
+  startCrossfade(durationSeconds: number): Promise<void>;
+  cancelCrossfade(): Promise<void>;
   play(): Promise<void>;
   pause(): Promise<void>;
   seekTo(positionSeconds: number): Promise<void>;
@@ -18,6 +21,7 @@ type NativeAudioEngineModule = {
   setAudioLab(configuration: AudioLabConfiguration): Promise<void>;
   release(): Promise<void>;
   addListener: (eventName: "onStateChange", listener: (state: AudioEngineState) => void) => EventSubscription;
+  addListener: (eventName: "onCrossfadeComplete", listener: (event: { trackId: string }) => void) => EventSubscription;
 };
 
 const nativeModule = requireOptionalNativeModule<NativeAudioEngineModule>("LumaAudioEngine");
@@ -40,6 +44,21 @@ export async function getNativeAudioEngineState(): Promise<AudioEngineState> {
 export async function loadNativeAudioTrack(track: AudioEngineTrack, startPositionSeconds = 0): Promise<void> {
   if (!nativeModule) throw new Error("Native audio engine is not installed in this build.");
   return nativeModule.load(track, startPositionSeconds);
+}
+
+export async function prepareNativeNextTrack(track: AudioEngineTrack): Promise<void> {
+  if (!nativeModule) throw new Error("Native audio engine is not installed in this build.");
+  return nativeModule.prepareNext(track);
+}
+
+export async function startNativeAudioCrossfade(durationSeconds: number): Promise<void> {
+  if (!nativeModule) throw new Error("Native audio engine is not installed in this build.");
+  return nativeModule.startCrossfade(durationSeconds);
+}
+
+export async function cancelNativeAudioCrossfade(): Promise<void> {
+  if (!nativeModule) return;
+  return nativeModule.cancelCrossfade();
 }
 
 export async function playNativeAudio(): Promise<void> {
@@ -74,4 +93,9 @@ export async function releaseNativeAudioEngine(): Promise<void> {
 export function addNativeAudioStateListener(listener: (state: AudioEngineState) => void): EventSubscription | null {
   if (!nativeModule) return null;
   return nativeModule.addListener("onStateChange", listener);
+}
+
+export function addNativeAudioCrossfadeCompleteListener(listener: (event: { trackId: string }) => void): EventSubscription | null {
+  if (!nativeModule) return null;
+  return nativeModule.addListener("onCrossfadeComplete", listener);
 }
