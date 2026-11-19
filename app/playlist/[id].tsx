@@ -65,7 +65,7 @@ export default function PlaylistScreen() {
       if (!directory) throw new Error("LumaMusic could not access its permanent storage directory.");
       const folder = directory + "playlist-covers/";
       await FileSystem.makeDirectoryAsync(folder, { intermediates: true });
-      const extension = result.assets[0].name.match(/\\.[^.]+$/)?.[0] ?? ".jpg";
+      const extension = result.assets[0].name.includes(".") ? "." + result.assets[0].name.split(".").pop()!.toLowerCase() : ".jpg";
       const destination = folder + encodeURIComponent(localPlaylist.id) + extension;
       await FileSystem.copyAsync({ from: result.assets[0].uri, to: destination });
       setDraftCoverUri(destination);
@@ -166,6 +166,7 @@ export default function PlaylistScreen() {
               <View style={{ flex: 1 }}><Text style={makeStyles(colors).coverTitle}>{draftCoverUri ? "Change playlist cover" : "Add playlist cover"}</Text><Text style={makeStyles(colors).coverHint}>Choose an image from your device</Text></View>
               <Ionicons name="chevron-forward" size={17} color={colors.muted} />
             </Pressable>
+            {draftCoverUri ? <Pressable onPress={() => setDraftCoverUri("")} style={makeStyles(colors).removeCover}><Ionicons name="trash-outline" size={14} color={colors.danger} /><Text style={makeStyles(colors).removeCoverText}>Remove custom cover</Text></Pressable> : null}
             <TextInput value={draftName} onChangeText={setDraftName} placeholder="Playlist name" placeholderTextColor={colors.subtle} maxLength={50} autoFocus style={makeStyles(colors).modalInput} />
             <TextInput value={draftDescription} onChangeText={(value) => setDraftDescription(value.slice(0, 100))} placeholder="Add a description (100 characters max)" placeholderTextColor={colors.subtle} maxLength={100} multiline style={[makeStyles(colors).modalInput, makeStyles(colors).descriptionInput]} />
             <Text style={makeStyles(colors).characterCount}>{draftDescription.length}/100</Text>
@@ -203,6 +204,8 @@ const makeStyles = (colors: ReturnType<typeof useTheme>["colors"]) => StyleSheet
   coverPlaceholder: { width: 58, height: 58, borderRadius: 12, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   coverTitle: { color: colors.text, fontSize: 12, fontWeight: "800" },
   coverHint: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  removeCover: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingTop: 9 },
+  removeCoverText: { color: colors.danger, fontSize: 10, fontWeight: "700" },
   modalActions: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 15 },
   modalCancel: { paddingHorizontal: 13, paddingVertical: 10 },
   modalCancelText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
