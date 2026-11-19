@@ -3,6 +3,7 @@ package dev.pauze.lumamusic.audio
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.media3.common.MediaSource
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -23,11 +24,43 @@ import java.util.concurrent.atomic.AtomicBoolean
 class LumaAudioEngineModule : Module() {
   private var player: ExoPlayer? = null
   private var pcmProcessor: LumaPcmAudioProcessor? = null
+  private var incomingPlayer: ExoPlayer? = null
+  private var incomingPcmProcessor: LumaPcmAudioProcessor? = null
+  private var incomingTrackId: String? = null
+  private var incomingDurationSeconds: Double = 0.0
+  private var crossfadeDurationMs = 0L
+  private var crossfadeProgressMs = 0L
+  private var audioLabEnabled = false
+  private var audioLabBands = FloatArray(5)
+  private var audioLabPreamp = 0f
+  private var audioLabLimiter = true
+  private var audioLabReverb = "off"
+  private var audioLabBalance = 0f
   private val handler = Handler(Looper.getMainLooper())
   private val released = AtomicBoolean(false)
   private var activeTrackId: String? = null
   private var catalogDurationSeconds: Double = 0.0
   private var lastError: String? = null
+
+  private val crossfadeEmitter = object : Runnable {
+    override fun run() {
+      val outgoing = player ?: return
+      val incoming = incomingPlayer ?: return
+      if (released.get()) return
+      if (!outgoing.isPlaying || !incoming.isPlaying) {
+        handler.postDelayed(this, 50L)
+        return
+      }
+      crossfadeProgressMs = (crossfadeProgressMs + 50L).coerceAtMost(crossfadeDurationMs)
+      val progress = if (crossfadeDurationMs <= 0L) 1f
+        else crossfadeProgressMs.toFloat() / crossfadeDurationMs.toFloat()
+      val levels = LumaCrossfadeCurve.levels(progress)
+      outgoing.volume = levels.first
+      incoming.volume = levels.second
+      if (crossfadeProgressMs >= crossfadeDurationMs) promoteIncomingPlayer()
+      else handler.postDelayed(this, 50L)
+    }
+  }
 
   private val progressEmitter = object : Runnable {
     override fun run() {
@@ -39,11 +72,11 @@ class LumaAudioEngineModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("LumaAudioEngine")
-    Events("onStateChange")
+    Events("onStateChange", "onCrossfadeComplete")
 
     OnCreate {
       released.set(false)
-      val context = appContext.reactContext?.applicationContext
+      appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available.")
 
       // ExoPlayer checks its application looper on every access, including setup
@@ -51,26 +84,13 @@ class LumaAudioEngineModule : Module() {
       handler.post {
         if (released.get()) return@post
         pcmProcessor = LumaPcmAudioProcessor()
-        player = ExoPlayer.Builder(context, LumaRenderersFactory(context, pcmProcessor!!))
-          .setLooper(Looper.getMainLooper())
-          .build().apply {
-            setAudioAttributes(
-              AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                .build(),
-              true
-            )
-            addListener(object : Player.Listener {
-              override fun onPlaybackStateChanged(playbackState: Int) = emitState(this@apply)
-              override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(this@apply)
-              override fun onPlayerError(error: PlaybackException) {
-                lastError = error.message ?: "Playback failed."
-                emitState(this@apply)
-              }
-              override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(this@apply)
-            })
-          }
+        player = createPlayer(pcmProcessor!!, handleAudioFocus = true).apply {
+          addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) = emitState(this@apply)
+            override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(this@apply)
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(this@apply)
+          })
+        }
         handler.removeCallbacks(progressEmitter)
         handler.post(progressEmitter)
       }
@@ -94,35 +114,16 @@ class LumaAudioEngineModule : Module() {
 
     AsyncFunction("load") { track: Map<String, Any?>, startPositionSeconds: Double?, promise: Promise ->
       runOnMain(promise) {
+        cancelCrossfadeInternal()
         val current = requirePlayer()
+        current.volume = 1f
         val id = track["id"] as? String ?: throw IllegalArgumentException("Track id is required.")
         val uri = track["uri"] as? String ?: throw IllegalArgumentException("Track URI is required.")
         require(uri.isNotBlank()) { "Track URI cannot be empty." }
-        val title = track["title"] as? String ?: ""
-        val artist = track["artist"] as? String ?: ""
         catalogDurationSeconds = (track["durationSeconds"] as? Number)?.toDouble()?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
-        val headers = (track["headers"] as? Map<*, *>)?.entries
-          ?.mapNotNull { (key, value) ->
-            if (key is String && value is String) key to value else null
-          }?.toMap().orEmpty()
-
         activeTrackId = id
         lastError = null
-        val context = appContext.reactContext?.applicationContext
-          ?: throw IllegalStateException("React context is not available.")
-        val httpFactory = DefaultHttpDataSource.Factory()
-          .setUserAgent("LumaMusic/0.1")
-          .setAllowCrossProtocolRedirects(true)
-          .setDefaultRequestProperties(headers)
-        val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
-        val sourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-        val mediaItemBuilder = MediaItem.Builder()
-          .setUri(Uri.parse(uri))
-          .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
-        (track["mimeType"] as? String)?.substringBefore(";")?.takeIf { it.isNotBlank() }?.let {
-          mediaItemBuilder.setMimeType(it)
-        }
-        current.setMediaSource(sourceFactory.createMediaSource(mediaItemBuilder.build()))
+        current.setMediaSource(createMediaSource(track))
         val startMs = ((startPositionSeconds ?: 0.0).coerceAtLeast(0.0) * 1000.0).toLong()
         current.prepare()
         if (startMs > 0L) current.seekTo(startMs)
@@ -131,17 +132,65 @@ class LumaAudioEngineModule : Module() {
       }
     }
 
+    AsyncFunction("prepareNext") { track: Map<String, Any?>, promise: Promise ->
+      runOnMain(promise) {
+        discardIncomingPlayer()
+        val id = track["id"] as? String ?: throw IllegalArgumentException("Next track id is required.")
+        val uri = track["uri"] as? String ?: throw IllegalArgumentException("Next track URI is required.")
+        require(uri.isNotBlank()) { "Next track URI cannot be empty." }
+        val processor = LumaPcmAudioProcessor().apply {
+          setAudioLab(audioLabEnabled, audioLabBands, audioLabPreamp, audioLabLimiter, audioLabReverb, audioLabBalance)
+        }
+        val next = createPlayer(processor, handleAudioFocus = false)
+        next.volume = 0f
+        next.setMediaSource(createMediaSource(track))
+        incomingPlayer = next
+        incomingPcmProcessor = processor
+        incomingTrackId = id
+        incomingDurationSeconds = (track["durationSeconds"] as? Number)?.toDouble()
+          ?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0
+        next.prepare()
+        null
+      }
+    }
+
+    AsyncFunction("startCrossfade") { durationSeconds: Double, promise: Promise ->
+      runOnMain(promise) {
+        require(durationSeconds.isFinite() && durationSeconds in 1.0..12.0) {
+          "Crossfade duration must be between 1 and 12 seconds."
+        }
+        val outgoing = requirePlayer()
+        val incoming = incomingPlayer ?: throw IllegalStateException("No prepared next track is available.")
+        require(incoming.playbackState == Player.STATE_READY) {
+          "The next stream is not ready; normal queue playback will be used."
+        }
+        require(outgoing.isPlaying) { "The current track is not playing." }
+        crossfadeDurationMs = (durationSeconds * 1000.0).toLong()
+        crossfadeProgressMs = 0L
+        incoming.volume = 0f
+        incoming.play()
+        handler.removeCallbacks(crossfadeEmitter)
+        handler.post(crossfadeEmitter)
+        null
+      }
+    }
+
+    AsyncFunction("cancelCrossfade") { promise: Promise ->
+      runOnMain(promise) { cancelCrossfadeInternal(); null }
+    }
+
     AsyncFunction("play") { promise: Promise ->
-      runOnMain(promise) { requirePlayer().play(); emitState(requirePlayer()); null }
+      runOnMain(promise) { requirePlayer().play(); incomingPlayer?.takeIf { crossfadeProgressMs > 0L }?.play(); emitState(requirePlayer()); null }
     }
 
     AsyncFunction("pause") { promise: Promise ->
-      runOnMain(promise) { requirePlayer().pause(); emitState(requirePlayer()); null }
+      runOnMain(promise) { requirePlayer().pause(); incomingPlayer?.pause(); emitState(requirePlayer()); null }
     }
 
     AsyncFunction("seekTo") { positionSeconds: Double, promise: Promise ->
       runOnMain(promise) {
         require(positionSeconds.isFinite() && positionSeconds >= 0.0) { "Seek position must be finite and non-negative." }
+        cancelCrossfadeInternal()
         requirePlayer().seekTo((positionSeconds * 1000.0).toLong())
         emitState(requirePlayer())
         null
@@ -152,6 +201,7 @@ class LumaAudioEngineModule : Module() {
       runOnMain(promise) {
         require(rate.isFinite() && rate in 0.5..2.0) { "Playback rate must be between 0.5x and 2.0x." }
         requirePlayer().setPlaybackSpeed(rate.toFloat())
+        incomingPlayer?.setPlaybackSpeed(rate.toFloat())
         emitState(requirePlayer())
         null
       }
@@ -177,8 +227,15 @@ class LumaAudioEngineModule : Module() {
         require(bands.all { it in -12f..12f }) { "EQ gains must be between -12 and +12 dB." }
         require(reverb in setOf("off", "room", "studio", "hall")) { "Unsupported reverb preset." }
         require(balance.isFinite() && balance in -1f..1f) { "Spatial balance must be between -1 and +1." }
+        audioLabEnabled = enabled
+        audioLabBands = bands
+        audioLabPreamp = preamp
+        audioLabLimiter = limiter
+        audioLabReverb = reverb
+        audioLabBalance = balance
         (pcmProcessor ?: throw IllegalStateException("DSP processor is not initialized."))
           .setAudioLab(enabled, bands, preamp, limiter, reverb, balance)
+        incomingPcmProcessor?.setAudioLab(enabled, bands, preamp, limiter, reverb, balance)
         null
       }
     }
@@ -194,6 +251,96 @@ class LumaAudioEngineModule : Module() {
         handler.post { releasePlayer() }
       }
     }
+  }
+
+  private fun createMediaSource(track: Map<String, Any?>): MediaSource {
+    val uri = track["uri"] as? String ?: throw IllegalArgumentException("Track URI is required.")
+    val title = track["title"] as? String ?: ""
+    val artist = track["artist"] as? String ?: ""
+    val headers = (track["headers"] as? Map<*, *>)?.entries
+      ?.mapNotNull { (key, value) -> if (key is String && value is String) key to value else null }
+      ?.toMap().orEmpty()
+    val context = appContext.reactContext?.applicationContext
+      ?: throw IllegalStateException("React context is not available.")
+    val httpFactory = DefaultHttpDataSource.Factory()
+      .setUserAgent("LumaMusic/0.1")
+      .setAllowCrossProtocolRedirects(true)
+      .setDefaultRequestProperties(headers)
+    val sourceFactory = DefaultMediaSourceFactory(DefaultDataSource.Factory(context, httpFactory))
+    val mediaItem = MediaItem.Builder()
+      .setUri(Uri.parse(uri))
+      .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
+      .apply {
+        (track["mimeType"] as? String)?.substringBefore(";")?.takeIf { it.isNotBlank() }?.let { setMimeType(it) }
+      }
+      .build()
+    return sourceFactory.createMediaSource(mediaItem)
+  }
+
+  private fun createPlayer(processor: LumaPcmAudioProcessor, handleAudioFocus: Boolean): ExoPlayer {
+    val context = appContext.reactContext?.applicationContext
+      ?: throw IllegalStateException("React context is not available.")
+    return ExoPlayer.Builder(context, LumaRenderersFactory(context, processor))
+      .setLooper(Looper.getMainLooper())
+      .build().apply {
+        setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build(),
+          handleAudioFocus
+        )
+        addListener(object : Player.Listener {
+          override fun onPlayerError(error: PlaybackException) {
+            if (this@apply === player) {
+              lastError = error.message ?: "Playback failed."
+              emitState(this@apply)
+            } else if (this@apply === incomingPlayer) {
+              cancelCrossfadeInternal()
+            }
+          }
+        })
+      }
+  }
+
+  private fun discardIncomingPlayer() {
+    handler.removeCallbacks(crossfadeEmitter)
+    incomingPlayer?.let { it.pause(); it.release() }
+    incomingPlayer = null
+    incomingPcmProcessor = null
+    incomingTrackId = null
+    incomingDurationSeconds = 0.0
+    crossfadeProgressMs = 0L
+    crossfadeDurationMs = 0L
+  }
+
+  private fun cancelCrossfadeInternal() {
+    handler.removeCallbacks(crossfadeEmitter)
+    player?.volume = 1f
+    discardIncomingPlayer()
+  }
+
+  private fun promoteIncomingPlayer() {
+    handler.removeCallbacks(crossfadeEmitter)
+    val outgoing = player ?: return cancelCrossfadeInternal()
+    val incoming = incomingPlayer ?: return
+    val promotedId = incomingTrackId ?: return cancelCrossfadeInternal()
+    incoming.volume = 1f
+    player = incoming
+    pcmProcessor = incomingPcmProcessor
+    activeTrackId = promotedId
+    catalogDurationSeconds = incomingDurationSeconds
+    lastError = null
+    incomingPlayer = null
+    incomingPcmProcessor = null
+    incomingTrackId = null
+    incomingDurationSeconds = 0.0
+    crossfadeProgressMs = 0L
+    crossfadeDurationMs = 0L
+    outgoing.pause()
+    outgoing.release()
+    emitState(incoming)
+    sendEvent("onCrossfadeComplete", mapOf("trackId" to promotedId))
   }
 
   private fun <T> runOnMain(promise: Promise, action: () -> T) {
@@ -238,6 +385,7 @@ class LumaAudioEngineModule : Module() {
   private fun releasePlayer() {
     if (!released.compareAndSet(false, true)) return
     handler.removeCallbacks(progressEmitter)
+    cancelCrossfadeInternal()
     player?.release()
     player = null
     pcmProcessor = null
