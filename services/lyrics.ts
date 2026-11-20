@@ -185,47 +185,58 @@ registerBuiltInLyricsProvider({
     } : null;
   }
 });
-async function fetchLyrics(track: MusicTrack): Promise<LyricsState> {
+async function fetchLrclibLyrics(track: MusicTrack): Promise<LyricsState> {
   const duration = Math.round((track.durationMs ?? 0) / 1000);
   const exactParams = new URLSearchParams({ track_name: track.title, artist_name: track.artist });
   if (duration >= 1 && duration <= 3600) exactParams.set("duration", String(duration));
-  let primaryFailed = false;
-  try {
-    const exact = await requestJson<LrclibRecord>(`${API}/get?${exactParams.toString()}`);
-    if (exact && recordMatches(exact, track)) {
-      const result = toLyricsState(exact);
-      if (result.status === "available") return result;
-    }
-    const searchParams = new URLSearchParams({ q: `${track.title} ${track.artist}` });
-    const results = await requestJson<LrclibRecord[]>(`${API}/search?${searchParams.toString()}`);
-    const match = results?.find((record) => recordMatches(record, track));
-    if (match) {
-      const result = toLyricsState(match);
-      if (result.status === "available") return result;
-    }
-  } catch {
-    primaryFailed = true;
+  const exact = await requestJson<LrclibRecord>(`${API}/get?${exactParams.toString()}`);
+  if (exact && recordMatches(exact, track)) {
+    const result = toLyricsState(exact);
+    if (result.status === "available") return result;
   }
+  const searchParams = new URLSearchParams({ q: `${track.title} ${track.artist}` });
+  const results = await requestJson<LrclibRecord[]>(`${API}/search?${searchParams.toString()}`);
+  const match = results?.find((record) => recordMatches(record, track));
+  return match ? toLyricsState(match) : { status: "not_found" };
+}
 
-  // Registered providers are fallback-only; LRCLIB remains the primary synced source.
-  for (const provider of listLyricsProviders()) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 9_000);
+async function fetchExtensionLyrics(track: MusicTrack, providerId: string): Promise<LyricsState> {
+  const provider = listLyricsProviders().find((item) => item.manifest.id === providerId);
+  if (!provider) return { status: "not_found" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9_000);
+  try {
+    const result = await provider.searchLyrics({
+      id: track.id, title: track.title, artist: track.artist, durationMs: track.durationMs
+    }, controller.signal);
+    if (!result?.lines.length) return { status: "not_found" };
+    return {
+      status: "available",
+      lines: result.lines,
+      provider: provider.manifest.name,
+      copyright: `Lyrics provided by ${provider.manifest.name}`,
+      attribution: result.attribution
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchLyrics(track: MusicTrack, preferredProvider: "auto" | "lrclib" | "lyrics-ovh"): Promise<LyricsState> {
+  const order = preferredProvider === "auto"
+    ? ["lrclib", "lyrics-ovh"]
+    : preferredProvider === "lrclib"
+      ? ["lrclib", "lyrics-ovh"]
+      : ["lyrics-ovh", "lrclib"];
+  let primaryFailed = false;
+  for (const providerId of order) {
     try {
-      const result = await provider.searchLyrics({
-        id: track.id, title: track.title, artist: track.artist, durationMs: track.durationMs
-      }, controller.signal);
-      if (result?.lines.length) return {
-        status: "available",
-        lines: result.lines,
-        provider: provider.manifest.name,
-        copyright: `Lyrics provided by ${provider.manifest.name}`,
-        attribution: result.attribution
-      };
+      const result = providerId === "lrclib"
+        ? await fetchLrclibLyrics(track)
+        : await fetchExtensionLyrics(track, "dev.pauze.lumamusic.lyrics-ovh");
+      if (result.status === "available") return result;
     } catch {
-      // A failed provider must not prevent trying the next registered fallback.
-    } finally {
-      clearTimeout(timeout);
+      primaryFailed = true;
     }
   }
   return primaryFailed ? { status: "error" } : { status: "not_found" };
@@ -243,7 +254,7 @@ export function getLyrics(track: MusicTrack): Promise<LyricsState> {
   const pending = inFlight.get(key);
   if (pending) return pending;
 
-  const request = fetchLyrics(track).then((value) => {
+  const request = fetchLyrics(track, preferredProvider).then((value) => {
     cache.set(key, { value, expiresAt: Date.now() + (value.status === "not_found" ? MISS_TTL : value.status === "error" ? ERROR_TTL : CACHE_TTL) });
     while (cache.size > MAX_LYRICS_CACHE_ENTRIES) {
       const oldestKey = cache.keys().next().value;
