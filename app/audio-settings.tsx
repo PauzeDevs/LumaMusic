@@ -1,8 +1,8 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { isNativeAudioEngineAvailable } from "../modules/luma-audio-engine/src";
+import { addNativeAudioStateListener, isNativeAudioEngineAvailable } from "../modules/luma-audio-engine/src";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePlayerStore, type StreamQuality } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
@@ -105,6 +105,14 @@ export default function AudioSettingsScreen() {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const streamQuality = usePlayerStore((state) => state.streamQuality);
   const decodedAudioFormat = usePlayerStore((state) => state.decodedAudioFormat);
+  const [tempoReadout, setTempoReadout] = useState<{ outgoing: number | null; incoming: number | null }>({ outgoing: null, incoming: null });
+  useEffect(() => {
+    if (Platform.OS !== "android" || !isNativeAudioEngineAvailable) return;
+    const subscription = addNativeAudioStateListener((state) => {
+      setTempoReadout({ outgoing: state.estimatedBpm ?? null, incoming: state.incomingEstimatedBpm ?? null });
+    });
+    return () => subscription?.remove();
+  }, []);
   const sourceQuality = getSourceQuality(currentTrack, streamQuality);
   const localPlayback = currentTrack?.source === "local";
   const streamingPlayback = currentTrack?.source === "youtube_music";
@@ -193,6 +201,11 @@ export default function AudioSettingsScreen() {
           </Pressable>
         </View>
         <Text style={stylesForScreen.cardSub}>Blend the end of a track into the next queued track using two native playback decks. Available for Android YouTube Music streams; unsupported sources keep their normal transitions.</Text>
+        <View style={[stylesForScreen.qualityMetaRow, { marginTop: 14 }]}>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CURRENT BPM</Text><Text style={stylesForScreen.qualityMetaValue}>{tempoReadout.outgoing ? `${tempoReadout.outgoing} BPM` : "Analysing…"}</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>NEXT DECK BPM</Text><Text style={stylesForScreen.qualityMetaValue}>{tempoReadout.incoming ? `${tempoReadout.incoming} BPM` : "Not analysed"}</Text></View>
+        </View>
+        <Text style={stylesForScreen.sourceNote}>Tempo is estimated from decoded audio and may be unavailable for quiet, sparse, or irregular tracks. The next deck is analysed only while it is processing audio; BPM readouts do not imply tempo or pitch matching.</Text>
         <View style={{ marginTop: 18 }}>
           <Text style={stylesForScreen.sectionLabel}>OVERLAP LENGTH</Text>
           <View style={stylesForScreen.presetRow}>
