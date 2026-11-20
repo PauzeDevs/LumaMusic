@@ -242,8 +242,8 @@ async function fetchLyrics(track: MusicTrack, preferredProvider: "auto" | "lrcli
   return primaryFailed ? { status: "error" } : { status: "not_found" };
 }
 
-export function getLyrics(track: MusicTrack): Promise<LyricsState> {
-  const key = `${normalize(track.title)}::${normalize(track.artist)}::${Math.round((track.durationMs ?? 0) / 1000)}`;
+export function getLyrics(track: MusicTrack, preferredProvider: "auto" | "lrclib" | "lyrics-ovh" = "auto"): Promise<LyricsState> {
+  const key = `${normalize(track.title)}::${normalize(track.artist)}::${Math.round((track.durationMs ?? 0) / 1000)}::${preferredProvider}`;
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
     cache.delete(key);
