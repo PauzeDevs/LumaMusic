@@ -8,6 +8,7 @@ on:
       - "CNAME"
       - "assets/lumamusic-soundstage.svg"
       - "assets/lumamusic-logo.svg"
+      - "assets/lumamusic-icon.png"
       - "assets/Screenshot_20261114-111431.png"
       - "assets/Screenshot_20261114-111449.png"
       - "assets/Screenshot_20261114-111553.png"
@@ -41,12 +42,11 @@ jobs:
           mkdir -p site/assets
           cp -R website/. site/
           cp CNAME site/CNAME
-          cp assets/lumamusic-soundstage.svg site/assets/lumamusic-soundstage.svg
           cp assets/lumamusic-logo.svg site/assets/lumamusic-logo.svg
           cp assets/lumamusic-icon.png site/assets/lumamusic-icon.png
-          cp assets/Screenshot_20261114-111431.png site/assets/app-player.png
-          cp assets/Screenshot_20261114-111449.png site/assets/app-library.png
-          cp assets/Screenshot_20261114-111553.png site/assets/app-discovery.png
+          cp assets/Screenshot_20261114-111449.png site/assets/app-player.png
+          cp assets/Screenshot_20261114-111431.png site/assets/app-stats.png
+          cp assets/Screenshot_20261114-111553.png site/assets/app-home.png
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
