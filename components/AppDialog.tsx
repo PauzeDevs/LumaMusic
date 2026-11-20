@@ -1,5 +1,4 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { useEffect } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "../theme/useTheme";
 
@@ -20,7 +19,6 @@ export function AppDialog({ visible, title, message, actions, onDismiss }: {
 }) {
   const { colors } = useTheme();
   useEffect(() => {
-    // Keep the dialog entirely controlled by its owning screen.
   }, [visible]);
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", alignItems: "center", padding: 22 },
@@ -36,7 +34,7 @@ export function AppDialog({ visible, title, message, actions, onDismiss }: {
     actionText: { color: colors.text, fontSize: 13, fontWeight: "700", flex: 1 },
     selected: { color: colors.accent, fontSize: 16, marginLeft: 10 },
     cancelText: { color: colors.muted },
-    destructiveText: { color: colors.danger ?? "#F07878" }
+    destructiveText: { color: "#F07878" }
   });
   return (
     <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
