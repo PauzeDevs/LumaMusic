@@ -21,7 +21,7 @@ function ThemedNavigator() {
   return <GlassBlurTarget><View style={{ flex: 1, backgroundColor: colors.background }}>
     <DotPattern />
     <StatusBar style={isDark ? "light" : "dark"} />
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" }, animation: screenAnimation("fade_from_bottom"), animationDuration: transitionDuration }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background, flex: 1 }, animation: screenAnimation("fade_from_bottom"), animationDuration: transitionDuration }}>
       <Stack.Screen name="(tabs)" options={{ animation: screenAnimation("fade"), animationDuration: transitionDuration }} />
       <Stack.Screen name="notifications" options={{ presentation: "card", animation: screenAnimation("slide_from_right"), animationDuration: transitionDuration }} />
       <Stack.Screen name="privacy" options={{ presentation: "card", animation: screenAnimation("slide_from_right"), animationDuration: transitionDuration }} />
