@@ -35,7 +35,7 @@ class LumaAudioEngineModule : Module() {
   private var audioLabEnabled = false
   private var audioLabBands = FloatArray(5)
   private var audioLabPreamp = 0f
-  private var audioLabLimiter = true
+  private var audioLabLimiter = false
   private var audioLabReverb = "off"
   private var audioLabBalance = 0f
   private val handler = Handler(Looper.getMainLooper())
