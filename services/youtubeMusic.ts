@@ -126,14 +126,54 @@ function continuationTokens(root: any, output: string[] = []): string[] {
   return output;
 }
 
-async function browseTracksWithContinuation(initialPayload: Obj, limit: number): Promise<MusicTrack[]> {
+function releaseTrackSection(root: any): Obj | null {
+  const stack: unknown[] = [root];
+  const shelves: Obj[] = [];
+  let visited = 0;
+  while (stack.length > 0 && visited < 50_000) {
+    const current = stack.pop();
+    if (!current || typeof current !== "object") continue;
+    visited += 1;
+    if (Array.isArray(current)) {
+      for (let index = current.length - 1; index >= 0; index -= 1) stack.push(current[index]);
+      continue;
+    }
+    const record = current as Obj;
+    if (record.musicShelfRenderer || record.musicShelfContinuation) {
+      const shelf = record.musicShelfRenderer ?? record.musicShelfContinuation;
+      if (Array.isArray(shelf.contents)) shelves.push(shelf);
+      continue;
+    }
+    const values = Object.values(record);
+    for (let index = values.length - 1; index >= 0; index -= 1) {
+      if (values[index] && typeof values[index] === "object") stack.push(values[index]);
+    }
+  }
+  if (shelves.length === 0) return null;
+  // Album browse pages may also contain artist recommendations and related
+  // videos. Only consume the dedicated music shelf, never every nested row.
+  return shelves.sort((a, b) => (b.contents?.length ?? 0) - (a.contents?.length ?? 0))[0];
+}
+
+async function browseTracksWithContinuation(
+  initialPayload: Obj,
+  limit: number,
+  releaseMetadata?: { artist?: string; artwork?: string }
+): Promise<MusicTrack[]> {
   const collected: MusicTrack[] = [];
   const seenTokens = new Set<string>();
   let payload = initialPayload;
   for (let page = 0; page < 12; page += 1) {
-    const rows = collectRenderers(payload, "musicResponsiveListItemRenderer");
-    collected.push(...rows.map(mapTrack).filter((item): item is MusicTrack => Boolean(item)));
-    const token = continuationTokens(payload).find((candidate) => !seenTokens.has(candidate));
+    const section = releaseTrackSection(payload);
+    if (!section) break;
+    const rows = collectRenderers(section, "musicResponsiveListItemRenderer");
+    const pageTracks = rows.map(mapTrack).filter((item): item is MusicTrack => Boolean(item));
+    collected.push(...pageTracks.map((track) => ({
+      ...track,
+      artist: releaseMetadata?.artist || track.artist,
+      artwork: releaseMetadata?.artwork || track.artwork
+    })));
+    const token = continuationTokens(section).find((candidate) => !seenTokens.has(candidate));
     if (!token || collected.length >= limit) break;
     seenTokens.add(token);
     payload = await innerTubePost(BROWSE_URL, { continuation: token });
@@ -150,34 +190,46 @@ function uniqueById<T extends { id: string }>(items: T[]): T[] {
 }
 
 async function innerTubePost(url: string, body: Obj): Promise<Obj> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Origin: "https://music.youtube.com",
-      Referer: "https://music.youtube.com/",
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    },
-    body: JSON.stringify({ context: CONTEXT, ...body })
-  });
-
-  if (!response.ok) {
-    throw new Error("YouTube Music InnerTube request failed (" + response.status + "). Please try again.");
-  }
-  const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentLength > 5 * 1024 * 1024) {
-    throw new Error("YouTube Music returned an unusually large response. Please try again.");
-  }
-  const bodyText = await response.text();
-  if (bodyText.length > 5 * 1024 * 1024) {
-    throw new Error("YouTube Music returned an unusually large response. Please try again.");
-  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    return JSON.parse(bodyText) as Obj;
-  } catch {
-    throw new Error("YouTube Music returned an invalid response. Please try again.");
+    const response = await fetch(url, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Origin: "https://music.youtube.com",
+        Referer: "https://music.youtube.com/",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      body: JSON.stringify({ context: CONTEXT, ...body })
+    });
+
+    if (!response.ok) {
+      throw new Error("YouTube Music InnerTube request failed (" + response.status + "). Please try again.");
+    }
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    if (contentLength > 5 * 1024 * 1024) {
+      throw new Error("YouTube Music returned an unusually large response. Please try again.");
+    }
+    const bodyText = await response.text();
+    if (bodyText.length > 5 * 1024 * 1024) {
+      throw new Error("YouTube Music returned an unusually large response. Please try again.");
+    }
+    try {
+      return JSON.parse(bodyText) as Obj;
+    } catch {
+      throw new Error("YouTube Music returned an invalid response. Please try again.");
+    }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("YouTube Music request timed out. Check your connection and try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -363,10 +415,10 @@ export async function getYouTubeMusicUpNextTracks(videoId: string, limit = 20): 
  */
 export async function getYouTubeMusicPlaylistTracks(playlistId: string, limit = 100): Promise<MusicTrack[]> {
   const cleanId = playlistId.replace(/^youtube-playlist:/i, "").trim();
+  if (!cleanId) return [];
   const browseId = cleanId.startsWith("VL") ? cleanId : `VL${cleanId}`;
   const payload = await innerTubePost(BROWSE_URL, { browseId });
-  const items = collectRenderers(payload, "musicResponsiveListItemRenderer");
-  return uniqueById(items.map(mapTrack).filter((item): item is MusicTrack => Boolean(item))).slice(0, Math.max(1, Math.min(limit, 500)));
+  return browseTracksWithContinuation(payload, Math.max(1, Math.min(limit, 500)));
 }
 
 export async function openTrackInYouTubeMusic(track: MusicTrack): Promise<void> {
@@ -448,9 +500,13 @@ export async function getYouTubeMusicArtistReleases(artistId: string, limit = 30
 }
 
 /** Loads all playable tracks from an album, EP or single browse page. */
-export async function getYouTubeMusicReleaseTracks(releaseBrowseId: string, limit = 100): Promise<MusicTrack[]> {
+export async function getYouTubeMusicReleaseTracks(
+  releaseBrowseId: string,
+  limit = 100,
+  releaseMetadata?: { artist?: string; artwork?: string }
+): Promise<MusicTrack[]> {
   const browseId = releaseBrowseId.trim();
   if (!browseId) return [];
   const payload = await innerTubePost(BROWSE_URL, { browseId });
-  return browseTracksWithContinuation(payload, limit);
+  return browseTracksWithContinuation(payload, limit, releaseMetadata);
 }

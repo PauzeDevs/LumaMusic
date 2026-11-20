@@ -1,8 +1,8 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  # A deliberate workflow-file update on main can publish a release.
-  # Ordinary application commits do not publish APKs.
+  # APK builds are never triggered by pushes to master.
+  # Publishing remains an explicit workflow_dispatch action.
   push:
     branches:
       - main
@@ -90,7 +90,7 @@ jobs:
 
   release:
     name: Publish LumaMusic DayLight stable release
-    if: github.event_name == 'push' || github.event.inputs.release_channel == 'stable'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_channel == 'stable'
     needs: build
     runs-on: ubuntu-latest
     steps:

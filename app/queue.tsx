@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
+import { PageEntrance } from "../components/PageEntrance";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePlayerStore } from "../store/player";
 import { useTheme } from "../theme/useTheme";
@@ -18,6 +19,7 @@ export default function QueueScreen() {
   const currentIndex = usePlayerStore((s) => s.currentQueueIndex);
 
   return (
+    <PageEntrance>
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></Pressable>
@@ -41,6 +43,7 @@ export default function QueueScreen() {
             </View>
           ); }} ListEmptyComponent={<Text style={styles.empty}>Your queue is empty. Find a track and start a new session.</Text>} />
     </SafeAreaView>
+    </PageEntrance>
   );
 }
 

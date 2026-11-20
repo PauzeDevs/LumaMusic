@@ -1,6 +1,9 @@
 import type { MusicTrack } from "../types/music";
+import { listLyricsProviders, registerBuiltInLyricsProvider } from "./extensions/registry";
+import { LUMA_EXTENSION_API_VERSION, type LumaExtensionManifest } from "./extensions/types";
 
-export type LyricLine = { time: number | null; text: string };
+export type LyricWord = { time: number; text: string };
+export type LyricLine = { time: number | null; text: string; words?: LyricWord[] };
 export type LyricsState =
   | { status: "unconfigured" | "loading" | "not_found" | "restricted" | "error" }
   | { status: "available"; lines: LyricLine[]; provider: string; copyright?: string; attribution?: { text: string; url?: string } };
@@ -21,33 +24,88 @@ const CLIENT_HEADER = "LumaMusic/0.1.0 (https://github.com/PauzeDevs/LumaMusic)"
 const CACHE_TTL = 6 * 60 * 60 * 1000;
 const MISS_TTL = 10 * 60 * 1000;
 const ERROR_TTL = 30 * 1000;
+const LYRICS_REQUEST_TIMEOUT_MS = 18_000;
 const cache = new Map<string, { expiresAt: number; value: LyricsState }>();
 const MAX_LYRICS_CACHE_ENTRIES = 32;
 const inFlight = new Map<string, Promise<LyricsState>>();
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+const wordTimestampPattern = /<(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?>/g;
+const metadataPattern = /^\[(?:ar|ti|al|by|re|ve|length|kana|la|au|tool):[^\]]*\]$/i;
 
+function timestampSeconds(minutes: string, seconds: string, fraction?: string): number {
+  return Number(minutes) * 60 + Number(seconds) + (fraction ? Number("0." + fraction) : 0);
+}
+
+/** Parses standard LRC, multi-timestamp LRC and enhanced LRC word timestamps. */
 export function parseLrc(value: string): LyricLine[] {
   const lines: LyricLine[] = [];
+  let offsetSeconds = 0;
+
   for (const row of value.split(/\r?\n/)) {
-    const timestamps = [...row.matchAll(timestampPattern)];
-    const text = row.replace(timestampPattern, "").trim();
-    if (!text) continue;
-    if (timestamps.length === 0) {
-      lines.push({ time: null, text });
+    const trimmed = row.trim();
+    const offsetMatch = trimmed.match(/^\[offset:([+-]?\d+)\]$/i);
+    if (offsetMatch) {
+      const offsetMs = Number(offsetMatch[1]);
+      if (Number.isFinite(offsetMs)) offsetSeconds = offsetMs / 1000;
       continue;
     }
-    for (const match of timestamps) {
-      lines.push({
-        time: Number(match[1]) * 60 + Number(match[2]) + (match[3] ? Number(`0.${match[3]}`) : 0),
-        text
+    if (!trimmed || metadataPattern.test(trimmed)) continue;
+
+    const timestamps = [...row.matchAll(timestampPattern)];
+    const content = row.replace(timestampPattern, "");
+    const wordMatches = [...content.matchAll(wordTimestampPattern)];
+    const text = content.replace(wordTimestampPattern, "").trim();
+    if (!text || /^\[[a-z]+:[^\]]*\]$/i.test(text)) continue;
+
+    const words: LyricWord[] = [];
+    if (wordMatches.length > 0) {
+      const firstIndex = wordMatches[0].index ?? 0;
+      const prefix = content.slice(0, firstIndex);
+      if (prefix.trim()) {
+        words.push({
+          time: Math.max(0, (timestamps[0] ? timestampSeconds(timestamps[0][1], timestamps[0][2], timestamps[0][3]) : 0) + offsetSeconds),
+          text: prefix
+        });
+      }
+      wordMatches.forEach((match, index) => {
+        const segmentStart = (match.index ?? 0) + match[0].length;
+        const segmentEnd = index + 1 < wordMatches.length ? (wordMatches[index + 1].index ?? content.length) : content.length;
+        const wordText = content.slice(segmentStart, segmentEnd);
+        if (!wordText.trim()) return;
+        words.push({
+          time: Math.max(0, timestampSeconds(match[1], match[2], match[3]) + offsetSeconds),
+          text: wordText
+        });
       });
     }
+
+    if (timestamps.length === 0) {
+      if (words.length > 0) lines.push({ time: words[0].time, text, words });
+      else lines.push({ time: null, text });
+      continue;
+    }
+
+    const baseLineTime = timestamps.length > 0
+      ? timestampSeconds(timestamps[0][1], timestamps[0][2], timestamps[0][3]) + offsetSeconds
+      : 0;
+    for (const match of timestamps) {
+      const lineTime = Math.max(0, timestampSeconds(match[1], match[2], match[3]) + offsetSeconds);
+      const wordShift = lineTime - baseLineTime;
+      const shiftedWords = words.map((word) => ({ ...word, time: Math.max(0, word.time + wordShift) }));
+      lines.push({ time: lineTime, text, ...(shiftedWords.length > 0 ? { words: shiftedWords } : {}) });
+    }
   }
+
   return lines.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 }
 
 function normalize(value: string): string {
-  return value.toLocaleLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  // Keep Unicode letters and numbers so Punjabi, Hindi and other non-Latin
+  // artist/title metadata can be matched instead of collapsing to empty text.
+  return value.toLocaleLowerCase().normalize("NFKC")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 function recordMatches(record: LrclibRecord, track: MusicTrack): boolean {
@@ -55,6 +113,7 @@ function recordMatches(record: LrclibRecord, track: MusicTrack): boolean {
   const wantedArtist = normalize(track.artist);
   const actualTitle = normalize(record.trackName);
   const actualArtist = normalize(record.artistName);
+  if (!wantedTitle || !wantedArtist || !actualTitle || !actualArtist) return false;
   const titleMatch = actualTitle === wantedTitle || actualTitle.includes(wantedTitle) || wantedTitle.includes(actualTitle);
   const artistMatch = actualArtist === wantedArtist || actualArtist.includes(wantedArtist) || wantedArtist.includes(actualArtist);
   if (!titleMatch || !artistMatch) return false;
@@ -96,27 +155,100 @@ async function requestJson<T>(url: string): Promise<T | null> {
   }
 }
 
-async function fetchLyrics(track: MusicTrack): Promise<LyricsState> {
+const lyricsOvHManifest: LumaExtensionManifest = {
+  id: "dev.pauze.lumamusic.lyrics-ovh",
+  name: "Lyrics.ovh",
+  version: "1.0.0",
+  apiVersion: LUMA_EXTENSION_API_VERSION,
+  description: "Plain-text lyrics fallback provider.",
+  author: "PauzeDevs",
+  kind: "lyrics-provider" as const,
+  permissions: ["lyrics:read-track-metadata", "lyrics:provide"],
+  entrypoint: "built-in:lyrics.ovh"
+};
+
+registerBuiltInLyricsProvider({
+  manifest: lyricsOvHManifest,
+  async searchLyrics(track, signal) {
+    const artist = encodeURIComponent(track.artist.trim());
+    const title = encodeURIComponent(track.title.trim());
+    const response = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`, {
+      headers: { Accept: "application/json" }, signal
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Lyrics.ovh request failed (${response.status}).`);
+    const payload = await response.json() as { lyrics?: unknown };
+    const raw = typeof payload.lyrics === "string" ? payload.lyrics.trim() : "";
+    const lines = raw.split(/\r?\n/).map((text) => ({ time: null, text: text.trim() })).filter((line) => line.text);
+    return lines.length ? {
+      lines, synced: false,
+      attribution: { text: "Lyrics source: Lyrics.ovh", url: "https://lyrics.ovh" }
+    } : null;
+  }
+});
+async function fetchLrclibLyrics(track: MusicTrack): Promise<LyricsState> {
   const duration = Math.round((track.durationMs ?? 0) / 1000);
   const exactParams = new URLSearchParams({ track_name: track.title, artist_name: track.artist });
   if (duration >= 1 && duration <= 3600) exactParams.set("duration", String(duration));
+  const exact = await requestJson<LrclibRecord>(`${API}/get?${exactParams.toString()}`);
+  if (exact && recordMatches(exact, track)) {
+    const result = toLyricsState(exact);
+    if (result.status === "available") return result;
+  }
+  const searchParams = new URLSearchParams({ q: `${track.title} ${track.artist}` });
+  const results = await requestJson<LrclibRecord[]>(`${API}/search?${searchParams.toString()}`);
+  const match = results?.find((record) => recordMatches(record, track));
+  return match ? toLyricsState(match) : { status: "not_found" };
+}
 
+async function fetchExtensionLyrics(track: MusicTrack, providerId: string): Promise<LyricsState> {
+  const provider = listLyricsProviders().find((item) => item.manifest.id === providerId);
+  if (!provider) return { status: "not_found" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9_000);
   try {
-    const exact = await requestJson<LrclibRecord>(`${API}/get?${exactParams.toString()}`);
-    if (exact && recordMatches(exact, track)) return toLyricsState(exact);
-
-    // Search fallback handles alternate cuts and small duration metadata differences.
-    const searchParams = new URLSearchParams({ q: `${track.title} ${track.artist}` });
-    const results = await requestJson<LrclibRecord[]>(`${API}/search?${searchParams.toString()}`);
-    const match = results?.find((record) => recordMatches(record, track));
-    return match ? toLyricsState(match) : { status: "not_found" };
-  } catch {
-    return { status: "error" };
+    const result = await provider.searchLyrics({
+      id: track.id, title: track.title, artist: track.artist, durationMs: track.durationMs
+    }, controller.signal);
+    if (!result?.lines.length) return { status: "not_found" };
+    return {
+      status: "available",
+      lines: result.lines,
+      provider: provider.manifest.name,
+      copyright: `Lyrics provided by ${provider.manifest.name}`,
+      attribution: result.attribution
+    };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
-export function getLyrics(track: MusicTrack): Promise<LyricsState> {
-  const key = `${normalize(track.title)}::${normalize(track.artist)}::${Math.round((track.durationMs ?? 0) / 1000)}`;
+async function fetchLyrics(track: MusicTrack, preferredProvider: "auto" | "lrclib" | "lyrics-ovh"): Promise<LyricsState> {
+  // Query both built-in sources together so a fast plain-text response cannot
+  // beat a slower word-synced result merely because it was requested first.
+  const attempts = await Promise.allSettled([
+    fetchLrclibLyrics(track),
+    fetchExtensionLyrics(track, "dev.pauze.lumamusic.lyrics-ovh")
+  ]);
+  const available = attempts.flatMap((attempt) =>
+    attempt.status === "fulfilled" && attempt.value.status === "available" ? [attempt.value] : []
+  );
+  const quality = (result: Extract<LyricsState, { status: "available" }>) => {
+    if (result.lines.some((line) => line.words && line.words.length > 0)) return 3;
+    if (result.lines.some((line) => line.time !== null)) return 2;
+    return 1;
+  };
+  const preferredName = preferredProvider === "lyrics-ovh" ? "Lyrics.ovh" : "LRCLIB";
+  available.sort((a, b) => quality(b) - quality(a) ||
+    Number(b.provider === preferredName) - Number(a.provider === preferredName));
+  if (available[0]) return available[0];
+  return attempts.some((attempt) => attempt.status === "rejected")
+    ? { status: "error" }
+    : { status: "not_found" };
+}
+
+export function getLyrics(track: MusicTrack, preferredProvider: "auto" | "lrclib" | "lyrics-ovh" = "auto"): Promise<LyricsState> {
+  const key = `${normalize(track.title)}::${normalize(track.artist)}::${Math.round((track.durationMs ?? 0) / 1000)}::${preferredProvider}`;
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
     cache.delete(key);
@@ -127,7 +259,12 @@ export function getLyrics(track: MusicTrack): Promise<LyricsState> {
   const pending = inFlight.get(key);
   if (pending) return pending;
 
-  const request = fetchLyrics(track).then((value) => {
+  const request = Promise.race([
+    fetchLyrics(track, preferredProvider),
+    new Promise<LyricsState>((resolve) => {
+      setTimeout(() => resolve({ status: "error" }), LYRICS_REQUEST_TIMEOUT_MS);
+    })
+  ]).catch((): LyricsState => ({ status: "error" })).then((value) => {
     cache.set(key, { value, expiresAt: Date.now() + (value.status === "not_found" ? MISS_TTL : value.status === "error" ? ERROR_TTL : CACHE_TTL) });
     while (cache.size > MAX_LYRICS_CACHE_ENTRIES) {
       const oldestKey = cache.keys().next().value;

@@ -1,13 +1,17 @@
+import { useRef } from "react";
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { PageEntrance } from "../../components/PageEntrance";
+import { AlbumArtwork } from "../../components/AlbumArtwork";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../../components/Artwork";
 import { TrackRow } from "../../components/TrackRow";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
 import { getYouTubeMusicArtistTracks, getYouTubeMusicArtistReleases, type MusicRelease } from "../../services/youtubeMusic";
+import { usePreferencesStore } from "../../store/preferences";
 
 export default function ArtistScreen() {
   const { colors } = useTheme();
@@ -30,7 +34,7 @@ export default function ArtistScreen() {
   const singles = releases.filter((release) => release.kind === "single");
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <PageEntrance><SafeAreaView style={styles.safe} edges={["top"]}>
       <FlatList data={tracks} keyExtractor={(track) => track.id} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} initialNumToRender={10} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews ListHeaderComponent={<>
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
@@ -38,7 +42,7 @@ export default function ArtistScreen() {
         </Pressable>
 
         <View style={styles.hero}>
-          <Artwork uri={artistArtwork ?? ""} size={148} radius={74} />
+          <AlbumArtwork uri={artistArtwork ?? ""} size={148} radius={74} />
           <Text style={styles.eyebrow}>ARTIST</Text>
           <Text style={styles.title}>{artistName || "Artist"}</Text>
           <Text style={styles.copy}>Explore tracks and play them without leaving LumaMusic.</Text>
@@ -46,7 +50,7 @@ export default function ArtistScreen() {
 
         {releasesQuery.isLoading ? <View style={styles.releaseLoading}><ActivityIndicator color={colors.accent} /><Text style={styles.stateCopy}>Finding albums and EPs…</Text></View> : null}
         {releasesQuery.isError ? <Pressable onPress={() => releasesQuery.refetch()} style={styles.releaseRetry}><Text style={styles.retryText}>Couldn't load releases · Tap to retry</Text></Pressable> : null}
-        {albums.length > 0 ? <ReleaseShelf title="Albums" releases={albums} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
+        {albums.length > 0 ? <ReleaseShelf title="Albums" releases={albums} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind, artist: artistName || "" } })} /> : null}
         {eps.length > 0 ? <ReleaseShelf title="EPs" releases={eps} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
         {singles.length > 0 ? <ReleaseShelf title="Singles" releases={singles} colors={colors} onOpen={(release) => router.push({ pathname: "/release/[id]", params: { id: release.browseId, title: release.title, artwork: release.artwork, kind: release.kind } })} /> : null}
 
@@ -78,7 +82,7 @@ export default function ArtistScreen() {
           </View>
         ) : null}
 </>} renderItem={({ item: track, index }) => <TrackRow track={track} index={index} showIndex queue={tracks} />} />
-    </SafeAreaView>
+    </SafeAreaView></PageEntrance>
   );
 }
 
@@ -110,12 +114,55 @@ function ReleaseShelf({ title, releases, colors, onOpen }: { title: string; rele
       <Text style={{ color: colors.text, fontSize: 17, fontWeight: "800" }}>{title}</Text>
       <Text style={{ color: colors.subtle, fontSize: 10, fontWeight: "700" }}>{releases.length} releases</Text>
     </View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 13, paddingRight: 20 }}>
-      {releases.map((release) => <Pressable key={release.id} onPress={() => onOpen(release)} style={{ width: 152, padding: 8, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.045)", borderWidth: 1, borderColor: colors.border }}>
-        <Artwork uri={release.artwork} size={134} radius={15} />
-        <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "700", marginTop: 9 }}>{release.title}</Text>
-        <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10, marginTop: 3 }}>{release.subtitle}</Text>
-      </Pressable>)}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 13, paddingRight: 20 }}
+      snapToInterval={165}
+      snapToAlignment="start"
+      decelerationRate="fast"
+      directionalLockEnabled
+    >
+      {releases.map((release) => <ReleaseCard key={release.id} release={release} colors={colors} onPress={() => onOpen(release)} />)}
     </ScrollView>
   </View>;
+}
+
+
+function ReleaseCard({ release, colors, onPress }: { release: MusicRelease; colors: ThemePalette; onPress: () => void }) {
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
+  const pressScale = useRef(new Animated.Value(1)).current;
+  const pressOpacity = useRef(new Animated.Value(1)).current;
+  const animatePress = (pressed: boolean) => {
+    if (motionStyle === "off") return;
+    Animated.parallel([
+      Animated.spring(pressScale, { toValue: pressed ? 0.975 : 1, speed: 28, bounciness: 4, useNativeDriver: true }),
+      Animated.timing(pressOpacity, { toValue: pressed ? 0.86 : 1, duration: pressed ? 90 : 140, useNativeDriver: true })
+    ]).start();
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => animatePress(true)}
+      onPressOut={() => animatePress(false)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${release.title}, ${release.kind}`}
+    >
+      <Animated.View style={{
+        width: 152,
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: "rgba(255,255,255,0.045)",
+        borderWidth: 1,
+        borderColor: colors.border,
+        opacity: pressOpacity,
+        transform: [{ scale: pressScale }]
+      }}>
+        <AlbumArtwork uri={release.artwork} size={134} radius={15} />
+        <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "700", marginTop: 9 }}>{release.title}</Text>
+        <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10, marginTop: 3 }}>{release.subtitle}</Text>
+      </Animated.View>
+    </Pressable>
+  );
 }

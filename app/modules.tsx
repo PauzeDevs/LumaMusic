@@ -1,12 +1,16 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassSurface } from "../components/GlassSurface";
 import { useCustomizationStore } from "../store/customization";
 import { usePreferencesStore, type AccentTheme, type PlayerStyle, type SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
+import { validateModuleManifest, MODULE_PERMISSION_IDS, type ModuleManifest, type ModulePermission } from "../services/moduleManifest";
+import { resolveModuleRuntime } from "../services/moduleRuntime";
 
 const accents: { id: AccentTheme; label: string; color: string }[] = [
   { id: "red", label: "Velvet", color: "#FA2D48" }, { id: "violet", label: "Amethyst", color: "#B69BFF" },
@@ -46,6 +50,10 @@ export default function ModulesScreen() {
   const userModules = useCustomizationStore((s) => s.userModules);
   const createUserModule = useCustomizationStore((s) => s.createUserModule);
   const deleteUserModule = useCustomizationStore((s) => s.deleteUserModule);
+  const extensions = useCustomizationStore((s) => s.extensions);
+  const installExtension = useCustomizationStore((s) => s.installExtension);
+  const updateExtensionPermissions = useCustomizationStore((s) => s.updateExtensionPermissions);
+  const removeExtension = useCustomizationStore((s) => s.removeExtension);
   const setAccent = usePreferencesStore((s) => s.setAccentTheme);
   const setSurface = usePreferencesStore((s) => s.setSurfaceStyle);
   const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
@@ -61,6 +69,22 @@ export default function ModulesScreen() {
   const [lookAccent, setLookAccent] = useState<AccentTheme>("red");
   const [lookSurface, setLookSurface] = useState<SurfaceStyle>("liquid");
   const [lookPlayerStyle, setLookPlayerStyle] = useState<PlayerStyle>("standard");
+  const [pendingManifest, setPendingManifest] = useState<ModuleManifest | null>(null);
+  const [approvedPermissions, setApprovedPermissions] = useState<ModulePermission[]>([]);
+  const [permissionEditorId, setPermissionEditorId] = useState<string | null>(null);
+
+  const importModule = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ["application/json", "text/json", "text/plain"], copyToCacheDirectory: true, multiple: false });
+      if (result.canceled || !result.assets[0]) return;
+      const raw = await FileSystem.readAsStringAsync(result.assets[0].uri);
+      const manifest = validateModuleManifest(JSON.parse(raw));
+      setPendingManifest(manifest);
+      setApprovedPermissions([]);
+    } catch (error) {
+      Alert.alert("Couldn't import module", error instanceof Error ? error.message : "Choose a valid LumaMusic module manifest.");
+    }
+  };
 
   const applyLook = (accent: AccentTheme, surface: SurfaceStyle, playerStyle: PlayerStyle = "standard") => {
     setAccent(accent); setSurface(surface); setPlayerStyle(playerStyle);
@@ -114,6 +138,23 @@ export default function ModulesScreen() {
         <Pressable onPress={() => setModuleBuilderOpen(true)} style={styles.createModuleButton}><Ionicons name="add-circle-outline" size={17} color={colors.accent} /><Text style={styles.createModuleText}>Create your own module</Text></Pressable>
       </> : null}
 
+      <View style={styles.sectionTop}><Text style={styles.sectionTitle}>THIRD-PARTY MODULES</Text><Pressable onPress={importModule}><Text style={styles.link}>Import manifest</Text></Pressable></View>
+      <Text style={styles.comingSoon}>Install a signed-off declarative manifest and review each requested permission before granting it.</Text>
+      {extensions.map((extension) => <GlassSurface key={extension.manifest.id} style={styles.moduleCard} contentStyle={styles.moduleContent}>
+        <View style={styles.moduleIcon}><Ionicons name="extension-puzzle-outline" size={21} color={colors.accent} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.moduleName}>{extension.manifest.name}</Text>
+          <Text style={styles.moduleMeta}>v{extension.manifest.version} · {extension.approvedPermissions.length}/{extension.manifest.permissions.length} permissions granted</Text>
+          <Text style={styles.moduleFoot}>{extension.manifest.description}</Text>
+        </View>
+        {resolveModuleRuntime(extension.manifest, extension.approvedPermissions).status === "ready" ? <Pressable onPress={() => {
+          const runtime = resolveModuleRuntime(extension.manifest, extension.approvedPermissions);
+          if (runtime.status === "ready") applyLook(runtime.appearance.accent ?? activeAccent, runtime.appearance.surface ?? activeSurface);
+        }} style={styles.action}><Text style={styles.actionText}>Apply</Text></Pressable> : null}
+        <Pressable onPress={() => { setPermissionEditorId(extension.manifest.id); setApprovedPermissions([...extension.approvedPermissions]); }} style={styles.action}><Text style={styles.actionText}>Permissions</Text></Pressable>
+        <Pressable onPress={() => Alert.alert("Remove module?", `Remove ${extension.manifest.name} and revoke its permissions?`, [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeExtension(extension.manifest.id) }])} style={styles.removeButton}><Ionicons name="trash-outline" size={16} color={colors.muted} /></Pressable>
+      </GlassSurface>)}
+
       <Text style={styles.sectionTitle}>JS & SOURCE MODULES</Text>
       
       {installed.map((id, index) => {
@@ -151,6 +192,29 @@ export default function ModulesScreen() {
       <Pressable onPress={() => router.push("/appearance")} style={styles.moreSettings}><Ionicons name="options-outline" size={17} color={colors.accent} /><Text style={styles.moreSettingsText}>Open all appearance controls</Text><Ionicons name="chevron-forward" size={16} color={colors.subtle} /></Pressable>
       <Text style={styles.footer}>Modules are managed locally. This build does not execute arbitrary third-party JavaScript or install unverified code.</Text>
     </ScrollView>
+
+    <Modal visible={Boolean(pendingManifest || permissionEditorId)} transparent animationType="slide" onRequestClose={() => { setPendingManifest(null); setPermissionEditorId(null); }}>
+      <View style={styles.modalBackdrop}><View style={styles.sheet}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.sheetHeader}><View style={{ flex: 1 }}><Text style={styles.sheetEyebrow}>MODULE PERMISSIONS</Text><Text style={styles.sheetTitle}>{pendingManifest ? "Review installation" : "Manage access"}</Text></View><Pressable onPress={() => { setPendingManifest(null); setPermissionEditorId(null); }} style={styles.closeSheet}><Ionicons name="close" size={20} color={colors.text} /></Pressable></View>
+        <Text style={styles.moduleName}>{pendingManifest?.name ?? extensions.find((item) => item.manifest.id === permissionEditorId)?.manifest.name}</Text>
+        <Text style={styles.moduleMeta}>{pendingManifest?.description ?? "Choose which capabilities this module may request."}</Text>
+        {MODULE_PERMISSION_IDS.filter((permission) => pendingManifest ? pendingManifest.permissions.includes(permission) : extensions.find((item) => item.manifest.id === permissionEditorId)?.manifest.permissions.includes(permission)).map((permission) => {
+          const labels: Record<ModulePermission, string> = { read_library: "Read your music library", manage_queue: "Add or reorder queue tracks", network_access: "Connect to external network services" };
+          const checked = approvedPermissions.includes(permission);
+          return <Pressable key={permission} onPress={() => setApprovedPermissions((current) => checked ? current.filter((item) => item !== permission) : [...current, permission])} style={styles.permissionRow}>
+            <View style={{ flex: 1 }}><Text style={styles.surfaceText}>{labels[permission]}</Text><Text style={styles.playerDetail}>{permission}</Text></View>
+            <Ionicons name={checked ? "checkbox" : "square-outline"} size={22} color={checked ? colors.accent : colors.muted} />
+          </Pressable>;
+        })}
+        <Text style={styles.moduleBuilderNote}>Permissions are denied by default. Modules in this build are declarative only; no third-party JavaScript is executed.</Text>
+        <Pressable onPress={() => {
+          if (pendingManifest) installExtension(pendingManifest, approvedPermissions);
+          else if (permissionEditorId) updateExtensionPermissions(permissionEditorId, approvedPermissions);
+          setPendingManifest(null); setPermissionEditorId(null);
+        }} style={styles.saveButton}><Text style={styles.saveText}>{pendingManifest ? "Install module" : "Save permissions"}</Text></Pressable>
+      </View></View>
+    </Modal>
 
     <Modal visible={moduleBuilderOpen} transparent animationType="slide" onRequestClose={() => setModuleBuilderOpen(false)}>
       <View style={styles.modalBackdrop}><View style={styles.sheet}>
@@ -208,6 +272,7 @@ function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
   createModuleButton: { minHeight: 44, borderRadius: 13, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 18 },
   createModuleText: { color: c.accent, fontSize: 11, fontWeight: "800" },
   moduleBuilderNote: { color: c.muted, fontSize: 10, lineHeight: 16, marginTop: 13 },
+  permissionRow: { minHeight: 54, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border, paddingVertical: 8 },
   sectionTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 18, marginBottom: 8 },
   link: { color: c.accent, fontSize: 11, fontWeight: "700" },
   emptyCard: { borderRadius: 19 }, emptyContent: { padding: 18, alignItems: "flex-start", gap: 9 },

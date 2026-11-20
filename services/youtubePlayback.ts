@@ -17,6 +17,9 @@ const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
 // Stream URLs are large signed strings. Keep only a short LRU window for the current listening session.
 const MAX_STREAM_CACHE_ENTRIES = 8;
+// Coalesce playlist prefetch and foreground playback requests for the same video.
+const inFlightResolutions = new Map<string, Promise<ResolvedYouTubeAudio>>();
+const resolutionVersions = new Map<string, number>();
 
 function getCachedStream(videoId: string) {
   const cached = streamCache.get(videoId);
@@ -48,6 +51,33 @@ async function resolvePoTokenQuickly(videoId: string) {
 }
 
 /**
+ * NewPipe resolves YouTube's signed and throttled stream URLs before returning
+ * them. Prefer it on Android; the InnerTube shortcut is retained as fallback.
+ */
+async function resolveNewPipeStream(videoId: string, track: MusicTrack): Promise<ResolvedYouTubeAudio | null> {
+  const result = await resolveWithNewPipe(videoId);
+  if (!result?.url) return null;
+
+  const url = new URL(result.url);
+  const expiry = Number(url.searchParams.get("expire") || 0) * 1000;
+  const poToken = await resolvePoTokenQuickly(videoId);
+  if (poToken && poToken.expiresAt > Date.now() + 30_000) {
+    url.searchParams.set("pot", poToken.contentToken);
+  }
+
+  return {
+    url: url.toString(),
+    mimeType: result.mimeType || "audio/*",
+    durationSeconds: result.durationSeconds > 0
+      ? result.durationSeconds
+      : Math.max(0, Math.round((track.durationMs || 0) / 1000)),
+    bitrate: result.bitrate > 0 ? result.bitrate : undefined,
+    userAgent: result.userAgent,
+    expiresAt: expiry > Date.now() ? expiry : Date.now() + 30 * 60 * 1000
+  };
+}
+
+/**
  * InnerTube client profiles that return direct, unthrottled adaptive audio URLs
  * without requiring a browser JS signature decipherer or external yt-dlp server.
  */
@@ -59,15 +89,15 @@ const INNERTUBE_PLAYER_CLIENTS = [
     name: "VISIONOS",
     clientId: "101",
     userAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+      "com.google.visionos.youtube/1.04(RealityDevice17,1; U; CPU visionOS 26_6_0 like Mac OS X; US)",
     context: {
       client: {
         clientName: "VISIONOS",
-        clientVersion: "1.02",
+        clientVersion: "1.04",
         deviceMake: "Apple",
         deviceModel: "RealityDevice17,1",
         osName: "visionOS",
-        osVersion: "26.5.23O471",
+        osVersion: "26.6.0.23O770",
         hl: "en",
         gl: "US"
       }
@@ -142,21 +172,25 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
 }
 
 /**
- * Resolves a playable audio stream directly through YouTube's InnerTube /player API.
- * Keeps InnerTube as the primary resolver and falls back to NewPipe on Android only if all InnerTube clients fail.
+ * Resolves a playable YouTube audio stream. Android uses NewPipe first so signed
+ * and throttled URLs are deciphered; InnerTube client profiles remain fallback.
  */
-export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
-  const videoId = extractYouTubeVideoId(track);
-  if (!videoId) {
-    throw new Error("Missing YouTube video ID for this track.");
+async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: string): Promise<ResolvedYouTubeAudio> {
+  const errors: string[] = [];
+
+  // Prefer NewPipe on Android. It resolves YouTube signature and n-parameter
+  // transformations before returning a media URL. An undeciphered URL can be
+  // throttled and may stop delivering bytes before the track is complete.
+  try {
+    const newPipeStream = await resolveNewPipeStream(videoId, track);
+    if (newPipeStream) {
+      return newPipeStream;
+    }
+  } catch (error) {
+    errors.push(error instanceof Error ? `NewPipe: ${error.message}` : `NewPipe: ${String(error)}`);
   }
 
-  // Check if we already have a non-expired stream URL cached (with 5-min safety buffer)
-  if (forceRefresh) streamCache.delete(videoId);
-  const cached = forceRefresh ? null : getCachedStream(videoId);
-  if (cached) return cached;
-
-  const errors: string[] = [];
+  // InnerTube remains the fallback when native extraction is unavailable.
   // Race the profiles and use the first successful playable stream.
   // Promise.allSettled would wait for every slow/failing client before returning.
   const controllers: AbortController[] = [];
@@ -205,16 +239,22 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
         return Number(b.bitrate || 0) - Number(a.bitrate || 0);
       });
       const bestFormat = audioStreams[0];
-      const hlsManifestUrl: string | undefined = streamingData?.hlsManifestUrl;
-      if (!bestFormat && !hlsManifestUrl) throw new Error(`${profile.name}: no direct audio stream URL`);
+      const hlsManifestUrl: string | undefined = typeof streamingData?.hlsManifestUrl === "string"
+        ? streamingData.hlsManifestUrl
+        : undefined;
+      const dashManifestUrl: string | undefined = typeof streamingData?.dashManifestUrl === "string"
+        ? streamingData.dashManifestUrl
+        : undefined;
+      const manifestUrl = hlsManifestUrl || dashManifestUrl;
+      if (!bestFormat && !manifestUrl) throw new Error(`${profile.name}: no direct audio stream or supported manifest URL`);
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
       const durationFromPlayer = Number(payload?.videoDetails?.lengthSeconds || 0);
       const durationFromFormat = bestFormat?.approxDurationMs ? Math.round(Number(bestFormat.approxDurationMs) / 1000) : 0;
       const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
       return {
-        url: bestFormat ? bestFormat.url : hlsManifestUrl!,
-        mimeType: bestFormat ? bestFormat.mimeType : "application/x-mpegURL",
+        url: bestFormat ? bestFormat.url : manifestUrl!,
+        mimeType: bestFormat ? bestFormat.mimeType : hlsManifestUrl ? "application/x-mpegURL" : "application/dash+xml",
         durationSeconds: durationFromPlayer || durationFromFormat || fallbackDuration,
         bitrate: bestFormat ? Number(bestFormat.bitrate || 128000) : undefined,
         userAgent: profile.userAgent,
@@ -238,47 +278,46 @@ export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh =
     resolvedStream = null as unknown as ResolvedYouTubeAudio;
   }
   if (resolvedStream) {
-    cacheStream(videoId, resolvedStream);
     return resolvedStream;
-  }
-
-  // Android fallback: NewPipe uses its own extraction implementation.
-  // The InnerTube clients above remain the primary path and are never modified
-  // or bypassed when one of them returns a playable stream.
-  try {
-    const newPipeResult = await resolveWithNewPipe(videoId);
-    if (newPipeResult?.url) {
-      const expiryMatch = newPipeResult.url.match(/[?&]expire=(\d+)/);
-      const parsedExpiry = expiryMatch?.[1] ? Number(expiryMatch[1]) * 1000 : 0;
-      const newPipeUrl = new URL(newPipeResult.url);
-      // PoTokens are optional and only requested for the Android extraction
-      // fallback. A slow or unavailable BotGuard WebView never blocks playback.
-      const poToken = await resolvePoTokenQuickly(videoId);
-      if (poToken && poToken.expiresAt > Date.now() + 30_000) {
-        newPipeUrl.searchParams.set("pot", poToken.contentToken);
-      }
-      const resolved: ResolvedYouTubeAudio = {
-        url: newPipeUrl.toString(),
-        mimeType: newPipeResult.mimeType || "audio/*",
-        durationSeconds:
-          newPipeResult.durationSeconds ||
-          Math.max(0, Math.round((track.durationMs || 0) / 1000)),
-        bitrate: newPipeResult.bitrate > 0 ? newPipeResult.bitrate : undefined,
-        userAgent: newPipeResult.userAgent,
-        expiresAt: parsedExpiry > Date.now()
-          ? parsedExpiry
-          : Date.now() + 30 * 60 * 1000
-      };
-      cacheStream(videoId, resolved);
-      return resolved;
-    }
-  } catch (error) {
-    errors.push(
-      error instanceof Error ? error.message : `NewPipe: ${String(error)}`
-    );
   }
 
   throw new Error(
     `Could not stream "${track.title}". (${errors.join(" | ") || "No playable stream"})`
   );
+}
+
+/**
+ * Resolve once per video when possible. A forced retry starts a fresh lookup;
+ * version guards prevent an older, slower request from overwriting its cache.
+ */
+export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
+  const videoId = extractYouTubeVideoId(track);
+  if (!videoId) throw new Error("Missing YouTube video ID for this track.");
+
+  if (forceRefresh) {
+    streamCache.delete(videoId);
+  } else {
+    const cached = getCachedStream(videoId);
+    if (cached) return cached;
+    const pending = inFlightResolutions.get(videoId);
+    if (pending) return pending;
+  }
+
+  const version = (resolutionVersions.get(videoId) ?? 0) + 1;
+  resolutionVersions.set(videoId, version);
+  const request = resolveYouTubeMusicAudioUncached(track, videoId)
+    .then((stream) => {
+      if (resolutionVersions.get(videoId) === version) {
+        cacheStream(videoId, stream);
+        resolutionVersions.delete(videoId);
+      }
+      return stream;
+    })
+    .finally(() => {
+      if (inFlightResolutions.get(videoId) === request) inFlightResolutions.delete(videoId);
+      if (resolutionVersions.get(videoId) === version) resolutionVersions.delete(videoId);
+    });
+
+  inFlightResolutions.set(videoId, request);
+  return request;
 }

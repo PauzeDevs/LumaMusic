@@ -1,57 +1,164 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
+import { PageEntrance } from "../components/PageEntrance";
 import { getLyrics, type LyricsState } from "../services/lyrics";
+import { translateLyricLines } from "../services/lyricsTranslation";
 import { usePlayerStore } from "../store/player";
 import type { ThemePalette } from "../theme/colors";
 import { useTheme } from "../theme/useTheme";
+import { usePreferencesStore } from "../store/preferences";
 
 export default function LyricsScreen() {
   const { colors, blurTint } = useTheme();
   const styles = createStyles(colors);
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
+  const lyricsProvider = usePreferencesStore((state) => state.lyricsProvider);
+  const setLyricsProvider = usePreferencesStore((state) => state.setLyricsProvider);
+  const lyricsSyncOffsetMs = usePreferencesStore((state) => state.lyricsSyncOffsetMs);
+  const setLyricsSyncOffsetMs = usePreferencesStore((state) => state.setLyricsSyncOffsetMs);
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
+  const adjustedPosition = position - lyricsSyncOffsetMs / 1000;
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
+  const [translationLanguage, setTranslationLanguage] = useState<string | null>(null);
+  const [translatedLines, setTranslatedLines] = useState<string[] | null>(null);
+  const [translationError, setTranslationError] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const lyricsRequestId = useRef(0);
   const lineOffsets = useRef<number[]>([]);
+  const activeLineProgress = useRef(new Animated.Value(1)).current;
   const isSynced = lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null);
   const activeIndex = useMemo(() => {
     if (lyrics.status !== "available") return -1;
     let active = -1;
-    lyrics.lines.forEach((line, index) => { if (line.time !== null && line.time <= position) active = index; });
+    lyrics.lines.forEach((line, index) => { if (line.time !== null && line.time <= adjustedPosition) active = index; });
     return active;
-  }, [lyrics, position]);
+  }, [lyrics, adjustedPosition]);
+
+  const activeWordIndex = useMemo(() => {
+    if (lyrics.status !== "available" || activeIndex < 0) return -1;
+    const words = lyrics.lines[activeIndex]?.words;
+    if (!words?.length) return -1;
+    let active = -1;
+    words.forEach((word, index) => { if (word.time <= adjustedPosition) active = index; });
+    return active;
+  }, [lyrics, activeIndex, adjustedPosition]);
 
   useEffect(() => {
-    let alive = true;
-    if (!track) { setLyrics({ status: "not_found" }); return () => { alive = false; }; }
+    const requestId = ++lyricsRequestId.current;
+    if (!track) {
+      setLyrics({ status: "not_found" });
+      return () => {
+        if (lyricsRequestId.current === requestId) lyricsRequestId.current += 1;
+      };
+    }
     setLyrics({ status: "loading" });
-    getLyrics(track).then((result) => { if (alive) setLyrics(result); });
-    return () => { alive = false; };
-  }, [track?.id]);
+    getLyrics(track, lyricsProvider).then((result) => {
+      if (lyricsRequestId.current === requestId) setLyrics(result);
+    }).catch(() => {
+      if (lyricsRequestId.current === requestId) setLyrics({ status: "error" });
+    });
+    return () => {
+      if (lyricsRequestId.current === requestId) lyricsRequestId.current += 1;
+    };
+  }, [track?.id, lyricsProvider]);
 
   useEffect(() => {
     if (activeIndex >= 0) {
+      activeLineProgress.stopAnimation();
+      if (motionStyle === "off") {
+        activeLineProgress.setValue(1);
+      } else {
+        activeLineProgress.setValue(0);
+        Animated.timing(activeLineProgress, {
+          toValue: 1,
+          duration: motionStyle === "subtle" ? 160 : 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true
+        }).start();
+      }
       const lineTop = lineOffsets.current[activeIndex];
-      if (lineTop !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, lineTop - 150), animated: true });
+      if (lineTop !== undefined) scrollRef.current?.scrollTo({ y: Math.max(0, lineTop - 150), animated: motionStyle !== "off" });
     }
-  }, [activeIndex]);
+  }, [activeIndex, activeLineProgress, motionStyle]);
 
-  const retry = () => { if (track) { setLyrics({ status: "loading" }); getLyrics(track).then(setLyrics); } };
+  const retry = () => {
+    if (!track) return;
+    const requestId = ++lyricsRequestId.current;
+    setLyrics({ status: "loading" });
+    getLyrics(track, lyricsProvider).then((result) => {
+      if (lyricsRequestId.current === requestId) setLyrics(result);
+    }).catch(() => {
+      if (lyricsRequestId.current === requestId) setLyrics({ status: "error" });
+    });
+  };
+  const chooseProvider = () => {
+    const options = [
+      { text: "Auto · Best available", value: "auto" as const },
+      { text: "LRCLIB · Synced-first", value: "lrclib" as const },
+      { text: "Lyrics.ovh · Plain-text fallback", value: "lyrics-ovh" as const }
+    ];
+    Alert.alert("Lyrics provider", "Choose which source LumaMusic should try first.", [
+      ...options.map((option) => ({ text: option.text + (lyricsProvider === option.value ? " ✓" : ""), onPress: () => setLyricsProvider(option.value) })),
+      { text: "Cancel", style: "cancel" as const }
+    ]);
+  };
   const openAttribution = () => {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
 
+  useEffect(() => {
+    if (!translationLanguage || lyrics.status !== "available") {
+      setTranslatedLines(null);
+      setTranslationError(false);
+      return;
+    }
+    const controller = new AbortController();
+    setTranslatedLines(null);
+    setTranslationError(false);
+    translateLyricLines(lyrics.lines, translationLanguage, controller.signal)
+      .then(setTranslatedLines)
+      .catch(() => { if (!controller.signal.aborted) setTranslationError(true); });
+    return () => controller.abort();
+  }, [lyrics, translationLanguage]);
+
+  const chooseTranslation = () => {
+    const options = [
+      { text: "Off · Original lyrics", value: null },
+      { text: "Hindi", value: "hi" },
+      { text: "Punjabi", value: "pa" },
+      { text: "English", value: "en" },
+      { text: "Spanish", value: "es" },
+      { text: "French", value: "fr" },
+      { text: "German", value: "de" },
+      { text: "Arabic", value: "ar" }
+    ] as const;
+    Alert.alert("Translate lyrics", "Translations are provided by MyMemory. Lyric text is sent to that service; original timing remains unchanged.", [
+      ...options.map((option) => ({
+        text: option.text + (translationLanguage === option.value ? " ✓" : ""),
+        onPress: () => setTranslationLanguage(option.value)
+      })),
+      { text: "Cancel", style: "cancel" as const }
+    ]);
+  };
+
+  const activeLineStyle = { opacity: activeLineProgress, transform: [{ scale: activeLineProgress.interpolate({ inputRange: [0, 1], outputRange: [0.975, 1] }) }] };
+
   return (
+    <PageEntrance>
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityLabel="Go back"><Ionicons name="chevron-down" size={23} color={colors.text} /></Pressable>
         <View style={styles.topTitle}><Text style={styles.eyebrow}>LUMAMUSIC</Text><Text style={styles.heading}>Lyrics</Text></View>
-        <View style={styles.iconButton}><Ionicons name="text" size={20} color={colors.muted} /></View>
+        <View style={styles.topActions}>
+          <Pressable onPress={chooseTranslation} style={styles.iconButton} accessibilityLabel="Translate lyrics"><Ionicons name="language-outline" size={19} color={translationLanguage ? colors.accent : colors.muted} /></Pressable>
+          <Pressable onPress={chooseProvider} style={styles.iconButton} accessibilityLabel="Choose lyrics provider"><Ionicons name="options-outline" size={20} color={colors.muted} /></Pressable>
+        </View>
       </View>
 
       {track ? <View style={styles.trackCard}>
@@ -61,18 +168,29 @@ export default function LyricsScreen() {
       </View> : null}
 
       <View style={styles.lyricsSurface}>
-        {lyrics.status === "loading" ? <View style={styles.centerState}><ActivityIndicator color={colors.accent} /><Text style={styles.stateTitle}>Finding your lyrics</Text><Text style={styles.stateBody}>Matching this recording with the lyrics catalogue.</Text></View> : null}
+        {lyrics.status === "loading" ? <View style={styles.centerState}><ActivityIndicator color={colors.accent} /><Text style={styles.stateTitle}>Finding your lyrics</Text><Text style={styles.stateBody}>Trying {lyricsProvider === "auto" ? "the best available source" : lyricsProvider === "lrclib" ? "LRCLIB first" : "Lyrics.ovh first"}.</Text></View> : null}
         {lyrics.status === "unconfigured" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="musical-notes" size={25} color={colors.accent} /></View><Text style={styles.stateTitle}>Lyrics are getting ready</Text><Text style={styles.stateBody}>LumaMusic checks the free LRCLIB catalogue for synced or plain lyrics. Some tracks may not be available yet.</Text></View> : null}
-        {lyrics.status === "not_found" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="text-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Lyrics unavailable</Text><Text style={styles.stateBody}>There are no licensed lyrics available for this track yet.</Text></View> : null}
+        {lyrics.status === "not_found" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="text-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Lyrics unavailable</Text><Text style={styles.stateBody}>No lyrics were found for this track in the available providers.</Text></View> : null}
         {lyrics.status === "restricted" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="lock-closed-outline" size={24} color={colors.muted} /></View><Text style={styles.stateTitle}>Not available here</Text><Text style={styles.stateBody}>Lyrics for this recording cannot be displayed in your region.</Text></View> : null}
         {lyrics.status === "error" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="cloud-offline-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Couldn't load lyrics</Text><Text style={styles.stateBody}>Check your connection and try again.</Text><Pressable onPress={retry} style={styles.retryButton}><Text style={styles.retryText}>Try again</Text></Pressable></View> : null}
         {lyrics.status === "available" ? <>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricList} showsVerticalScrollIndicator={false}>
             <View style={styles.topFadeSpace} />
-            {lyrics.lines.map((line, index) => <Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? styles.activeLine : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.text}</Text>)}
+            {lyrics.lines.map((line, index) => <Animated.Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? [styles.activeLine, activeLineStyle] : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.words?.length ? line.words.map((word, wordIndex) => <Text key={`${word.time}-${wordIndex}`} style={index === activeIndex && wordIndex === activeWordIndex ? styles.activeWord : undefined}>{word.text}</Text>) : line.text}{translatedLines?.[index] ? <Text style={styles.translatedLine}>{translatedLines[index]}</Text> : null}</Animated.Text>)}
+            {translationError ? <Text style={styles.translationNotice}>Translation unavailable. Try again later.</Text> : null}
+            {translationLanguage && !translatedLines && !translationError ? <Text style={styles.translationNotice}>Translating lyrics…</Text> : null}
             <View style={styles.bottomFadeSpace} />
           </ScrollView>
           <View style={styles.providerFooter}>
+            {isSynced ? <View style={styles.syncControlRow}>
+              <Text style={styles.syncCaption}>SYNC OFFSET</Text>
+              <View style={styles.syncControls}>
+                <Pressable accessibilityLabel="Advance lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs - 250)} style={styles.syncButton}><Ionicons name="remove" size={16} color={colors.text} /></Pressable>
+                <Text style={styles.syncValue}>{lyricsSyncOffsetMs > 0 ? "+" : ""}{(lyricsSyncOffsetMs / 1000).toFixed(2)}s</Text>
+                <Pressable accessibilityLabel="Delay lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs + 250)} style={styles.syncButton}><Ionicons name="add" size={16} color={colors.text} /></Pressable>
+                <Pressable accessibilityLabel="Reset lyric timing" onPress={() => setLyricsSyncOffsetMs(0)} style={styles.syncReset}><Text style={styles.syncResetText}>RESET</Text></Pressable>
+              </View>
+            </View> : null}
             <Text style={styles.providerText}>{lyrics.copyright ?? `Lyrics provided by ${lyrics.provider}`}</Text>
             {lyrics.attribution?.text ? <Pressable onPress={openAttribution}><Text style={styles.attribution}>{lyrics.attribution.text}</Text></Pressable> : null}
           </View>
@@ -80,6 +198,7 @@ export default function LyricsScreen() {
       </View>
       <View style={styles.bottomBar}><Pressable onPress={() => router.back()} style={styles.backToPlayer}><Ionicons name="chevron-down" size={16} color={colors.text} /><Text style={styles.backText}>Back to player</Text></Pressable><Text style={styles.syncLabel}>{lyrics.status === "available" && lyrics.lines.some((line) => line.time !== null) ? "SYNCED LYRICS" : "LYRICS"}</Text></View>
     </SafeAreaView>
+    </PageEntrance>
   );
 }
 
@@ -88,6 +207,7 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   topBar: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.075)" },
   topTitle: { alignItems: "center", gap: 2 },
+  topActions: { flexDirection: "row", alignItems: "center", gap: 7 },
   eyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 2 },
   heading: { color: colors.text, fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
   trackCard: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12, marginBottom: 18, padding: 12, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.085)" },
@@ -109,8 +229,18 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   bottomFadeSpace: { height: 220 },
   lyricLine: { width: "100%", color: colors.muted, fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
   activeLine: { color: colors.text, fontSize: 27, lineHeight: 36, textShadowColor: colors.accent, textShadowRadius: 10 },
+  activeWord: { color: colors.accent, textShadowColor: colors.accent, textShadowRadius: 8 },
+  translatedLine: { color: colors.muted, fontSize: 14, lineHeight: 20, fontWeight: "500", letterSpacing: 0, marginTop: 7 },
+  translationNotice: { color: colors.subtle, fontSize: 10, textAlign: "center", paddingVertical: 8 },
   pastLine: { color: colors.subtle },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
+  syncControlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
+  syncCaption: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.2 },
+  syncControls: { flexDirection: "row", alignItems: "center", gap: 9 },
+  syncButton: { width: 27, height: 27, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.08)" },
+  syncValue: { color: colors.text, fontSize: 10, fontWeight: "700", minWidth: 43, textAlign: "center", fontVariant: ["tabular-nums"] },
+  syncReset: { paddingHorizontal: 7, paddingVertical: 6 },
+  syncResetText: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 0.8 },
   providerText: { color: colors.subtle, fontSize: 9, textAlign: "center" },
   attribution: { color: colors.accent, fontSize: 10, textAlign: "center", marginTop: 5, fontWeight: "600" },
   bottomBar: { height: 54, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
