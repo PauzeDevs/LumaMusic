@@ -34,6 +34,7 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
     private var reverbWet = 0.0
     private var reverbFeedback = 0.55
     private var spatialBalance = 0.0
+    private var bypassResetApplied = false
     private val release = exp(-1.0 / (0.080 * rate))
 
     @Volatile private var requestedConfig = DspConfig(
@@ -77,6 +78,12 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
         if (validSamples == 0) return
 
         val config = requestedConfig
+        if (isBypassed(config)) {
+            if (!bypassResetApplied) reset()
+            bypassResetApplied = true
+            return
+        }
+        bypassResetApplied = false
         for (band in gains.indices) {
             val requestedGain = if (config.equalizerEnabled) {
                 config.bandDb[band].coerceIn(-12f, 12f).toDouble()
@@ -174,6 +181,16 @@ class PauzeAudioDsp(sampleRate: Int, private val channels: Int) {
             index += channels
         }
     }
+
+    /** True when the configured signal path must be bit-transparent. */
+    fun isBypassed(): Boolean = isBypassed(requestedConfig)
+
+    private fun isBypassed(config: DspConfig): Boolean =
+        !config.equalizerEnabled &&
+            config.preampDb == 0f &&
+            !config.limiterEnabled &&
+            config.reverbPreset == "off" &&
+            config.spatialBalance == 0f
 
     private fun resetReverbChannel(channel: Int) {
         for (line in 0 until 4) {
