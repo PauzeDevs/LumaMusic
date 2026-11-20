@@ -18,8 +18,6 @@ export function AppDialog({ visible, title, message, actions, onDismiss }: {
   onDismiss: () => void;
 }) {
   const { colors } = useTheme();
-  useEffect(() => {
-  }, [visible]);
   const styles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", alignItems: "center", padding: 22 },
     card: { width: "100%", maxWidth: 440, maxHeight: "82%", borderRadius: 25, overflow: "hidden", backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: "rgba(255,255,255,0.13)" },
