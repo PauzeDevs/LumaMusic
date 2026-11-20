@@ -17,6 +17,9 @@ export default function LyricsScreen() {
   const motionStyle = usePreferencesStore((state) => state.motionStyle);
   const lyricsProvider = usePreferencesStore((state) => state.lyricsProvider);
   const setLyricsProvider = usePreferencesStore((state) => state.setLyricsProvider);
+  const lyricsSyncOffsetMs = usePreferencesStore((state) => state.lyricsSyncOffsetMs);
+  const setLyricsSyncOffsetMs = usePreferencesStore((state) => state.setLyricsSyncOffsetMs);
+  const adjustedPosition = position - lyricsSyncOffsetMs / 1000;
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -29,18 +32,18 @@ export default function LyricsScreen() {
   const activeIndex = useMemo(() => {
     if (lyrics.status !== "available") return -1;
     let active = -1;
-    lyrics.lines.forEach((line, index) => { if (line.time !== null && line.time <= position) active = index; });
+    lyrics.lines.forEach((line, index) => { if (line.time !== null && line.time <= adjustedPosition) active = index; });
     return active;
-  }, [lyrics, position]);
+  }, [lyrics, adjustedPosition]);
 
   const activeWordIndex = useMemo(() => {
     if (lyrics.status !== "available" || activeIndex < 0) return -1;
     const words = lyrics.lines[activeIndex]?.words;
     if (!words?.length) return -1;
     let active = -1;
-    words.forEach((word, index) => { if (word.time <= position) active = index; });
+    words.forEach((word, index) => { if (word.time <= adjustedPosition) active = index; });
     return active;
-  }, [lyrics, activeIndex, position]);
+  }, [lyrics, activeIndex, adjustedPosition]);
 
   useEffect(() => {
     const requestId = ++lyricsRequestId.current;
@@ -131,6 +134,15 @@ export default function LyricsScreen() {
             <View style={styles.bottomFadeSpace} />
           </ScrollView>
           <View style={styles.providerFooter}>
+            {isSynced ? <View style={styles.syncControlRow}>
+              <Text style={styles.syncCaption}>SYNC OFFSET</Text>
+              <View style={styles.syncControls}>
+                <Pressable accessibilityLabel="Delay lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs - 250)} style={styles.syncButton}><Ionicons name="remove" size={16} color={colors.text} /></Pressable>
+                <Text style={styles.syncValue}>{lyricsSyncOffsetMs > 0 ? "+" : ""}{(lyricsSyncOffsetMs / 1000).toFixed(2)}s</Text>
+                <Pressable accessibilityLabel="Advance lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs + 250)} style={styles.syncButton}><Ionicons name="add" size={16} color={colors.text} /></Pressable>
+                <Pressable accessibilityLabel="Reset lyric timing" onPress={() => setLyricsSyncOffsetMs(0)} style={styles.syncReset}><Text style={styles.syncResetText}>RESET</Text></Pressable>
+              </View>
+            </View> : null}
             <Text style={styles.providerText}>{lyrics.copyright ?? `Lyrics provided by ${lyrics.provider}`}</Text>
             {lyrics.attribution?.text ? <Pressable onPress={openAttribution}><Text style={styles.attribution}>{lyrics.attribution.text}</Text></Pressable> : null}
           </View>
@@ -171,6 +183,13 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   activeWord: { color: colors.accent, textShadowColor: colors.accent, textShadowRadius: 8 },
   pastLine: { color: colors.subtle },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
+  syncControlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
+  syncCaption: { color: colors.subtle, fontSize: 8, fontWeight: "800", letterSpacing: 1.2 },
+  syncControls: { flexDirection: "row", alignItems: "center", gap: 9 },
+  syncButton: { width: 27, height: 27, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.08)" },
+  syncValue: { color: colors.text, fontSize: 10, fontWeight: "700", minWidth: 43, textAlign: "center", fontVariant: ["tabular-nums"] },
+  syncReset: { paddingHorizontal: 7, paddingVertical: 6 },
+  syncResetText: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 0.8 },
   providerText: { color: colors.subtle, fontSize: 9, textAlign: "center" },
   attribution: { color: colors.accent, fontSize: 10, textAlign: "center", marginTop: 5, fontWeight: "600" },
   bottomBar: { height: 54, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
