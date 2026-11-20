@@ -30,6 +30,8 @@ class LumaAudioEngineModule : Module() {
   private var incomingDurationSeconds: Double = 0.0
   private var crossfadeDurationMs = 0L
   private var crossfadeProgressMs = 0L
+  private var crossfadeStartPositionMs = 0L
+  private var crossfadeBeatDurationMs = 0L
   private var audioLabEnabled = false
   private var audioLabBands = FloatArray(5)
   private var audioLabPreamp = 0f
@@ -48,6 +50,13 @@ class LumaAudioEngineModule : Module() {
       val incoming = incomingPlayer ?: return
       if (released.get()) return
       if (!outgoing.isPlaying || !incoming.isPlaying) {
+        handler.postDelayed(this, 50L)
+        return
+      }
+      val currentPositionMs = outgoing.currentPosition.coerceAtLeast(0L)
+      if (currentPositionMs < crossfadeStartPositionMs &&
+        outgoing.duration - currentPositionMs > crossfadeBeatDurationMs
+      ) {
         handler.postDelayed(this, 50L)
         return
       }
@@ -167,6 +176,12 @@ class LumaAudioEngineModule : Module() {
         require(outgoing.isPlaying) { "The current track is not playing." }
         crossfadeDurationMs = (durationSeconds * 1000.0).toLong()
         crossfadeProgressMs = 0L
+        val bpm = pcmProcessor?.getEstimatedBpm()
+        val beatMs = if (bpm != null && bpm in 60..180) (60_000.0 / bpm).toLong() else 0L
+        crossfadeBeatDurationMs = beatMs
+        crossfadeStartPositionMs = if (beatMs > 0L && outgoing.duration - outgoing.currentPosition > beatMs) {
+          LumaBeatAlignment.nextBeatPositionMs(outgoing.currentPosition, bpm)
+        } else outgoing.currentPosition
         incoming.volume = 0f
         incoming.play()
         handler.removeCallbacks(crossfadeEmitter)
@@ -312,6 +327,8 @@ class LumaAudioEngineModule : Module() {
     incomingDurationSeconds = 0.0
     crossfadeProgressMs = 0L
     crossfadeDurationMs = 0L
+    crossfadeStartPositionMs = 0L
+    crossfadeBeatDurationMs = 0L
   }
 
   private fun cancelCrossfadeInternal() {
