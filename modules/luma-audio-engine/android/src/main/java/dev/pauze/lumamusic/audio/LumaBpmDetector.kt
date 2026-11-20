@@ -43,6 +43,12 @@ internal class LumaBpmDetector(
     }
   }
 
+  fun reset() {
+    energyHistory.clear()
+    accumulated = 0.0
+    samplesInFrame = 0
+  }
+
   private fun estimate(): Int? {
     if (energyHistory.size < 80) return null
     val envelope = FloatArray(energyHistory.size)
