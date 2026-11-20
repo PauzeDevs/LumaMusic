@@ -24,6 +24,7 @@ const CLIENT_HEADER = "LumaMusic/0.1.0 (https://github.com/PauzeDevs/LumaMusic)"
 const CACHE_TTL = 6 * 60 * 60 * 1000;
 const MISS_TTL = 10 * 60 * 1000;
 const ERROR_TTL = 30 * 1000;
+const LYRICS_REQUEST_TIMEOUT_MS = 18_000;
 const cache = new Map<string, { expiresAt: number; value: LyricsState }>();
 const MAX_LYRICS_CACHE_ENTRIES = 32;
 const inFlight = new Map<string, Promise<LyricsState>>();
@@ -258,7 +259,12 @@ export function getLyrics(track: MusicTrack, preferredProvider: "auto" | "lrclib
   const pending = inFlight.get(key);
   if (pending) return pending;
 
-  const request = fetchLyrics(track, preferredProvider).then((value) => {
+  const request = Promise.race([
+    fetchLyrics(track, preferredProvider),
+    new Promise<LyricsState>((resolve) => {
+      setTimeout(() => resolve({ status: "error" }), LYRICS_REQUEST_TIMEOUT_MS);
+    })
+  ]).catch((): LyricsState => ({ status: "error" })).then((value) => {
     cache.set(key, { value, expiresAt: Date.now() + (value.status === "not_found" ? MISS_TTL : value.status === "error" ? ERROR_TTL : CACHE_TTL) });
     while (cache.size > MAX_LYRICS_CACHE_ENTRIES) {
       const oldestKey = cache.keys().next().value;
