@@ -1,7 +1,8 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useListeningStatsStore, type ListeningTrackStat } from "../store/listeningStats";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -69,7 +70,7 @@ export default function ListeningStatsScreen() {
   const topTracks = expandedTop ? summary.tracks : summary.tracks.slice(0, 5);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={24} color="#F5F5F7" /></Pressable>
@@ -101,7 +102,7 @@ export default function ListeningStatsScreen() {
         </View>
 
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Dominant Genre</Text><Text style={styles.sectionMeta}>BY LISTENING TIME</Text></View>
-        <View style={styles.genreCard}>
+        <View style={[styles.genreCard, !summary.genres.length && styles.genreCardEmpty]}>
           <Text style={styles.genreName}>{summary.genres[0]?.[0] ?? "No genre data yet"}</Text>
           {summary.genres.length ? <View style={styles.genreBody}>
             <View style={styles.donut}>
@@ -120,7 +121,7 @@ export default function ListeningStatsScreen() {
             <View style={styles.genreList}>{topGenres.map(([name, value], index) => <View key={name} style={styles.genreRow}><View style={[styles.legendDot, { backgroundColor: COLORS[index % COLORS.length] }]} /><View style={{ flex: 1 }}><Text style={styles.genreRowName} numberOfLines={1}>{name}</Text><Text style={styles.genreRowTime}>{formatTime(value)}</Text></View><Text style={styles.genrePercent}>{totalGenreSeconds ? Math.round(value / totalGenreSeconds * 100) : 0}%</Text></View>)}
               {summary.genres.length > 4 ? <Pressable onPress={() => setExpandedGenre(!expandedGenre)}><Text style={styles.expand}>{expandedGenre ? "Show less" : "Show all genres"} <Ionicons name={expandedGenre ? "chevron-up" : "chevron-down"} size={12} /></Text></Pressable> : null}
             </View>
-          </View> : <Text style={styles.empty}>Genre details are not provided by the current music source yet. Listening time and track stats are still recorded.</Text>}
+          </View> : <View style={styles.genreEmptyState}><View style={styles.genreEmptyIcon}><Ionicons name="musical-notes-outline" size={20} color="#A7A7B2" /></View><View style={{ flex: 1 }}><Text style={styles.genreEmptyTitle}>Genre insights unavailable</Text><Text style={styles.genreEmptyCopy}>This source doesn’t provide genre metadata. Your listening time and track statistics are still being saved.</Text></View></View>}
         </View>
 
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Most Played</Text><Text style={styles.sectionMeta}>{summary.tracks.length} TRACKS</Text></View>
@@ -158,37 +159,38 @@ function Metric({ value, label }: { value: string; label: string }) {
 }
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#09090B" },
-  content: { paddingHorizontal: 22, paddingTop: 10, paddingBottom: 48 },
-  header: { flexDirection: "row", alignItems: "center", gap: 13, marginBottom: 24 },
-  back: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#1D1D21", alignItems: "center", justifyContent: "center" },
-  eyebrow: { color: "#8B8B94", fontSize: 9, fontWeight: "800", letterSpacing: 1.5 },
-  title: { color: "#F6F6F7", fontSize: 29, fontWeight: "800", letterSpacing: -1.1, marginTop: 3 },
+  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 36 },
+  header: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 22 },
+  back: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#1D1D21", borderWidth: 1, borderColor: "#29292F", alignItems: "center", justifyContent: "center" },
+  eyebrow: { color: "#8B8B94", fontSize: 9, fontWeight: "800", letterSpacing: 1.6, marginBottom: 2 },
+  title: { color: "#F6F6F7", fontSize: 30, lineHeight: 36, fontWeight: "800", letterSpacing: -1.2 },
   year: { color: "#777780", fontSize: 14, fontWeight: "600", letterSpacing: 0 },
-  filter: { width: 42, height: 42, borderRadius: 15, backgroundColor: "#1C1C20", alignItems: "center", justifyContent: "center" },
+  filter: { width: 42, height: 42, borderRadius: 15, backgroundColor: "#1C1C20", borderWidth: 1, borderColor: "#29292F", alignItems: "center", justifyContent: "center" },
   periodRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  period: { color: "#F1F1F3", fontSize: 19, fontWeight: "700" },
+  period: { color: "#F1F1F3", fontSize: 20, fontWeight: "750" },
   periodHint: { color: "#6E6E78", fontSize: 8, fontWeight: "800", letterSpacing: 1.1 },
-  timelineCard: { backgroundColor: "#151518", borderRadius: 19, padding: 14, borderWidth: 1, borderColor: "#25252A", marginBottom: 14 },
-  timeline: { alignItems: "flex-end", gap: 7, minHeight: 76 },
-  timelineItem: { width: 12, alignItems: "center", justifyContent: "flex-end", height: 72, gap: 6 },
-  barTrack: { height: 50, width: 3, justifyContent: "flex-end", backgroundColor: "#24242A", borderRadius: 4, overflow: "hidden" },
-  bar: { width: 3, backgroundColor: "#9B9BA3", borderRadius: 4 },
-  tick: { color: "#777780", fontSize: 8 },
-  timelineFooter: { flexDirection: "row", justifyContent: "space-between", marginTop: 12, borderTopWidth: 1, borderTopColor: "#28282D", paddingTop: 10 },
-  timelineCaption: { color: "#92929B", fontSize: 10 },
-  totalCard: { backgroundColor: "#17171B", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "#29292F", marginBottom: 27 },
-  cardEyebrow: { color: "#9A9AA3", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 },
-  bigTime: { color: "#F5F5F6", fontSize: 43, fontWeight: "800", letterSpacing: -1.8, marginTop: 8 },
+  timelineCard: { backgroundColor: "#151518", borderRadius: 22, padding: 16, borderWidth: 1, borderColor: "#29292F", marginBottom: 14 },
+  timeline: { alignItems: "flex-end", gap: 8, minHeight: 96 },
+  timelineItem: { width: 13, alignItems: "center", justifyContent: "flex-end", height: 90, gap: 7 },
+  barTrack: { height: 66, width: 4, justifyContent: "flex-end", backgroundColor: "#29292F", borderRadius: 4, overflow: "hidden" },
+  bar: { width: 4, backgroundColor: "#B9B9C2", borderRadius: 4 },
+  tick: { color: "#85858F", fontSize: 9, fontWeight: "600" },
+  timelineFooter: { flexDirection: "row", justifyContent: "space-between", marginTop: 13, borderTopWidth: 1, borderTopColor: "#28282D", paddingTop: 11 },
+  timelineCaption: { color: "#A0A0AA", fontSize: 11, fontWeight: "600" },
+  totalCard: { backgroundColor: "#17171B", borderRadius: 22, padding: 20, borderWidth: 1, borderColor: "#29292F", marginBottom: 28 },
+  cardEyebrow: { color: "#9A9AA3", fontSize: 10, fontWeight: "700", letterSpacing: 0.7 },
+  bigTime: { color: "#F5F5F6", fontSize: 48, lineHeight: 56, fontWeight: "800", letterSpacing: -2, marginTop: 8 },
   metricDivider: { height: 1, backgroundColor: "#34343A", marginTop: 15, marginBottom: 13 },
   metrics: { flexDirection: "row", justifyContent: "space-between" },
-  metric: { alignItems: "flex-start", minWidth: 48 },
-  metricValue: { color: "#E6E6E9", fontSize: 14, fontWeight: "700" },
-  metricLabel: { color: "#85858E", fontSize: 9, marginTop: 3 },
+  metric: { alignItems: "flex-start", minWidth: 48, flex: 1 },
+  metricValue: { color: "#F0F0F2", fontSize: 16, fontWeight: "750" },
+  metricLabel: { color: "#85858E", fontSize: 10, marginTop: 4, fontWeight: "600" },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  sectionTitle: { color: "#F1F1F3", fontSize: 18, fontWeight: "700", letterSpacing: -0.4 },
+  sectionTitle: { color: "#F1F1F3", fontSize: 20, fontWeight: "750", letterSpacing: -0.6 },
   sectionMeta: { color: "#73737D", fontSize: 8, fontWeight: "800", letterSpacing: 1.1 },
-  genreCard: { backgroundColor: "#17171B", borderRadius: 20, borderWidth: 1, borderColor: "#29292F", padding: 16, marginBottom: 27 },
-  genreName: { color: "#F2F2F4", fontSize: 19, fontWeight: "700", marginBottom: 16 },
+  genreCard: { backgroundColor: "#17171B", borderRadius: 22, borderWidth: 1, borderColor: "#29292F", padding: 18, marginBottom: 28 },
+  genreCardEmpty: { paddingVertical: 16 },
+  genreName: { color: "#F2F2F4", fontSize: 19, fontWeight: "750", marginBottom: 16 },
   genreBody: { flexDirection: "row", alignItems: "center", gap: 12 },
   donut: { width: 102, height: 102, position: "relative" },
   donutDot: { position: "absolute", width: 10, height: 10, borderRadius: 5 },
@@ -203,14 +205,18 @@ const styles = StyleSheet.create({
   genrePercent: { color: "#C9C9D0", fontSize: 10, fontWeight: "700" },
   expand: { color: "#B8B8C0", fontSize: 10, fontWeight: "700" },
   tracksCard: { backgroundColor: "#17171B", borderRadius: 20, borderWidth: 1, borderColor: "#29292F", paddingHorizontal: 13, paddingVertical: 4 },
-  trackRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#28282D" },
+  trackRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#28282D" },
   trackRank: { color: "#777780", width: 18, fontSize: 10, fontWeight: "700" },
-  artwork: { width: 38, height: 38, borderRadius: 8, backgroundColor: "#29292F", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  artwork: { width: 44, height: 44, borderRadius: 10, backgroundColor: "#29292F", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   artworkImage: { width: "100%", height: "100%" },
-  trackTitle: { color: "#EEEEF0", fontSize: 11, fontWeight: "700" },
-  trackArtist: { color: "#898992", fontSize: 9, marginTop: 3 },
-  trackTime: { color: "#A5A5AD", fontSize: 9, fontWeight: "600" },
-  empty: { color: "#85858E", fontSize: 11, lineHeight: 17, paddingVertical: 20 },
+  trackTitle: { color: "#EEEEF0", fontSize: 12, fontWeight: "700" },
+  trackArtist: { color: "#898992", fontSize: 10, marginTop: 4 },
+  trackTime: { color: "#B5B5BE", fontSize: 10, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  empty: { color: "#85858E", fontSize: 11, lineHeight: 17, paddingVertical: 12 },
+  genreEmptyState: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 6 },
+  genreEmptyIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: "#24242A", borderWidth: 1, borderColor: "#33333A", alignItems: "center", justifyContent: "center" },
+  genreEmptyTitle: { color: "#E8E8EB", fontSize: 13, fontWeight: "700", marginBottom: 4 },
+  genreEmptyCopy: { color: "#92929C", fontSize: 10, lineHeight: 15 },
   showMore: { paddingVertical: 12, alignItems: "center" },
   footnote: { color: "#666670", fontSize: 9, lineHeight: 14, textAlign: "center", marginTop: 16 },
   scrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.68)" },
