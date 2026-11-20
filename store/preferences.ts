@@ -29,7 +29,7 @@ export type PreferencesSnapshot = Pick<PreferencesState,
   | "playerStyle" | "surfaceStyle" | "animationIntensity" | "autoCrossfadeEnabled" | "crossfadeDurationSeconds" | "lyricsProvider" | "lyricsSyncOffsetMs"
 >;
 export const usePreferencesStore = create<PreferencesState>()(persist((set) => ({
-  progressBarStyle: "apple", spatialBalance: 0, reverbPreset: "off", equalizerEnabled: false, equalizerBands: [0, 0, 0, 0, 0], preampDb: 0, limiterEnabled: true,
+  progressBarStyle: "apple", spatialBalance: 0, reverbPreset: "off", equalizerEnabled: false, equalizerBands: [0, 0, 0, 0, 0], preampDb: 0, limiterEnabled: false,
   accentTheme: "red", appearanceMode: "dark", motionStyle: "full", compactRows: false,
   playerStyle: "standard", surfaceStyle: "matte", animationIntensity: 65,
   autoCrossfadeEnabled: false, crossfadeDurationSeconds: 5, lyricsProvider: "auto", lyricsSyncOffsetMs: 0,
