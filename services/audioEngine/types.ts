@@ -42,6 +42,8 @@ export type AudioEngineState = {
   error: string | null;
   isEnded: boolean;
   decodedAudioFormat?: DecodedAudioFormat | null;
+  /** Conservative PCM-derived tempo estimate; null until enough signal is observed. */
+  estimatedBpm?: number | null;
 };
 
 export type AudioLabConfiguration = {
