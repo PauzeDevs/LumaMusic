@@ -19,9 +19,9 @@ export default function LyricsScreen() {
   const setLyricsProvider = usePreferencesStore((state) => state.setLyricsProvider);
   const lyricsSyncOffsetMs = usePreferencesStore((state) => state.lyricsSyncOffsetMs);
   const setLyricsSyncOffsetMs = usePreferencesStore((state) => state.setLyricsSyncOffsetMs);
-  const adjustedPosition = position - lyricsSyncOffsetMs / 1000;
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
+  const adjustedPosition = position - lyricsSyncOffsetMs / 1000;
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
   const scrollRef = useRef<ScrollView>(null);
@@ -137,9 +137,9 @@ export default function LyricsScreen() {
             {isSynced ? <View style={styles.syncControlRow}>
               <Text style={styles.syncCaption}>SYNC OFFSET</Text>
               <View style={styles.syncControls}>
-                <Pressable accessibilityLabel="Delay lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs - 250)} style={styles.syncButton}><Ionicons name="remove" size={16} color={colors.text} /></Pressable>
+                <Pressable accessibilityLabel="Advance lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs - 250)} style={styles.syncButton}><Ionicons name="remove" size={16} color={colors.text} /></Pressable>
                 <Text style={styles.syncValue}>{lyricsSyncOffsetMs > 0 ? "+" : ""}{(lyricsSyncOffsetMs / 1000).toFixed(2)}s</Text>
-                <Pressable accessibilityLabel="Advance lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs + 250)} style={styles.syncButton}><Ionicons name="add" size={16} color={colors.text} /></Pressable>
+                <Pressable accessibilityLabel="Delay lyrics by 0.25 seconds" onPress={() => setLyricsSyncOffsetMs(lyricsSyncOffsetMs + 250)} style={styles.syncButton}><Ionicons name="add" size={16} color={colors.text} /></Pressable>
                 <Pressable accessibilityLabel="Reset lyric timing" onPress={() => setLyricsSyncOffsetMs(0)} style={styles.syncReset}><Text style={styles.syncResetText}>RESET</Text></Pressable>
               </View>
             </View> : null}
