@@ -74,7 +74,7 @@ internal class LumaBpmDetector(
       if (normalized > bestScore) {
         bestScore = normalized
         bestLag = lag
-      }      }
+      }
     }
     if (bestLag == 0 || bestScore < 0.22) return null
     val raw = 60000.0 / (bestLag * frameMillis)
