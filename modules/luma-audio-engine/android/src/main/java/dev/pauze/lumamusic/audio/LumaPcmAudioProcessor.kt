@@ -117,6 +117,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
 
   override fun onFlush() {
     dsp?.reset()
+    bpmDetector?.reset()
   }
 
   override fun onReset() {
