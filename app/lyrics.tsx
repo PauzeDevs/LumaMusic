@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Easing, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Easing, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
 import { PageEntrance } from "../components/PageEntrance";
@@ -14,7 +14,7 @@ import { usePreferencesStore } from "../store/preferences";
 export default function LyricsScreen() {
   const { colors, blurTint } = useTheme();
   const styles = createStyles(colors);
-  const motionStyle = usePreferencesStore((state) => state.motionStyle);
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);\n  const lyricsProvider = usePreferencesStore((state) => state.lyricsProvider);\n  const setLyricsProvider = usePreferencesStore((state) => state.setLyricsProvider);
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -49,13 +49,13 @@ export default function LyricsScreen() {
       };
     }
     setLyrics({ status: "loading" });
-    getLyrics(track).then((result) => {
+    getLyrics(track, lyricsProvider).then((result) => {
       if (lyricsRequestId.current === requestId) setLyrics(result);
     });
     return () => {
       if (lyricsRequestId.current === requestId) lyricsRequestId.current += 1;
     };
-  }, [track?.id]);
+  }, [track?.id, lyricsProvider]);
 
   useEffect(() => {
     if (activeIndex >= 0) {
@@ -80,11 +80,11 @@ export default function LyricsScreen() {
     if (!track) return;
     const requestId = ++lyricsRequestId.current;
     setLyrics({ status: "loading" });
-    getLyrics(track).then((result) => {
+    getLyrics(track, lyricsProvider).then((result) => {
       if (lyricsRequestId.current === requestId) setLyrics(result);
     });
   };
-  const openAttribution = () => {
+  const chooseProvider = () => {\n    const options = [\n      { text: "Auto · Best available", value: "auto" as const },\n      { text: "LRCLIB · Synced-first", value: "lrclib" as const },\n      { text: "Lyrics.ovh · Plain-text fallback", value: "lyrics-ovh" as const }\n    ];\n    Alert.alert("Lyrics provider", "Choose which source LumaMusic should try first.", [\n      ...options.map((option) => ({ text: option.text + (lyricsProvider === option.value ? " ✓" : ""), onPress: () => setLyricsProvider(option.value) })),\n      { text: "Cancel", style: "cancel" as const }\n    ]);\n  };\n  const openAttribution = () => {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
 
@@ -96,7 +96,7 @@ export default function LyricsScreen() {
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityLabel="Go back"><Ionicons name="chevron-down" size={23} color={colors.text} /></Pressable>
         <View style={styles.topTitle}><Text style={styles.eyebrow}>LUMAMUSIC</Text><Text style={styles.heading}>Lyrics</Text></View>
-        <View style={styles.iconButton}><Ionicons name="text" size={20} color={colors.muted} /></View>
+        <Pressable onPress={chooseProvider} style={styles.iconButton} accessibilityLabel="Choose lyrics provider"><Ionicons name="options-outline" size={20} color={colors.muted} /></Pressable>
       </View>
 
       {track ? <View style={styles.trackCard}>
@@ -106,7 +106,7 @@ export default function LyricsScreen() {
       </View> : null}
 
       <View style={styles.lyricsSurface}>
-        {lyrics.status === "loading" ? <View style={styles.centerState}><ActivityIndicator color={colors.accent} /><Text style={styles.stateTitle}>Finding your lyrics</Text><Text style={styles.stateBody}>Matching this recording with the lyrics catalogue.</Text></View> : null}
+        {lyrics.status === "loading" ? <View style={styles.centerState}><ActivityIndicator color={colors.accent} /><Text style={styles.stateTitle}>Finding your lyrics</Text><Text style={styles.stateBody}>Trying {lyricsProvider === "auto" ? "the best available source" : lyricsProvider === "lrclib" ? "LRCLIB first" : "Lyrics.ovh first"}.</Text></View> : null}
         {lyrics.status === "unconfigured" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="musical-notes" size={25} color={colors.accent} /></View><Text style={styles.stateTitle}>Lyrics are getting ready</Text><Text style={styles.stateBody}>LumaMusic checks the free LRCLIB catalogue for synced or plain lyrics. Some tracks may not be available yet.</Text></View> : null}
         {lyrics.status === "not_found" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="text-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Lyrics unavailable</Text><Text style={styles.stateBody}>There are no licensed lyrics available for this track yet.</Text></View> : null}
         {lyrics.status === "restricted" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="lock-closed-outline" size={24} color={colors.muted} /></View><Text style={styles.stateTitle}>Not available here</Text><Text style={styles.stateBody}>Lyrics for this recording cannot be displayed in your region.</Text></View> : null}
