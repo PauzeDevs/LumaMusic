@@ -97,18 +97,23 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     }
 
     bpmDetector?.accept(scratch, sampleCount, channels)
-    dsp?.process(scratch, sampleCount)
 
     val output = replaceOutputBuffer(bytes).order(ByteOrder.nativeOrder())
-    for (index in 0 until sampleCount) {
-      val value = scratch[index]
-      if (encoding == C.ENCODING_PCM_FLOAT) {
-        output.putFloat(value)
-      } else {
-        // PCM16 decode uses 32768 as its scale; use the same scale on encode
-        // so negative samples (including Short.MIN_VALUE) round-trip exactly.
-        val pcm = (value.coerceIn(-1f, 1f) * 32768f).roundToInt().coerceIn(-32768, 32767)
-        output.putShort(pcm.toShort())
+    if (dsp?.isBypassed() == true) {
+      // Preserve the decoder's PCM bytes exactly when every effect is off.
+      // BPM analysis still runs on the decoded scratch buffer above.
+      source.position(start)
+      output.put(source)
+    } else {
+      dsp?.process(scratch, sampleCount)
+      for (index in 0 until sampleCount) {
+        val value = scratch[index]
+        if (encoding == C.ENCODING_PCM_FLOAT) {
+          output.putFloat(value)
+        } else {
+          val pcm = (value.coerceIn(-1f, 1f) * 32768f).roundToInt().coerceIn(-32768, 32767)
+          output.putShort(pcm.toShort())
+        }
       }
     }
     output.flip()
