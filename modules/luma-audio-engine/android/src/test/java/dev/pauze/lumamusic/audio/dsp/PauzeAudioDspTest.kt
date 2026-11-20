@@ -18,6 +18,31 @@ class PauzeAudioDspTest {
         for (index in input.indices) assertEquals(expected[index], input[index], 0.00001f)
     }
 
+
+    @Test
+    fun allEffectsOffUsesExactDryBypass() {
+        val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
+        dsp.configureEqualizer(false, floatArrayOf(0f, 0f, 0f, 0f, 0f), 0f)
+        dsp.setLimiterEnabled(false)
+        dsp.setAudioEffects("off", 0f)
+
+        assertTrue(dsp.isBypassed())
+        val input = floatArrayOf(0.1234567f, -0.7654321f, 0.999999f, -0.000001f)
+        val expected = input.copyOf()
+        dsp.process(input)
+
+        assertTrue(input.contentEquals(expected))
+    }
+
+    @Test
+    fun anyEnabledAudioEffectDisablesDryBypass() {
+        val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
+        dsp.configureEqualizer(false, floatArrayOf(0f, 0f, 0f, 0f, 0f), 0f)
+        dsp.setLimiterEnabled(true)
+        dsp.setAudioEffects("off", 0f)
+        assertTrue(!dsp.isBypassed())
+    }
+
     @Test
     fun preampWorksIndependentlyOfEqualizer() {
         val dsp = PauzeAudioDsp(sampleRate = 48_000, channels = 2)
