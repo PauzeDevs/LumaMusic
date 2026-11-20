@@ -1,7 +1,7 @@
 import type { LumaExtensionKind, LumaExtensionManifest, LumaExtensionPermission } from "./types";
 
 export type ExtensionTrackContext = { id: string; title: string; artist: string; durationMs: number };
-export type LyricsExtensionResult = { lines: Array<{ time: number | null; text: string }>; synced: boolean; attribution: { text: string; url?: string } };
+export type LyricsExtensionResult = { lines: Array<{ time: number | null; text: string; words?: Array<{ time: number; text: string }> }>; synced: boolean; attribution: { text: string; url?: string } };
 export type LyricsProviderExtension = {
   manifest: LumaExtensionManifest;
   searchLyrics: (track: ExtensionTrackContext, signal: AbortSignal) => Promise<LyricsExtensionResult | null>;
