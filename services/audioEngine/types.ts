@@ -44,6 +44,8 @@ export type AudioEngineState = {
   decodedAudioFormat?: DecodedAudioFormat | null;
   /** Conservative PCM-derived tempo estimate; null until enough signal is observed. */
   estimatedBpm?: number | null;
+  /** Incoming deck tempo; available after its decoder has processed enough audio. */
+  incomingEstimatedBpm?: number | null;
 };
 
 export type AudioLabConfiguration = {
