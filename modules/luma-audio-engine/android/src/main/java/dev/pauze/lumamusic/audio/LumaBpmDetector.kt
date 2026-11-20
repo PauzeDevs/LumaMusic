@@ -1,6 +1,5 @@
 package dev.pauze.lumamusic.audio
 
-import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
@@ -60,7 +59,6 @@ internal class LumaBpmDetector(
     val maxLag = (60000.0 / 60.0 / frameMillis).toInt()
     var bestLag = 0
     var bestScore = 0.0
-    var secondScore = 0.0
     for (lag in minLag..maxLag) {
       var score = 0.0
       var normA = 0.0
@@ -74,16 +72,12 @@ internal class LumaBpmDetector(
       }
       val normalized = if (normA > 0.0 && normB > 0.0) score / sqrt(normA * normB) else 0.0
       if (normalized > bestScore) {
-        secondScore = bestScore
         bestScore = normalized
         bestLag = lag
-      } else if (normalized > secondScore) {
-        secondScore = normalized
-      }
+      }      }
     }
-    if (bestLag == 0 || bestScore < 0.22 || bestScore - secondScore < 0.015) return null
+    if (bestLag == 0 || bestScore < 0.22) return null
     val raw = 60000.0 / (bestLag * frameMillis)
-    val candidates = listOf(raw, raw * 2.0, raw / 2.0).filter { it in 60.0..180.0 }
-    return candidates.minByOrNull { abs(it - 120.0) }?.toInt()
+    return raw.toInt().coerceIn(60, 180)
   }
 }
