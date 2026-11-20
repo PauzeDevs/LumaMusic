@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
 import { PageEntrance } from "../components/PageEntrance";
 import { getLyrics, type LyricsState } from "../services/lyrics";
+import { translateLyricLines } from "../services/lyricsTranslation";
 import { usePlayerStore } from "../store/player";
 import type { ThemePalette } from "../theme/colors";
 import { useTheme } from "../theme/useTheme";
@@ -24,6 +25,9 @@ export default function LyricsScreen() {
   const adjustedPosition = position - lyricsSyncOffsetMs / 1000;
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const [lyrics, setLyrics] = useState<LyricsState>({ status: "unconfigured" });
+  const [translationLanguage, setTranslationLanguage] = useState<string | null>(null);
+  const [translatedLines, setTranslatedLines] = useState<string[] | null>(null);
+  const [translationError, setTranslationError] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const lyricsRequestId = useRef(0);
   const lineOffsets = useRef<number[]>([]);
@@ -104,6 +108,41 @@ export default function LyricsScreen() {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
 
+  useEffect(() => {
+    if (!translationLanguage || lyrics.status !== "available") {
+      setTranslatedLines(null);
+      setTranslationError(false);
+      return;
+    }
+    const controller = new AbortController();
+    setTranslatedLines(null);
+    setTranslationError(false);
+    translateLyricLines(lyrics.lines, translationLanguage, controller.signal)
+      .then(setTranslatedLines)
+      .catch(() => { if (!controller.signal.aborted) setTranslationError(true); });
+    return () => controller.abort();
+  }, [lyrics, translationLanguage]);
+
+  const chooseTranslation = () => {
+    const options = [
+      { text: "Off · Original lyrics", value: null },
+      { text: "Hindi", value: "hi" },
+      { text: "Punjabi", value: "pa" },
+      { text: "English", value: "en" },
+      { text: "Spanish", value: "es" },
+      { text: "French", value: "fr" },
+      { text: "German", value: "de" },
+      { text: "Arabic", value: "ar" }
+    ] as const;
+    Alert.alert("Translate lyrics", "Translations are provided by MyMemory. Lyric text is sent to that service; original timing remains unchanged.", [
+      ...options.map((option) => ({
+        text: option.text + (translationLanguage === option.value ? " ✓" : ""),
+        onPress: () => setTranslationLanguage(option.value)
+      })),
+      { text: "Cancel", style: "cancel" as const }
+    ]);
+  };
+
   const activeLineStyle = { opacity: activeLineProgress, transform: [{ scale: activeLineProgress.interpolate({ inputRange: [0, 1], outputRange: [0.975, 1] }) }] };
 
   return (
@@ -112,7 +151,10 @@ export default function LyricsScreen() {
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.iconButton} accessibilityLabel="Go back"><Ionicons name="chevron-down" size={23} color={colors.text} /></Pressable>
         <View style={styles.topTitle}><Text style={styles.eyebrow}>LUMAMUSIC</Text><Text style={styles.heading}>Lyrics</Text></View>
-        <Pressable onPress={chooseProvider} style={styles.iconButton} accessibilityLabel="Choose lyrics provider"><Ionicons name="options-outline" size={20} color={colors.muted} /></Pressable>
+        <View style={styles.topActions}>
+          <Pressable onPress={chooseTranslation} style={styles.iconButton} accessibilityLabel="Translate lyrics"><Ionicons name="language-outline" size={19} color={translationLanguage ? colors.accent : colors.muted} /></Pressable>
+          <Pressable onPress={chooseProvider} style={styles.iconButton} accessibilityLabel="Choose lyrics provider"><Ionicons name="options-outline" size={20} color={colors.muted} /></Pressable>
+        </View>
       </View>
 
       {track ? <View style={styles.trackCard}>
@@ -130,7 +172,9 @@ export default function LyricsScreen() {
         {lyrics.status === "available" ? <>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.lyricList} showsVerticalScrollIndicator={false}>
             <View style={styles.topFadeSpace} />
-            {lyrics.lines.map((line, index) => <Animated.Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? [styles.activeLine, activeLineStyle] : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.words?.length ? line.words.map((word, wordIndex) => <Text key={`${word.time}-${wordIndex}`} style={index === activeIndex && wordIndex === activeWordIndex ? styles.activeWord : undefined}>{word.text}</Text>) : line.text}</Animated.Text>)}
+            {lyrics.lines.map((line, index) => <Animated.Text key={`${line.time ?? "plain"}-${index}`} onLayout={(event) => { lineOffsets.current[index] = event.nativeEvent.layout.y; }} style={[styles.lyricLine, index === activeIndex ? [styles.activeLine, activeLineStyle] : null, activeIndex >= 0 && index < activeIndex ? styles.pastLine : null]}>{line.words?.length ? line.words.map((word, wordIndex) => <Text key={`${word.time}-${wordIndex}`} style={index === activeIndex && wordIndex === activeWordIndex ? styles.activeWord : undefined}>{word.text}</Text>) : line.text}{translatedLines?.[index] ? <Text style={styles.translatedLine}>{translatedLines[index]}</Text> : null}</Animated.Text>)}
+            {translationError ? <Text style={styles.translationNotice}>Translation unavailable. Try again later.</Text> : null}
+            {translationLanguage && !translatedLines && !translationError ? <Text style={styles.translationNotice}>Translating lyrics…</Text> : null}
             <View style={styles.bottomFadeSpace} />
           </ScrollView>
           <View style={styles.providerFooter}>
@@ -159,6 +203,7 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   topBar: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.075)" },
   topTitle: { alignItems: "center", gap: 2 },
+  topActions: { flexDirection: "row", alignItems: "center", gap: 7 },
   eyebrow: { color: colors.accent, fontSize: 8, fontWeight: "800", letterSpacing: 2 },
   heading: { color: colors.text, fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
   trackCard: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 12, marginBottom: 18, padding: 12, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: "rgba(255,255,255,0.085)" },
@@ -181,6 +226,8 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   lyricLine: { width: "100%", color: colors.muted, fontSize: 23, lineHeight: 32, fontWeight: "700", letterSpacing: -0.55, marginBottom: 27 },
   activeLine: { color: colors.text, fontSize: 27, lineHeight: 36, textShadowColor: colors.accent, textShadowRadius: 10 },
   activeWord: { color: colors.accent, textShadowColor: colors.accent, textShadowRadius: 8 },
+  translatedLine: { color: colors.muted, fontSize: 14, lineHeight: 20, fontWeight: "500", letterSpacing: 0, marginTop: 7 },
+  translationNotice: { color: colors.subtle, fontSize: 10, textAlign: "center", paddingVertical: 8 },
   pastLine: { color: colors.subtle },
   providerFooter: { paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.055)" },
   syncControlRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
