@@ -25,6 +25,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
   private var encoding = C.ENCODING_INVALID
   private var decodedSampleRate = 0
   private var decodedChannelCount = 0
+  private var bpmDetector: LumaBpmDetector? = null
 
   @Synchronized
   override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -36,6 +37,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     encoding = inputAudioFormat.encoding
     decodedSampleRate = inputAudioFormat.sampleRate
     decodedChannelCount = inputAudioFormat.channelCount
+    bpmDetector = LumaBpmDetector(inputAudioFormat.sampleRate)
     dsp = PauzeAudioDsp(inputAudioFormat.sampleRate, inputAudioFormat.channelCount).also {
       it.configureEqualizer(equalizerEnabled, bandDb, preampDb)
       it.setLimiterEnabled(limiterEnabled)
@@ -57,6 +59,9 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     dsp?.setLimiterEnabled(limiterEnabled)
     dsp?.setAudioEffects(reverbPreset, spatialBalance)
   }
+
+  @Synchronized
+  fun getEstimatedBpm(): Int? = bpmDetector?.bpm
 
   @Synchronized
   fun getDecodedAudioFormat(): Map<String, Any?>? {
@@ -91,6 +96,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
       }
     }
 
+    bpmDetector?.accept(scratch, sampleCount, channels)
     dsp?.process(scratch, sampleCount)
 
     val output = replaceOutputBuffer(bytes).order(ByteOrder.nativeOrder())
@@ -119,5 +125,6 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     encoding = C.ENCODING_INVALID
     decodedSampleRate = 0
     decodedChannelCount = 0
+    bpmDetector = null
   }
 }
