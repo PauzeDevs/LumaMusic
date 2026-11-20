@@ -60,6 +60,8 @@ export default function LyricsScreen() {
     setLyrics({ status: "loading" });
     getLyrics(track, lyricsProvider).then((result) => {
       if (lyricsRequestId.current === requestId) setLyrics(result);
+    }).catch(() => {
+      if (lyricsRequestId.current === requestId) setLyrics({ status: "error" });
     });
     return () => {
       if (lyricsRequestId.current === requestId) lyricsRequestId.current += 1;
@@ -91,6 +93,8 @@ export default function LyricsScreen() {
     setLyrics({ status: "loading" });
     getLyrics(track, lyricsProvider).then((result) => {
       if (lyricsRequestId.current === requestId) setLyrics(result);
+    }).catch(() => {
+      if (lyricsRequestId.current === requestId) setLyrics({ status: "error" });
     });
   };
   const chooseProvider = () => {
@@ -166,7 +170,7 @@ export default function LyricsScreen() {
       <View style={styles.lyricsSurface}>
         {lyrics.status === "loading" ? <View style={styles.centerState}><ActivityIndicator color={colors.accent} /><Text style={styles.stateTitle}>Finding your lyrics</Text><Text style={styles.stateBody}>Trying {lyricsProvider === "auto" ? "the best available source" : lyricsProvider === "lrclib" ? "LRCLIB first" : "Lyrics.ovh first"}.</Text></View> : null}
         {lyrics.status === "unconfigured" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="musical-notes" size={25} color={colors.accent} /></View><Text style={styles.stateTitle}>Lyrics are getting ready</Text><Text style={styles.stateBody}>LumaMusic checks the free LRCLIB catalogue for synced or plain lyrics. Some tracks may not be available yet.</Text></View> : null}
-        {lyrics.status === "not_found" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="text-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Lyrics unavailable</Text><Text style={styles.stateBody}>There are no licensed lyrics available for this track yet.</Text></View> : null}
+        {lyrics.status === "not_found" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="text-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Lyrics unavailable</Text><Text style={styles.stateBody}>No lyrics were found for this track in the available providers.</Text></View> : null}
         {lyrics.status === "restricted" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="lock-closed-outline" size={24} color={colors.muted} /></View><Text style={styles.stateTitle}>Not available here</Text><Text style={styles.stateBody}>Lyrics for this recording cannot be displayed in your region.</Text></View> : null}
         {lyrics.status === "error" ? <View style={styles.centerState}><View style={styles.stateIcon}><Ionicons name="cloud-offline-outline" size={25} color={colors.muted} /></View><Text style={styles.stateTitle}>Couldn't load lyrics</Text><Text style={styles.stateBody}>Check your connection and try again.</Text><Pressable onPress={retry} style={styles.retryButton}><Text style={styles.retryText}>Try again</Text></Pressable></View> : null}
         {lyrics.status === "available" ? <>
