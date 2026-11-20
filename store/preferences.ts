@@ -51,7 +51,8 @@ export const usePreferencesStore = create<PreferencesState>()(persist((set) => (
   setAutoCrossfadeEnabled: (autoCrossfadeEnabled) => set({ autoCrossfadeEnabled }),
   setCrossfadeDurationSeconds: (crossfadeDurationSeconds) => {
     if (Number.isFinite(crossfadeDurationSeconds)) set({ crossfadeDurationSeconds: Math.max(1, Math.min(12, crossfadeDurationSeconds)) });
-  }
+  },
+  setLyricsProvider: (lyricsProvider) => set({ lyricsProvider })
 }), {
   name: "lumamusic-preferences", storage: createJSONStorage(() => AsyncStorage),
   partialize: (state) => ({
