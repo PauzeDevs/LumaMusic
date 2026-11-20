@@ -14,7 +14,9 @@ import { usePreferencesStore } from "../store/preferences";
 export default function LyricsScreen() {
   const { colors, blurTint } = useTheme();
   const styles = createStyles(colors);
-  const motionStyle = usePreferencesStore((state) => state.motionStyle);\n  const lyricsProvider = usePreferencesStore((state) => state.lyricsProvider);\n  const setLyricsProvider = usePreferencesStore((state) => state.setLyricsProvider);
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
+  const lyricsProvider = usePreferencesStore((state) => state.lyricsProvider);
+  const setLyricsProvider = usePreferencesStore((state) => state.setLyricsProvider);
   const track = usePlayerStore((state) => state.currentTrack);
   const position = usePlayerStore((state) => state.playbackPosition);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -84,7 +86,18 @@ export default function LyricsScreen() {
       if (lyricsRequestId.current === requestId) setLyrics(result);
     });
   };
-  const chooseProvider = () => {\n    const options = [\n      { text: "Auto · Best available", value: "auto" as const },\n      { text: "LRCLIB · Synced-first", value: "lrclib" as const },\n      { text: "Lyrics.ovh · Plain-text fallback", value: "lyrics-ovh" as const }\n    ];\n    Alert.alert("Lyrics provider", "Choose which source LumaMusic should try first.", [\n      ...options.map((option) => ({ text: option.text + (lyricsProvider === option.value ? " ✓" : ""), onPress: () => setLyricsProvider(option.value) })),\n      { text: "Cancel", style: "cancel" as const }\n    ]);\n  };\n  const openAttribution = () => {
+  const chooseProvider = () => {
+    const options = [
+      { text: "Auto · Best available", value: "auto" as const },
+      { text: "LRCLIB · Synced-first", value: "lrclib" as const },
+      { text: "Lyrics.ovh · Plain-text fallback", value: "lyrics-ovh" as const }
+    ];
+    Alert.alert("Lyrics provider", "Choose which source LumaMusic should try first.", [
+      ...options.map((option) => ({ text: option.text + (lyricsProvider === option.value ? " ✓" : ""), onPress: () => setLyricsProvider(option.value) })),
+      { text: "Cancel", style: "cancel" as const }
+    ]);
+  };
+  const openAttribution = () => {
     if (lyrics.status === "available" && lyrics.attribution?.url) void Linking.openURL(lyrics.attribution.url);
   };
 
