@@ -27,7 +27,6 @@ function formatTime(seconds: number) {
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const artworkSize = playerStyleForLayout(playerStyle, windowWidth, windowHeight);
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -42,6 +41,7 @@ export default function NowPlayingScreen() {
   const queue = usePlayerStore((s) => s.queue);
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
+  const artworkSize = playerStyleForLayout(playerStyle, windowWidth, windowHeight);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
   const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
   const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
