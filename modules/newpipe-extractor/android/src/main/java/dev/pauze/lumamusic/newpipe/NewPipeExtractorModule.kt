@@ -13,8 +13,28 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 
 private class LumaNewPipeDownloader : Downloader() {
+  private fun register(connection: HttpURLConnection, videoId: String?) {
+    if (videoId.isNullOrBlank()) return
+    activeConnections.computeIfAbsent(videoId) { ConcurrentHashMap.newKeySet() }.add(connection)
+  }
+
+  private fun unregister(connection: HttpURLConnection, videoId: String?) {
+    if (videoId.isNullOrBlank()) return
+    activeConnections[videoId]?.let { connections ->
+      connections.remove(connection)
+      if (connections.isEmpty()) activeConnections.remove(videoId, connections)
+    }
+  }
+
+  private fun ensureNotCancelled(videoId: String?) {
+    if (Thread.currentThread().isInterrupted || (!videoId.isNullOrBlank() && cancelledVideoIds.contains(videoId))) {
+      throw IOException("NewPipe extraction was cancelled.")
+    }
+  }
+
   private fun readBoundedResponse(input: InputStream): String {
     val output = ByteArrayOutputStream()
     val buffer = ByteArray(16 * 1024)
@@ -34,7 +54,10 @@ private class LumaNewPipeDownloader : Downloader() {
   }
   override fun execute(request: Request): Response {
     val connection = (URL(request.url()).openConnection() as HttpURLConnection)
+    val videoId = activeVideoId.get()
+    register(connection, videoId)
     try {
+      ensureNotCancelled(videoId)
       connection.requestMethod = request.httpMethod()
       connection.connectTimeout = 15000
       connection.readTimeout = 20000
@@ -50,7 +73,9 @@ private class LumaNewPipeDownloader : Downloader() {
         connection.outputStream.use { it.write(body) }
       }
 
+      ensureNotCancelled(videoId)
       val code = connection.responseCode
+      ensureNotCancelled(videoId)
       val contentLength = connection.getHeaderFieldLong("Content-Length", -1L)
       if (contentLength > MAX_RESPONSE_BYTES) {
         throw IOException("YouTube extractor response exceeded the 8 MB safety limit.")
@@ -71,11 +96,21 @@ private class LumaNewPipeDownloader : Downloader() {
         connection.url.toString()
       )
     } finally {
+      unregister(connection, videoId)
       connection.disconnect()
     }
   }
 
   companion object {
+    val activeVideoId = ThreadLocal<String?>()
+    val activeConnections = ConcurrentHashMap<String, MutableSet<HttpURLConnection>>()
+    val cancelledVideoIds = ConcurrentHashMap.newKeySet<String>()
+    fun cancel(videoId: String) {
+      cancelledVideoIds.add(videoId)
+      activeConnections.remove(videoId)?.forEach { connection ->
+        try { connection.disconnect() } catch (_: Exception) { }
+      }
+    }
     private const val MAX_RESPONSE_BYTES = 8L * 1024L * 1024L
     const val USER_AGENT =
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -86,16 +121,25 @@ class NewPipeExtractorModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("NewPipeExtractor")
 
+    Function("cancelExtraction") { videoId: String ->
+      if (videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) {
+        LumaNewPipeDownloader.cancel(videoId)
+      }
+    }
+
     AsyncFunction("extractAudio") { videoId: String ->
       require(videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) {
         "Invalid YouTube video ID."
       }
 
-      synchronized(NewPipe::class.java) {
-        if (NewPipe.getDownloader() == null) {
-          NewPipe.init(LumaNewPipeDownloader())
+      LumaNewPipeDownloader.cancelledVideoIds.remove(videoId)
+      LumaNewPipeDownloader.activeVideoId.set(videoId)
+      try {
+        synchronized(NewPipe::class.java) {
+          if (NewPipe.getDownloader() == null) {
+            NewPipe.init(LumaNewPipeDownloader())
+          }
         }
-      }
 
       val extractor = ServiceList.YouTube.getStreamExtractor(
         "https://www.youtube.com/watch?v=$videoId"
@@ -119,6 +163,10 @@ class NewPipeExtractorModule : Module() {
         "bitrate" to best.averageBitrate,
         "userAgent" to LumaNewPipeDownloader.USER_AGENT
       )
+      } finally {
+        LumaNewPipeDownloader.activeVideoId.remove()
+        LumaNewPipeDownloader.cancelledVideoIds.remove(videoId)
+      }
     }
   }
 }
