@@ -61,10 +61,9 @@ async function resolveNewPipeStream(videoId: string, track: MusicTrack): Promise
 
   const url = new URL(result.url);
   const expiry = Number(url.searchParams.get("expire") || 0) * 1000;
-  const poToken = await resolvePoTokenQuickly(videoId);
-  if (poToken && poToken.expiresAt > Date.now() + 30_000) {
-    url.searchParams.set("pot", poToken.contentToken);
-  }
+  // PO tokens are optional for this direct-stream route. Resolve them in the
+  // background so WebView startup never delays the first audio request.
+  void resolvePoTokenQuickly(videoId).catch(() => null);
 
   return {
     url: url.toString(),
@@ -179,17 +178,25 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
 async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: string): Promise<ResolvedYouTubeAudio> {
   const errors: string[] = [];
 
-  // Prefer NewPipe on Android. It resolves YouTube signature and n-parameter
-  // transformations before returning a media URL. An undeciphered URL can be
-  // throttled and may stop delivering bytes before the track is complete.
-  try {
-    const newPipeStream = await resolveNewPipeStream(videoId, track);
-    if (newPipeStream) {
-      return newPipeStream;
-    }
-  } catch (error) {
+  // Give NewPipe a short head start, but never let a slow extractor hold
+  // playback hostage. InnerTube profiles are attempted immediately after the
+  // bounded window; the native extraction may finish in the background.
+  const newPipeAttempt = resolveNewPipeStream(videoId, track);
+  let newPipeTimer: ReturnType<typeof setTimeout> | undefined;
+  const boundedNewPipeAttempt = Promise.race([
+    newPipeAttempt,
+    new Promise<null>((resolve) => {
+      newPipeTimer = setTimeout(() => resolve(null), 3000);
+    })
+  ]).then((stream) => stream ?? null).catch((error) => {
     errors.push(error instanceof Error ? `NewPipe: ${error.message}` : `NewPipe: ${String(error)}`);
-  }
+    return null;
+  }).finally(() => {
+    if (newPipeTimer) clearTimeout(newPipeTimer);
+  });
+
+  const earlyNewPipe = await boundedNewPipeAttempt;
+  if (earlyNewPipe) return earlyNewPipe;
 
   // InnerTube remains the fallback when native extraction is unavailable.
   // Race the profiles and use the first successful playable stream.
