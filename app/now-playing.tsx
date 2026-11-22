@@ -52,7 +52,6 @@ export default function NowPlayingScreen() {
   const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
   const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
-  const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
   const accentColor = colors.accent;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
