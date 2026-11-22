@@ -97,8 +97,8 @@ async function resolvePoTokenQuickly(videoId: string) {
  * NewPipe resolves YouTube's signed and throttled stream URLs before returning
  * them. Prefer it on Android; the InnerTube shortcut is retained as fallback.
  */
-async function resolveNewPipeStream(videoId: string, track: MusicTrack): Promise<ResolvedYouTubeAudio | null> {
-  const result = await resolveWithNewPipe(videoId);
+async function resolveNewPipeStream(videoId: string, track: MusicTrack, signal?: AbortSignal): Promise<ResolvedYouTubeAudio | null> {
+  const result = await resolveWithNewPipe(videoId, signal);
   if (!result?.url) return null;
 
   const validatedUrl = validateStreamUrl(result.url, "NewPipe");
@@ -219,15 +219,18 @@ export function extractYouTubeVideoId(track: MusicTrack): string {
 async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: string): Promise<ResolvedYouTubeAudio> {
   const errors: string[] = [];
 
-  // Give NewPipe a short head start, but never let a slow extractor hold
-  // playback hostage. InnerTube profiles are attempted immediately after the
-  // bounded window; the native extraction may finish in the background.
-  const newPipeAttempt = resolveNewPipeStream(videoId, track);
+  // Give NewPipe a short head start. On timeout, abort the native extraction
+  // so its active HTTP connections are disconnected before InnerTube fallback.
+  const newPipeController = new AbortController();
   let newPipeTimer: ReturnType<typeof setTimeout> | undefined;
+  const newPipeAttempt = resolveNewPipeStream(videoId, track, newPipeController.signal);
   const boundedNewPipeAttempt = Promise.race([
     newPipeAttempt,
     new Promise<null>((resolve) => {
-      newPipeTimer = setTimeout(() => resolve(null), 3000);
+      newPipeTimer = setTimeout(() => {
+        newPipeController.abort();
+        resolve(null);
+      }, 3000);
     })
   ]).then((stream) => stream ?? null).catch((error) => {
     errors.push(error instanceof Error ? `NewPipe: ${error.message}` : `NewPipe: ${String(error)}`);
