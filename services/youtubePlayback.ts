@@ -86,7 +86,8 @@ async function resolveNewPipeStream(videoId: string, track: MusicTrack): Promise
   const result = await resolveWithNewPipe(videoId);
   if (!result?.url) return null;
 
-  const validatedUrl = validateStreamUrl(result.url, "NewPipe");\n  const url = new URL(validatedUrl);
+  const validatedUrl = validateStreamUrl(result.url, "NewPipe");
+  const url = new URL(validatedUrl);
   const expiry = Number(url.searchParams.get("expire") || 0) * 1000;
   // PO tokens are optional for this direct-stream route. Resolve them in the
   // background so WebView startup never delays the first audio request.
@@ -292,7 +293,8 @@ async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: stri
       const dashManifestUrl: string | undefined = typeof streamingData?.dashManifestUrl === "string"
         ? streamingData.dashManifestUrl
         : undefined;
-      const rawManifestUrl = hlsManifestUrl || dashManifestUrl;\n      const manifestUrl = rawManifestUrl ? validateStreamUrl(rawManifestUrl, profile.name) : undefined;
+      const rawManifestUrl = hlsManifestUrl || dashManifestUrl;
+      const manifestUrl = rawManifestUrl ? validateStreamUrl(rawManifestUrl, profile.name) : undefined;
       if (!bestFormat && !manifestUrl) throw new Error(`${profile.name}: no direct audio stream or supported manifest URL`);
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
