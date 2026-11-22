@@ -5,7 +5,8 @@
   <h3>Your music. Your mood. Your own little corner of sound.</h3>
   <p>Built with love by <strong>PauzeX Developments</strong> — for the songs you keep coming back to.</p>
   <p>
-    <a href="https://lumamusic.devs.surf">🌐 Website</a> ·
+    <a href="https://lumamusic.devs.surf">🌐 LumaMusic</a> ·
+    <a href="https://PauzeX.devs.surf">🏢 PauzeX Developments</a> ·
     <a href="https://github.com/PauzeDevs/LumaMusic/releases">📲 Get LumaMusic</a> ·
     <a href="https://pauze.is-a.dev/support/">💗 Support the project</a>
   </p>
@@ -53,7 +54,7 @@ LumaMusic does not give you ownership or usage rights to third-party music or me
 
 ## Made by PauzeX Developments 💗
 
-LumaMusic is built and maintained by **[PauzeX Developments](https://pauze.is-a.dev)**.
+LumaMusic is built and maintained by **[PauzeX Developments](https://PauzeX.devs.surf)**.
 
 If you like what we're building and want to support future development, you can visit our [support page](https://pauze.is-a.dev/support/). It's completely optional — even checking out the project and sharing it helps!
 
@@ -68,7 +69,7 @@ Read the full terms in the [LICENSE](LICENSE) file. Third-party components and m
 ---
 
 <div align="center">
-  Made with 🎧 by <a href="https://pauze.is-a.dev">PauzeX Developments</a>
+  Made with 🎧 by <a href="https://PauzeX.devs.surf">PauzeX Developments</a>
   <br />
   <sub>Thanks for being here. Keep the music going. ✨</sub>
 </div>
