@@ -5,7 +5,7 @@ import {
   safeBitrate,
   safeDuration,
   validateStreamUrl
-} from "../services/youtubeStreamValidation.ts";
+} from "../services/youtubeStreamValidation";
 
 test("accepts HTTPS YouTube and googlevideo stream hosts", () => {
   assert.equal(validateStreamUrl("https://rr1---sn.googlevideo.com/audio", "test"), "https://rr1---sn.googlevideo.com/audio");
