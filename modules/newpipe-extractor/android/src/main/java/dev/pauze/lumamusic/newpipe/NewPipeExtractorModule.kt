@@ -16,21 +16,21 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 
 private class LumaNewPipeDownloader : Downloader() {
-  private fun register(connection: HttpURLConnection, videoId: String?) {
-    if (videoId.isNullOrBlank()) return
-    activeConnections.computeIfAbsent(videoId) { ConcurrentHashMap.newKeySet() }.add(connection)
+  private fun register(connection: HttpURLConnection, requestId: String?) {
+    if (requestId.isNullOrBlank()) return
+    activeConnections.computeIfAbsent(requestId) { ConcurrentHashMap.newKeySet() }.add(connection)
   }
 
-  private fun unregister(connection: HttpURLConnection, videoId: String?) {
-    if (videoId.isNullOrBlank()) return
-    activeConnections[videoId]?.let { connections ->
+  private fun unregister(connection: HttpURLConnection, requestId: String?) {
+    if (requestId.isNullOrBlank()) return
+    activeConnections[requestId]?.let { connections ->
       connections.remove(connection)
-      if (connections.isEmpty()) activeConnections.remove(videoId, connections)
+      if (connections.isEmpty()) activeConnections.remove(requestId, connections)
     }
   }
 
-  private fun ensureNotCancelled(videoId: String?) {
-    if (Thread.currentThread().isInterrupted || (!videoId.isNullOrBlank() && cancelledVideoIds.contains(videoId))) {
+  private fun ensureNotCancelled(requestId: String?) {
+    if (Thread.currentThread().isInterrupted || (!requestId.isNullOrBlank() && cancelledRequestIds.contains(requestId))) {
       throw IOException("NewPipe extraction was cancelled.")
     }
   }
@@ -52,12 +52,13 @@ private class LumaNewPipeDownloader : Downloader() {
     }
     return output.toString(Charsets.UTF_8.name())
   }
+
   override fun execute(request: Request): Response {
-    val connection = (URL(request.url()).openConnection() as HttpURLConnection)
-    val videoId = activeVideoId.get()
-    register(connection, videoId)
+    val connection = URL(request.url()).openConnection() as HttpURLConnection
+    val requestId = activeRequestId.get()
+    register(connection, requestId)
     try {
-      ensureNotCancelled(videoId)
+      ensureNotCancelled(requestId)
       connection.requestMethod = request.httpMethod()
       connection.connectTimeout = 15000
       connection.readTimeout = 20000
@@ -73,9 +74,9 @@ private class LumaNewPipeDownloader : Downloader() {
         connection.outputStream.use { it.write(body) }
       }
 
-      ensureNotCancelled(videoId)
+      ensureNotCancelled(requestId)
       val code = connection.responseCode
-      ensureNotCancelled(videoId)
+      ensureNotCancelled(requestId)
       val contentLength = connection.getHeaderFieldLong("Content-Length", -1L)
       if (contentLength > MAX_RESPONSE_BYTES) {
         throw IOException("YouTube extractor response exceeded the 8 MB safety limit.")
@@ -96,21 +97,23 @@ private class LumaNewPipeDownloader : Downloader() {
         connection.url.toString()
       )
     } finally {
-      unregister(connection, videoId)
+      unregister(connection, requestId)
       connection.disconnect()
     }
   }
 
   companion object {
-    val activeVideoId = ThreadLocal<String?>()
+    val activeRequestId = ThreadLocal<String?>()
     val activeConnections = ConcurrentHashMap<String, MutableSet<HttpURLConnection>>()
-    val cancelledVideoIds = ConcurrentHashMap.newKeySet<String>()
-    fun cancel(videoId: String) {
-      cancelledVideoIds.add(videoId)
-      activeConnections.remove(videoId)?.forEach { connection ->
+    val cancelledRequestIds = ConcurrentHashMap.newKeySet<String>()
+
+    fun cancel(requestId: String) {
+      cancelledRequestIds.add(requestId)
+      activeConnections.remove(requestId)?.forEach { connection ->
         try { connection.disconnect() } catch (_: Exception) { }
       }
     }
+
     private const val MAX_RESPONSE_BYTES = 8L * 1024L * 1024L
     const val USER_AGENT =
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -121,19 +124,23 @@ class NewPipeExtractorModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("NewPipeExtractor")
 
-    Function("cancelExtraction") { videoId: String ->
-      if (videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) {
-        LumaNewPipeDownloader.cancel(videoId)
+    Function("cancelExtraction") { requestId: String ->
+      if (requestId.matches(Regex("newpipe-[0-9]{1,16}"))) {
+        LumaNewPipeDownloader.cancel(requestId)
       }
     }
 
-    AsyncFunction("extractAudio") { videoId: String ->
+    AsyncFunction("extractAudio") { videoId: String, requestId: String ->
       require(videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) {
         "Invalid YouTube video ID."
       }
+      require(requestId.matches(Regex("newpipe-[0-9]{1,16}"))) {
+        "Invalid NewPipe extraction request ID."
+      }
 
-      LumaNewPipeDownloader.cancelledVideoIds.remove(videoId)
-      LumaNewPipeDownloader.activeVideoId.set(videoId)
+      // Do not clear a cancellation marker here: cancelExtraction may run
+      // before Expo schedules this async function on its worker thread.
+      LumaNewPipeDownloader.activeRequestId.set(requestId)
       try {
         synchronized(NewPipe::class.java) {
           if (NewPipe.getDownloader() == null) {
@@ -141,31 +148,31 @@ class NewPipeExtractorModule : Module() {
           }
         }
 
-      val extractor = ServiceList.YouTube.getStreamExtractor(
-        "https://www.youtube.com/watch?v=$videoId"
-      )
-      extractor.fetchPage()
-
-      val audioStreams = extractor.audioStreams
-        .filter { it.isUrl && it.content.isNotBlank() }
-        .sortedWith(
-          compareByDescending<AudioStream> { it.format?.mimeType?.contains("audio/mp4") == true }
-            .thenByDescending { it.averageBitrate }
+        val extractor = ServiceList.YouTube.getStreamExtractor(
+          "https://www.youtube.com/watch?v=$videoId"
         )
+        extractor.fetchPage()
 
-      val best = audioStreams.firstOrNull()
-        ?: throw IllegalStateException("NewPipe did not return a direct audio stream.")
+        val audioStreams = extractor.audioStreams
+          .filter { it.isUrl && it.content.isNotBlank() }
+          .sortedWith(
+            compareByDescending<AudioStream> { it.format?.mimeType?.contains("audio/mp4") == true }
+              .thenByDescending { it.averageBitrate }
+          )
 
-      mapOf(
-        "url" to best.content,
-        "mimeType" to (best.format?.mimeType ?: "audio/*"),
-        "durationSeconds" to extractor.length.toDouble(),
-        "bitrate" to best.averageBitrate,
-        "userAgent" to LumaNewPipeDownloader.USER_AGENT
-      )
+        val best = audioStreams.firstOrNull()
+          ?: throw IllegalStateException("NewPipe did not return a direct audio stream.")
+
+        mapOf(
+          "url" to best.content,
+          "mimeType" to (best.format?.mimeType ?: "audio/*"),
+          "durationSeconds" to extractor.length.toDouble(),
+          "bitrate" to best.averageBitrate,
+          "userAgent" to LumaNewPipeDownloader.USER_AGENT
+        )
       } finally {
-        LumaNewPipeDownloader.activeVideoId.remove()
-        LumaNewPipeDownloader.cancelledVideoIds.remove(videoId)
+        LumaNewPipeDownloader.activeRequestId.remove()
+        LumaNewPipeDownloader.cancelledRequestIds.remove(requestId)
       }
     }
   }
