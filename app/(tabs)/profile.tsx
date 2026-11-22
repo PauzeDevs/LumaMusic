@@ -1,5 +1,5 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
@@ -9,6 +9,7 @@ import { PlaylistStack } from "../../components/PlaylistStack";
 import { usePlayerStore } from "../../store/player";
 import { useLibraryStore } from "../../store/library";
 import { router } from "expo-router";
+import { useMemo, useState } from "react";
 
 const settings = [
   { icon: "stats-chart-outline", title: "Listening Stats", subtitle: "Your Replay, listening time and top tracks" },
@@ -28,6 +29,24 @@ export default function ProfileScreen() {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const localPlaylists = useLibraryStore((state) => state.playlists);
+  const [settingsQuery, setSettingsQuery] = useState("");
+  const filteredSettings = useMemo(() => {
+    const query = settingsQuery.trim().toLocaleLowerCase();
+    if (!query) return settings;
+    return settings.filter((item) => `${item.title} ${item.subtitle}`.toLocaleLowerCase().includes(query));
+  }, [settingsQuery]);
+  const openSetting = (title: string) => {
+    switch (title) {
+      case "Listening Stats": router.push("/stats"); break;
+      case "Playback": router.push("/audio-settings"); break;
+      case "Privacy": router.push("/privacy"); break;
+      case "Account": router.push("/account"); break;
+      case "Notifications": router.push("/notifications"); break;
+      case "Modules": router.push("/modules"); break;
+      case "Appearance": router.push("/appearance"); break;
+      default: void Linking.openURL("https://github.com/PauzeDevs/LumaMusic");
+    }
+  };
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent, colors.mint]} progressBackgroundColor={colors.surface} />}>
@@ -60,27 +79,24 @@ export default function ProfileScreen() {
           onPress: () => router.push({ pathname: "/playlist/[id]", params: { id: playlist.id, title: playlist.name } })
         }))} />
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Preferences</Text><Text style={styles.sectionMeta}>PERSONALISE</Text></View>
+        <View style={styles.settingsSearch}>
+          <Ionicons name="search-outline" size={18} color={colors.subtle} />
+          <TextInput
+            value={settingsQuery}
+            onChangeText={setSettingsQuery}
+            placeholder="Search settings"
+            placeholderTextColor={colors.subtle}
+            style={styles.settingsSearchInput}
+            returnKeyType="search"
+            accessibilityLabel="Search settings"
+            autoCapitalize="none"
+            clearButtonMode="while-editing"
+          />
+          {settingsQuery.length > 0 ? <Pressable onPress={() => setSettingsQuery("")} hitSlop={10} accessibilityRole="button" accessibilityLabel="Clear settings search"><Ionicons name="close-circle" size={17} color={colors.subtle} /></Pressable> : null}
+        </View>
         <View style={styles.settings}>
-          {settings.map((item, index) => (
-            <Pressable key={item.title} onPress={() => {
-              if (item.title === "Listening Stats") {
-                router.push("/stats");
-              } else if (item.title === "Playback") {
-                router.push("/audio-settings");
-              } else if (item.title === "Privacy") {
-                router.push("/privacy");
-              } else if (item.title === "Account") {
-                router.push("/account");
-              } else if (item.title === "Notifications") {
-                router.push("/notifications");
-              } else if (item.title === "Modules") {
-                router.push("/modules");
-              } else if (item.title === "Appearance") {
-                router.push("/appearance");
-              } else {
-                void Linking.openURL("https://github.com/PauzeDevs/LumaMusic");
-              }
-            }} style={[styles.setting, index === settings.length - 1 && styles.last]} android_ripple={{ color: "rgba(240,90,104,0.08)" }}>
+          {filteredSettings.length > 0 ? filteredSettings.map((item, index) => (
+            <Pressable key={item.title} onPress={() => openSetting(item.title)} style={[styles.setting, index === filteredSettings.length - 1 && styles.last]} android_ripple={{ color: "rgba(240,90,104,0.08)" }}>
               <View style={styles.settingIcon}><Ionicons name={item.icon} size={19} color={colors.accent} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.settingTitle}>{item.title}</Text>
@@ -88,7 +104,7 @@ export default function ProfileScreen() {
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.subtle} />
             </Pressable>
-          ))}
+          )) : <View style={styles.emptySettings}><Text style={styles.emptySettingsText}>No settings found for “{settingsQuery}”.</Text></View>}
         </View>
         <View style={styles.footerCard}>
           <Ionicons name="musical-notes" size={16} color={colors.accent} />
@@ -125,6 +141,10 @@ function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet
   statusPill: { borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.surfaceSoft },
   statusPillActive: { backgroundColor: colors.surfaceSoft },
   statusText: { color: colors.mint, fontSize: 8, fontWeight: "800", letterSpacing: 1 },
+  settingsSearch: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, marginBottom: 10, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  settingsSearchInput: { flex: 1, minHeight: 46, color: colors.text, fontSize: 12, paddingVertical: 0 },
+  emptySettings: { minHeight: 64, alignItems: "center", justifyContent: "center", paddingHorizontal: 14 },
+  emptySettingsText: { color: colors.muted, fontSize: 11, textAlign: "center" },
   settings: { borderRadius: 22, paddingHorizontal: 14, paddingVertical: 2, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border, shadowColor: "#000000", shadowOpacity: isDark ? 0.28 : 0.09, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   setting: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.065)" },
   last: { borderBottomWidth: 0 },
