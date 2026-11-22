@@ -41,6 +41,21 @@ function safeDuration(value: unknown, fallback = 0): number {
   return Math.round(parsed);
 }
 
+function boundedExpiry(candidate: unknown, fallbackMs = 30 * 60 * 1000): number {
+  const now = Date.now();
+  const parsed = Number(candidate);
+  const fallback = now + Math.min(Math.max(fallbackMs, 60_000), 24 * 60 * 60 * 1000);
+  if (!Number.isFinite(parsed) || parsed < now + 60_000) return fallback;
+  return Math.min(parsed, now + 24 * 60 * 60 * 1000);
+}
+
+function safeBitrate(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 && parsed <= 1_000_000
+    ? Math.round(parsed)
+    : undefined;
+}
+
 // Cache resolved stream URLs in memory so replaying or seeking doesn't re-fetch before expiration
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
 // Stream URLs are large signed strings. Keep only a short LRU window for the current listening session.
@@ -96,12 +111,10 @@ async function resolveNewPipeStream(videoId: string, track: MusicTrack): Promise
   return {
     url: url.toString(),
     mimeType: result.mimeType || "audio/*",
-    durationSeconds: result.durationSeconds > 0
-      ? result.durationSeconds
-      : Math.max(0, Math.round((track.durationMs || 0) / 1000)),
-    bitrate: result.bitrate > 0 ? result.bitrate : undefined,
-    userAgent: result.userAgent,
-    expiresAt: expiry > Date.now() ? expiry : Date.now() + 30 * 60 * 1000
+    durationSeconds: safeDuration(result.durationSeconds, safeDuration((track.durationMs || 0) / 1000)),
+    bitrate: safeBitrate(result.bitrate),
+    userAgent: typeof result.userAgent === "string" && result.userAgent.length <= 512 ? result.userAgent : "Mozilla/5.0",
+    expiresAt: boundedExpiry(expiry)
   };
 }
 
@@ -298,16 +311,18 @@ async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: stri
       if (!bestFormat && !manifestUrl) throw new Error(`${profile.name}: no direct audio stream or supported manifest URL`);
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
-      const durationFromPlayer = Number(payload?.videoDetails?.lengthSeconds || 0);
-      const durationFromFormat = bestFormat?.approxDurationMs ? Math.round(Number(bestFormat.approxDurationMs) / 1000) : 0;
-      const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
+      const durationFromPlayer = safeDuration(payload?.videoDetails?.lengthSeconds);
+      const durationFromFormat = safeDuration(
+        bestFormat?.approxDurationMs ? Number(bestFormat.approxDurationMs) / 1000 : 0
+      );
+      const fallbackDuration = safeDuration((track.durationMs || 0) / 1000);
       return {
         url: bestFormat ? validateStreamUrl(bestFormat.url, profile.name) : manifestUrl!,
         mimeType: bestFormat ? bestFormat.mimeType : hlsManifestUrl ? "application/x-mpegURL" : "application/dash+xml",
-        durationSeconds: durationFromPlayer || durationFromFormat || safeDuration(fallbackDuration),
-        bitrate: bestFormat ? Number(bestFormat.bitrate || 128000) : undefined,
+        durationSeconds: durationFromPlayer || durationFromFormat || fallbackDuration,
+        bitrate: bestFormat ? safeBitrate(bestFormat.bitrate) ?? 128_000 : undefined,
         userAgent: profile.userAgent,
-        expiresAt: Date.now() + expiresInSeconds * 1000
+        expiresAt: boundedExpiry(Date.now() + (Number.isFinite(expiresInSeconds) ? expiresInSeconds : 21_500) * 1000)
       } satisfies ResolvedYouTubeAudio;
     } finally {
       clearTimeout(timeout);
