@@ -332,17 +332,20 @@ async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: stri
     }
   });
 
-  let resolvedStream: ResolvedYouTubeAudio;
+  let resolvedStream: ResolvedYouTubeAudio | null = null;
   try {
     resolvedStream = await Promise.any(profileAttempts);
-    // Stop redundant client requests as soon as one profile supplies a stream.
-    controllers.forEach((controller) => controller.abort());
   } catch (error) {
     const failures = error instanceof AggregateError
       ? error.errors.map((item) => item instanceof Error ? item.message : String(item))
       : [error instanceof Error ? error.message : String(error)];
     errors.push(...failures);
-    resolvedStream = null as unknown as ResolvedYouTubeAudio;
+  } finally {
+    // Always stop any profile request still in flight. This also runs when all
+    // profiles fail, preventing a late response from outliving the resolver.
+    controllers.forEach((controller) => {
+      if (!controller.signal.aborted) controller.abort();
+    });
   }
   if (resolvedStream) {
     return resolvedStream;
