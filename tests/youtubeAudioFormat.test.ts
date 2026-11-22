@@ -20,7 +20,7 @@ test("data saver chooses the highest available bitrate at or below 128 kbps", ()
 });
 
 test("data saver falls back to normal format ranking when no stream is within budget", () => {
-  assert.equal(selectBestYouTubeAudioFormat([opusHigh, { ...mp4Mid, bitrate: 192_000 }], true).url, mp4Mid.url);
+  assert.equal(selectBestYouTubeAudioFormat([opusHigh, { ...mp4Mid, bitrate: 192_000 }], true)?.url, mp4Mid.url);
 });
 
 test("invalid and non-audio formats are ignored", () => {
