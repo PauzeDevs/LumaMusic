@@ -224,27 +224,32 @@ async function fetchExtensionLyrics(track: MusicTrack, providerId: string): Prom
 }
 
 async function fetchLyrics(track: MusicTrack, preferredProvider: "auto" | "lrclib" | "lyrics-ovh"): Promise<LyricsState> {
-  // Query both built-in sources together so a fast plain-text response cannot
-  // beat a slower word-synced result merely because it was requested first.
-  const attempts = await Promise.allSettled([
-    fetchLrclibLyrics(track),
-    fetchExtensionLyrics(track, "dev.pauze.lumamusic.lyrics-ovh")
-  ]);
-  const available = attempts.flatMap((attempt) =>
-    attempt.status === "fulfilled" && attempt.value.status === "available" ? [attempt.value] : []
-  );
-  const quality = (result: Extract<LyricsState, { status: "available" }>) => {
-    if (result.lines.some((line) => line.words && line.words.length > 0)) return 3;
-    if (result.lines.some((line) => line.time !== null)) return 2;
-    return 1;
-  };
-  const preferredName = preferredProvider === "lyrics-ovh" ? "Lyrics.ovh" : "LRCLIB";
-  available.sort((a, b) => quality(b) - quality(a) ||
-    Number(b.provider === preferredName) - Number(a.provider === preferredName));
-  if (available[0]) return available[0];
-  return attempts.some((attempt) => attempt.status === "rejected")
-    ? { status: "error" }
-    : { status: "not_found" };
+  const attempts = [
+    { name: "LRCLIB", run: () => fetchLrclibLyrics(track) },
+    { name: "Lyrics.ovh", run: () => fetchExtensionLyrics(track, "dev.pauze.lumamusic.lyrics-ovh") }
+  ];
+  const ordered = preferredProvider === "lyrics-ovh"
+    ? [...attempts].reverse()
+    : attempts;
+
+  // Resolve as soon as a provider returns usable lyrics. Waiting for every
+  // provider made a quick response feel slow whenever the other source lagged.
+  const pending = ordered.map(async ({ run }) => {
+    const result = await run();
+    if (result.status !== "available") throw new Error("Lyrics not found");
+    return result;
+  });
+
+  try {
+    return await Promise.any(pending);
+  } catch {
+    // No provider returned lyrics. Preserve the distinction between a clean
+    // miss and a provider/network failure for the UI.
+    const results = await Promise.allSettled(ordered.map(({ run }) => run()));
+    return results.some((result) => result.status === "rejected")
+      ? { status: "error" }
+      : { status: "not_found" };
+  }
 }
 
 export function getLyrics(track: MusicTrack, preferredProvider: "auto" | "lrclib" | "lyrics-ovh" = "auto"): Promise<LyricsState> {
