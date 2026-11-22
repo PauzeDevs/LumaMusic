@@ -3,6 +3,7 @@ import { usePreferencesStore } from "../store/preferences";
 import { resolveWithNewPipe } from "./newPipeResolver";
 import { resolveYouTubePoTokens } from "./poTokenResolver";
 import { boundedExpiry, safeBitrate, safeDuration, validateStreamUrl } from "./youtubeStreamValidation";
+import { selectBestYouTubeAudioFormat } from "./youtubeAudioFormat";
 
 export type ResolvedYouTubeAudio = {
   url: string;
@@ -239,29 +240,8 @@ async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: stri
       const streamingData = payload?.streamingData;
       const adaptiveFormats: Record<string, any>[] = Array.isArray(streamingData?.adaptiveFormats) ? streamingData.adaptiveFormats : [];
       const formats: Record<string, any>[] = Array.isArray(streamingData?.formats) ? streamingData.formats : [];
-      const audioStreams = [...adaptiveFormats, ...formats].filter((fmt) =>
-        typeof fmt?.url === "string" && fmt.url.length > 0 &&
-        typeof fmt?.mimeType === "string" && fmt.mimeType.startsWith("audio/")
-      );
       const dataSaverEnabled = usePreferencesStore.getState().dataSaverEnabled;
-      audioStreams.sort((a, b) => {
-        const aBitrate = Number(a.bitrate || 0);
-        const bBitrate = Number(b.bitrate || 0);
-        // In data saver mode, prefer a lower-bitrate audio format when the
-        // provider exposes one at or below 128 kbps. Otherwise keep the
-        // normal best-format selection rather than choosing an unknown stream.
-        if (dataSaverEnabled) {
-          const aWithinBudget = aBitrate > 0 && aBitrate <= 128_000;
-          const bWithinBudget = bBitrate > 0 && bBitrate <= 128_000;
-          if (aWithinBudget !== bWithinBudget) return aWithinBudget ? -1 : 1;
-          if (aWithinBudget && bWithinBudget) return bBitrate - aBitrate;
-        }
-        const aIsMp4 = a.mimeType.includes("audio/mp4") ? 1 : 0;
-        const bIsMp4 = b.mimeType.includes("audio/mp4") ? 1 : 0;
-        if (aIsMp4 !== bIsMp4) return bIsMp4 - aIsMp4;
-        return bBitrate - aBitrate;
-      });
-      const bestFormat = audioStreams[0];
+      const bestFormat = selectBestYouTubeAudioFormat([...adaptiveFormats, ...formats], dataSaverEnabled) as Record<string, any> | undefined;
       const hlsManifestUrl: string | undefined = typeof streamingData?.hlsManifestUrl === "string"
         ? streamingData.hlsManifestUrl
         : undefined;
