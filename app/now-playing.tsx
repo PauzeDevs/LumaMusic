@@ -11,7 +11,6 @@ import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePreferencesStore } from "../store/preferences";
-import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
 import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 
 function playerStyleForLayout(style: PlayerStyle, width: number, height: number) {
@@ -54,7 +53,6 @@ export default function NowPlayingScreen() {
   const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
   const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
-  const { artworkScale, artworkFloat } = useNowPlayingArtworkMotion(isPlaying, motionStyle, animationIntensity);
   const accentColor = colors.accent;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
@@ -142,7 +140,7 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      {track.artwork ? <Animated.Image source={{ uri: track.artwork }} resizeMode="cover" blurRadius={28} style={[styles.ambientArtwork, { opacity: motionStyle === "off" ? 0.08 : 0.2, transform: [{ scale: 1.18 }, { translateY: artworkFloat }] }]} /> : null}
+      {track.artwork ? <Animated.Image source={{ uri: track.artwork }} resizeMode="cover" blurRadius={28} style={[styles.ambientArtwork, { opacity: motionStyle === "off" ? 0.08 : 0.2 }]} /> : null}
       <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 58 : surfaceStyle === "frosted" ? 76 : surfaceStyle === "clear" ? 88 : 52} style={styles.ambientBlur} />
       <View style={styles.header}>
         <View style={styles.headerLeading}>
@@ -154,7 +152,7 @@ export default function NowPlayingScreen() {
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
-        <Animated.View {...artworkGesture.panHandlers} accessibilityRole="image" accessibilityLabel={`${track.title} artwork. Swipe left or right to change tracks, swipe down to close, or hold to change player style.`} style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }, { rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
+        <Animated.View {...artworkGesture.panHandlers} accessibilityRole="image" accessibilityLabel={`${track.title} artwork. Swipe left or right to change tracks, swipe down to close, or hold to change player style.`} style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
           <Pressable onLongPress={() => setStylePickerVisible(true)} delayLongPress={420} style={StyleSheet.absoluteFill}>
           {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
           {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
