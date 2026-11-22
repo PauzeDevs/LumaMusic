@@ -231,21 +231,20 @@ async function fetchLyrics(track: MusicTrack, preferredProvider: "auto" | "lrcli
   const ordered = preferredProvider === "lyrics-ovh"
     ? [...attempts].reverse()
     : attempts;
+  const providerRequests = ordered.map(({ run }) => run());
 
   // Resolve as soon as a provider returns usable lyrics. Waiting for every
   // provider made a quick response feel slow whenever the other source lagged.
-  const pending = ordered.map(async ({ run }) => {
-    const result = await run();
+  const availableRequests = providerRequests.map(async (request) => {
+    const result = await request;
     if (result.status !== "available") throw new Error("Lyrics not found");
     return result;
   });
 
   try {
-    return await Promise.any(pending);
+    return await Promise.any(availableRequests);
   } catch {
-    // No provider returned lyrics. Preserve the distinction between a clean
-    // miss and a provider/network failure for the UI.
-    const results = await Promise.allSettled(ordered.map(({ run }) => run()));
+    const results = await Promise.allSettled(providerRequests);
     return results.some((result) => result.status === "rejected")
       ? { status: "error" }
       : { status: "not_found" };
