@@ -1,5 +1,6 @@
 package dev.pauze.lumamusic.audio
 
+import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
@@ -26,6 +27,10 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
   private var decodedSampleRate = 0
   private var decodedChannelCount = 0
   private var bpmDetector: LumaBpmDetector? = null
+  // A DSP fault must never take down the Media3 audio renderer. Once a fault
+  // occurs, keep this processor in bit-transparent bypass until the next format
+  // configuration, while transport continues uninterrupted.
+  private var dspFaulted = false
 
   @Synchronized
   override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
@@ -38,6 +43,7 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     decodedSampleRate = inputAudioFormat.sampleRate
     decodedChannelCount = inputAudioFormat.channelCount
     bpmDetector = LumaBpmDetector(inputAudioFormat.sampleRate)
+    dspFaulted = false
     dsp = PauzeAudioDsp(inputAudioFormat.sampleRate, inputAudioFormat.channelCount).also {
       it.configureEqualizer(equalizerEnabled, bandDb, preampDb)
       it.setLimiterEnabled(limiterEnabled)
@@ -99,21 +105,43 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     bpmDetector?.accept(scratch, sampleCount, channels)
 
     val output = replaceOutputBuffer(bytes).order(ByteOrder.nativeOrder())
-    if (dsp?.isBypassed() == true) {
-      // Preserve the decoder's PCM bytes exactly when every effect is off.
-      // BPM analysis still runs on the decoded scratch buffer above.
+    val processor = dsp
+    var bypass = dspFaulted || processor == null
+    if (!bypass) {
+      try {
+        bypass = processor!!.isBypassed()
+      } catch (error: RuntimeException) {
+        dspFaulted = true
+        bypass = true
+        Log.w(TAG, "DSP state check failed; continuing with unprocessed PCM.", error)
+      }
+    }
+
+    if (bypass) {
+      // Preserve the decoder's original bytes when effects are disabled or
+      // the DSP has faulted. Never let a processing failure stop playback.
       source.position(start)
       output.put(source)
     } else {
-      dsp?.process(scratch, sampleCount)
-      for (index in 0 until sampleCount) {
-        val value = scratch[index]
-        if (encoding == C.ENCODING_PCM_FLOAT) {
-          output.putFloat(value)
-        } else {
-          val pcm = (value.coerceIn(-1f, 1f) * 32768f).roundToInt().coerceIn(-32768, 32767)
-          output.putShort(pcm.toShort())
+      try {
+        processor!!.process(scratch, sampleCount)
+        for (index in 0 until sampleCount) {
+          val value = scratch[index]
+          if (encoding == C.ENCODING_PCM_FLOAT) {
+            output.putFloat(value)
+          } else {
+            val pcm = (value.coerceIn(-1f, 1f) * 32768f).roundToInt().coerceIn(-32768, 32767)
+            output.putShort(pcm.toShort())
+          }
         }
+      } catch (error: RuntimeException) {
+        // The input buffer is still intact: restore its position and copy the
+        // original decoded PCM rather than propagating an exception into ExoPlayer.
+        dspFaulted = true
+        source.position(start)
+        output.clear()
+        output.put(source)
+        Log.w(TAG, "DSP processing failed; switched to transparent PCM bypass.", error)
       }
     }
     output.flip()
