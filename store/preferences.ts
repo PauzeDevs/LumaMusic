@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type ProgressBarStyle = "apple" | "classic" | "waveform";
 export type ReverbPreset = "off" | "room" | "studio" | "hall";
 export type AccentTheme = "red" | "violet" | "blue" | "green" | "amber" | "rose" | "arctic" | "mono";
-export type PlayerStyle = "standard" | "vinyl" | "poster";
+export type PlayerStyle = "standard" | "vinyl" | "poster" | "compact";
 export type SurfaceStyle = "liquid" | "frosted" | "clear" | "matte";
 export type AppearanceMode = "system" | "light" | "dark";
 export type MotionStyle = "full" | "subtle" | "off";
