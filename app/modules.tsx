@@ -25,7 +25,8 @@ const surfaces: { id: SurfaceStyle; label: string }[] = [
 const playerStyles: { id: PlayerStyle; label: string; detail: string; icon: string }[] = [
   { id: "standard", label: "Standard", detail: "Clean artwork and controls", icon: "albums-outline" },
   { id: "vinyl", label: "Vinyl", detail: "Round record-inspired artwork", icon: "disc-outline" },
-  { id: "poster", label: "Poster", detail: "Tall editorial artwork", icon: "images-outline" }
+  { id: "poster", label: "Poster", detail: "Tall editorial artwork", icon: "images-outline" },
+  { id: "compact", label: "Compact", detail: "Smaller artwork with more room for controls", icon: "albums-outline" }
 ];
 const catalog = [
   { id: "monochrome", name: "Monochrome", kind: "Appearance", detail: "A restrained black-and-white look", icon: "contrast-outline", accent: "mono" as AccentTheme, surface: "matte" as SurfaceStyle },
