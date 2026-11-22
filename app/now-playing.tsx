@@ -14,7 +14,7 @@ import { usePreferencesStore } from "../store/preferences";
 import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
 import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 
-function formatTime(seconds: number) {
+function playerStyleForLayout(style: PlayerStyle, width: number, height: number) {\n  const standard = Math.max(180, Math.min(width - 44, height * 0.34, 360));\n  return style === "compact" ? Math.max(156, Math.min(width * 0.58, height * 0.24, 240)) : standard;\n}\n\nfunction formatTime(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
   return Math.floor(safeSeconds / 60) + ":" + String(safeSeconds % 60).padStart(2, "0");
 }
@@ -22,7 +22,7 @@ function formatTime(seconds: number) {
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const artworkSize = Math.max(180, Math.min(windowWidth - 44, windowHeight * 0.34, 360));
+  const artworkSize = playerStyleForLayout(usePreferencesStore.getState().playerStyle, windowWidth, windowHeight);
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -221,8 +221,8 @@ export default function NowPlayingScreen() {
             {([
               { id: "standard", title: "Flagship", detail: "Clean artwork and focused controls", icon: "disc-outline" },
               { id: "vinyl", title: "Turntable", detail: "A rotating record-inspired player", icon: "radio-outline" },
-              { id: "poster", title: "Poster", detail: "A bold, framed artwork presentation", icon: "image-outline" }
-            ] as { id: PlayerStyle; title: string; detail: string; icon: "disc-outline" | "radio-outline" | "image-outline" }[]).map((item) => {
+              { id: "poster", title: "Poster", detail: "A bold, framed artwork presentation", icon: "image-outline" },\n              { id: "compact", title: "Compact", detail: "Smaller artwork with more room for controls", icon: "albums-outline" }
+            ] as { id: PlayerStyle; title: string; detail: string; icon: "disc-outline" | "radio-outline" | "image-outline" | "albums-outline" }[]).map((item) => {
               const selected = playerStyle === item.id;
               return <Pressable key={item.id} onPress={() => { setPlayerStyle(item.id); setStylePickerVisible(false); }} style={[styles.styleOption, selected && styles.styleOptionSelected]}>
                 <View style={[styles.styleOptionIcon, selected && styles.styleOptionIconSelected]}><Ionicons name={item.icon} size={21} color={selected ? colors.accent : colors.muted} /></View>
