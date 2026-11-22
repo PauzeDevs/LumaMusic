@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit",
-    "check": "npx expo install --check && npm run typecheck"
+    "check": "npx expo install --check && npm run typecheck",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@react-native-vector-icons/ionicons": "^13.1.5",
@@ -38,7 +39,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "tsx": "^4.20.6"
   },
   "overrides": {
     "expo-asset": "57.0.20"
