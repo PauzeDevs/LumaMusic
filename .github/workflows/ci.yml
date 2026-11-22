@@ -45,6 +45,9 @@ jobs:
       - name: TypeScript check
         run: npm run typecheck
 
+      - name: Resolver regression tests
+        run: npm test
+
       - name: Validate Expo config
         run: npx expo config --type public
 
