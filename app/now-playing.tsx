@@ -15,8 +15,15 @@ import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion"
 import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
 
 function playerStyleForLayout(style: PlayerStyle, width: number, height: number) {
-  const standard = Math.max(180, Math.min(width - 44, height * 0.34, 360));
-  return style === "compact" ? Math.max(156, Math.min(width * 0.58, height * 0.24, 240)) : standard;
+  // Keep the artwork proportional to the available viewport so the transport
+  // controls and metadata remain reachable on short Android screens.
+  const availableWidth = Math.max(132, width - 44);
+  const compact = style === "compact";
+  const preferred = compact
+    ? Math.min(width * 0.58, height * 0.22, 228)
+    : Math.min(availableWidth, height * 0.30, 344);
+  const minimum = compact ? 132 : 144;
+  return Math.max(minimum, Math.min(availableWidth, preferred));
 }
 
 function formatTime(seconds: number) {
