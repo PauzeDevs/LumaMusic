@@ -13,6 +13,33 @@ export type ResolvedYouTubeAudio = {
 };
 
 const PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
+const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
+const MAX_STREAM_DURATION_SECONDS = 24 * 60 * 60;
+
+function validateStreamUrl(rawUrl: unknown, label: string): string {
+  if (typeof rawUrl !== "string" || rawUrl.length > 16_384) {
+    throw new Error(`${label}: invalid stream URL`);
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(`${label}: malformed stream URL`);
+  }
+  const host = parsed.hostname.toLowerCase();
+  const trustedHost = host === "googlevideo.com" || host.endsWith(".googlevideo.com") ||
+    host === "youtube.com" || host.endsWith(".youtube.com");
+  if (parsed.protocol !== "https:" || !trustedHost || parsed.username || parsed.password) {
+    throw new Error(`${label}: rejected untrusted stream URL`);
+  }
+  return parsed.toString();
+}
+
+function safeDuration(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > MAX_STREAM_DURATION_SECONDS) return fallback;
+  return Math.round(parsed);
+}
 
 // Cache resolved stream URLs in memory so replaying or seeking doesn't re-fetch before expiration
 const streamCache = new Map<string, ResolvedYouTubeAudio>();
@@ -59,7 +86,7 @@ async function resolveNewPipeStream(videoId: string, track: MusicTrack): Promise
   const result = await resolveWithNewPipe(videoId);
   if (!result?.url) return null;
 
-  const url = new URL(result.url);
+  const validatedUrl = validateStreamUrl(result.url, "NewPipe");\n  const url = new URL(validatedUrl);
   const expiry = Number(url.searchParams.get("expire") || 0) * 1000;
   // PO tokens are optional for this direct-stream route. Resolve them in the
   // background so WebView startup never delays the first audio request.
@@ -265,7 +292,7 @@ async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: stri
       const dashManifestUrl: string | undefined = typeof streamingData?.dashManifestUrl === "string"
         ? streamingData.dashManifestUrl
         : undefined;
-      const manifestUrl = hlsManifestUrl || dashManifestUrl;
+      const rawManifestUrl = hlsManifestUrl || dashManifestUrl;\n      const manifestUrl = rawManifestUrl ? validateStreamUrl(rawManifestUrl, profile.name) : undefined;
       if (!bestFormat && !manifestUrl) throw new Error(`${profile.name}: no direct audio stream or supported manifest URL`);
 
       const expiresInSeconds = Number(streamingData?.expiresInSeconds || 21500);
@@ -273,9 +300,9 @@ async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: stri
       const durationFromFormat = bestFormat?.approxDurationMs ? Math.round(Number(bestFormat.approxDurationMs) / 1000) : 0;
       const fallbackDuration = Math.max(0, Math.round((track.durationMs || 0) / 1000));
       return {
-        url: bestFormat ? bestFormat.url : manifestUrl!,
+        url: bestFormat ? validateStreamUrl(bestFormat.url, profile.name) : manifestUrl!,
         mimeType: bestFormat ? bestFormat.mimeType : hlsManifestUrl ? "application/x-mpegURL" : "application/dash+xml",
-        durationSeconds: durationFromPlayer || durationFromFormat || fallbackDuration,
+        durationSeconds: durationFromPlayer || durationFromFormat || safeDuration(fallbackDuration),
         bitrate: bestFormat ? Number(bestFormat.bitrate || 128000) : undefined,
         userAgent: profile.userAgent,
         expiresAt: Date.now() + expiresInSeconds * 1000
@@ -312,7 +339,7 @@ async function resolveYouTubeMusicAudioUncached(track: MusicTrack, videoId: stri
  */
 export async function resolveYouTubeMusicAudio(track: MusicTrack, forceRefresh = false): Promise<ResolvedYouTubeAudio> {
   const videoId = extractYouTubeVideoId(track);
-  if (!videoId) throw new Error("Missing YouTube video ID for this track.");
+  if (!VIDEO_ID_PATTERN.test(videoId)) throw new Error("Invalid YouTube video ID for this track.");
 
   if (forceRefresh) {
     streamCache.delete(videoId);
