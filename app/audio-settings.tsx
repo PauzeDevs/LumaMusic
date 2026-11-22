@@ -97,6 +97,8 @@ export default function AudioSettingsScreen() {
   const autoCrossfadeEnabled = usePreferencesStore((state) => state.autoCrossfadeEnabled);
   const setAutoCrossfadeEnabled = usePreferencesStore((state) => state.setAutoCrossfadeEnabled);
   const crossfadeDurationSeconds = usePreferencesStore((state) => state.crossfadeDurationSeconds);
+  const dataSaverEnabled = usePreferencesStore((state) => state.dataSaverEnabled);
+  const setDataSaverEnabled = usePreferencesStore((state) => state.setDataSaverEnabled);
   const setCrossfadeDurationSeconds = usePreferencesStore((state) => state.setCrossfadeDurationSeconds);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const setSpatialBalance = usePreferencesStore((state) => state.setSpatialBalance);
@@ -225,6 +227,16 @@ export default function AudioSettingsScreen() {
           <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>{sourceQuality.status}</Text></View>
         </View>
         <Text style={stylesForScreen.cardSub}>{sourceQuality.title} · {sourceQuality.detail}</Text>
+        <View style={[stylesForScreen.cardHeader, { marginTop: 18 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={stylesForScreen.sectionLabel}>DATA SAVER</Text>
+            <Text style={stylesForScreen.cardSub}>Prefer audio formats at or below 128 kbps when the source exposes a suitable alternative.</Text>
+          </View>
+          <Pressable accessibilityRole="switch" accessibilityState={{ checked: dataSaverEnabled }} onPress={() => setDataSaverEnabled(!dataSaverEnabled)} style={[stylesForScreen.toggle, dataSaverEnabled && stylesForScreen.toggleOn]}>
+            <View style={[stylesForScreen.toggleDot, dataSaverEnabled && stylesForScreen.toggleDotOn]} />
+          </Pressable>
+        </View>
+        <Text style={stylesForScreen.sourceNote}>This is a preference, not a guaranteed cap. Some stream resolvers expose only one format, and local files are not transcoded.</Text>
         <View style={stylesForScreen.qualityMetaRow}>
           <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>FORMAT</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.format}</Text></View>
           <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>MIME TYPE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.mimeType}</Text></View>
