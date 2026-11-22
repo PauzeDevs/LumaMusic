@@ -3,6 +3,8 @@ package dev.pauze.lumamusic.audio
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.content.Intent
+import android.os.Build
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -43,6 +45,7 @@ class LumaAudioEngineModule : Module() {
   private var activeTrackId: String? = null
   private var catalogDurationSeconds: Double = 0.0
   private var lastError: String? = null
+  private var foregroundPlaybackStarted = false
 
   private val crossfadeEmitter = object : Runnable {
     override fun run() {
@@ -195,11 +198,23 @@ class LumaAudioEngineModule : Module() {
     }
 
     AsyncFunction("play") { promise: Promise ->
-      runOnMain(promise) { requirePlayer().play(); incomingPlayer?.takeIf { crossfadeProgressMs > 0L }?.play(); emitState(requirePlayer()); null }
+      runOnMain(promise) {
+        requirePlayer().play()
+        incomingPlayer?.takeIf { crossfadeProgressMs > 0L }?.play()
+        startForegroundPlaybackService()
+        emitState(requirePlayer())
+        null
+      }
     }
 
     AsyncFunction("pause") { promise: Promise ->
-      runOnMain(promise) { requirePlayer().pause(); incomingPlayer?.pause(); emitState(requirePlayer()); null }
+      runOnMain(promise) {
+        requirePlayer().pause()
+        incomingPlayer?.pause()
+        stopForegroundPlaybackService()
+        emitState(requirePlayer())
+        null
+      }
     }
 
     AsyncFunction("seekTo") { positionSeconds: Double, promise: Promise ->
@@ -266,6 +281,27 @@ class LumaAudioEngineModule : Module() {
         handler.post { releasePlayer() }
       }
     }
+  }
+
+  private fun startForegroundPlaybackService() {
+    if (foregroundPlaybackStarted) return
+    val context = appContext.reactContext?.applicationContext ?: return
+    val intent = Intent(context, LumaPlaybackForegroundService::class.java)
+      .setAction(LumaPlaybackForegroundService.ACTION_START)
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
+      else context.startService(intent)
+      foregroundPlaybackStarted = true
+    } catch (error: Exception) {
+      lastError = "Could not start Android playback service: ${error.message ?: "unknown error"}"
+    }
+  }
+
+  private fun stopForegroundPlaybackService() {
+    val context = appContext.reactContext?.applicationContext ?: return
+    if (!foregroundPlaybackStarted) return
+    context.stopService(Intent(context, LumaPlaybackForegroundService::class.java))
+    foregroundPlaybackStarted = false
   }
 
   private fun createMediaSource(track: Map<String, Any?>): MediaSource {
@@ -407,6 +443,7 @@ class LumaAudioEngineModule : Module() {
     if (!released.compareAndSet(false, true)) return
     handler.removeCallbacks(progressEmitter)
     cancelCrossfadeInternal()
+    stopForegroundPlaybackService()
     player?.release()
     player = null
     pcmProcessor = null
