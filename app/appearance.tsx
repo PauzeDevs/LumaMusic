@@ -76,7 +76,7 @@ export default function AppearanceScreen() {
       <Text style={styles.heading}>Player design</Text>
       <Text style={styles.copy}>Choose the shape and personality of your Now Playing screen.</Text>
       <GlassSurface style={styles.panel} contentStyle={styles.motionPanel}>
-        {([{ id: "standard", label: "Classic", detail: "Balanced artwork and controls" }, { id: "vinyl", label: "Vinyl", detail: "Round record-inspired artwork" }, { id: "poster", label: "Poster", detail: "Bold edge-to-edge artwork" }] as { id: PlayerStyle; label: string; detail: string }[]).map((item, index, all) => <Pressable key={item.id} onPress={() => setPlayerStyle(item.id)} style={[styles.motionOption, index === all.length - 1 && styles.last]}>
+        {([{ id: "standard", label: "Classic", detail: "Balanced artwork and controls" }, { id: "vinyl", label: "Vinyl", detail: "Round record-inspired artwork" }, { id: "poster", label: "Poster", detail: "Bold edge-to-edge artwork" }, { id: "compact", label: "Compact", detail: "Smaller artwork with more room for controls" }] as { id: PlayerStyle; label: string; detail: string }[]).map((item, index, all) => <Pressable key={item.id} onPress={() => setPlayerStyle(item.id)} style={[styles.motionOption, index === all.length - 1 && styles.last]}>
           <View style={{ flex: 1 }}><Text style={styles.optionText}>{item.label}</Text><Text style={styles.optionDetail}>{item.detail}</Text></View>
           <Ionicons name={playerStyle === item.id ? "radio-button-on" : "radio-button-off"} size={19} color={playerStyle === item.id ? colors.accent : colors.subtle} />
         </Pressable>)}
