@@ -161,4 +161,8 @@ class LumaPcmAudioProcessor : BaseAudioProcessor() {
     decodedChannelCount = 0
     bpmDetector = null
   }
+
+  private companion object {
+    const val TAG = "LumaPcmAudioProcessor"
+  }
 }
