@@ -91,7 +91,15 @@ export default function SearchScreen() {
     : activeFilter === "Artists" ? [artistsQuery]
     : activeFilter === "Albums" ? [albumsQuery] : [playlistsQuery];
   const loading = visibleQueries.some((item) => item.isLoading);
-  const error = visibleQueries.find((item) => item.error)?.error;
+  const error = activeFilter === "All" ? undefined : visibleQueries.find((item) => item.error)?.error;
+  const categoryErrors = activeFilter === "All"
+    ? [
+        { label: "Songs", query: songsQuery },
+        { label: "Artists", query: artistsQuery },
+        { label: "Albums", query: albumsQuery },
+        { label: "Playlists", query: playlistsQuery }
+      ].filter((item) => item.query.isError)
+    : [];
   const count = activeFilter === "All" ? songs.length + artists.length + albums.length + playlists.length
     : activeFilter === "Songs" ? songs.length
     : activeFilter === "Artists" ? artists.length
@@ -184,19 +192,31 @@ export default function SearchScreen() {
                 <Text style={styles.sectionTitle}>Search results</Text>
                 <Text style={styles.sectionHint} numberOfLines={1}>For “{debouncedQuery}”</Text>
               </View>
-              {!loading && !error ? <Text style={styles.resultCount}>{count} found</Text> : null}
+              {count > 0 || (!loading && !error) ? <Text style={styles.resultCount}>{count} found</Text> : null}
             </View>
             {loading ? <View style={styles.stateCard}><Ionicons name="search" size={24} color={colors.muted} /><Text style={styles.stateTitle}>Searching everything</Text><Text style={styles.stateText}>Finding tracks, artists, albums and playlists…</Text></View> : null}
             {error ? <View style={styles.stateCard}><Ionicons name="cloud-offline-outline" size={24} color={colors.danger} /><Text style={styles.stateTitle}>Search couldn't load</Text><Text style={styles.stateText}>{error instanceof Error ? error.message : "Check your connection and try again."}</Text></View> : null}
-            {!loading && !error && count === 0 ? <View style={styles.stateCard}><Ionicons name="musical-notes-outline" size={25} color={colors.subtle} /><Text style={styles.stateTitle}>No matches yet</Text><Text style={styles.stateText}>Try another title, artist or mood.</Text></View> : null}
+            {categoryErrors.map(({ label, query: failedQuery }) => (
+              <View key={label} style={styles.categoryError}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.categoryErrorTitle}>{label} couldn’t load</Text>
+                  <Text style={styles.categoryErrorText}>{failedQuery.error instanceof Error ? failedQuery.error.message : "Try this category again."}</Text>
+                </View>
+                <Pressable onPress={() => failedQuery.refetch()} disabled={failedQuery.isFetching} style={styles.retryButton} accessibilityRole="button" accessibilityLabel={`Retry ${label} search`}>
+                  <Ionicons name="refresh" size={16} color={colors.text} />
+                  <Text style={styles.retryText}>{failedQuery.isFetching ? "Retrying" : "Retry"}</Text>
+                </Pressable>
+              </View>
+            ))}
+            {!loading && !error && categoryErrors.length === 0 && count === 0 ? <View style={styles.stateCard}><Ionicons name="musical-notes-outline" size={25} color={colors.subtle} /><Text style={styles.stateTitle}>No matches yet</Text><Text style={styles.stateText}>Try another title, artist or mood.</Text></View> : null}
 
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Songs") && songs.length > 0 ? (
+            {!error && (activeFilter === "All" || activeFilter === "Songs") && songs.length > 0 ? (
               <View style={styles.resultGroup}><Text style={styles.groupTitle}>Songs</Text>{songs.map((track, index) => <TrackRow key={track.id} track={track} index={index} showIndex queue={songs} />)}</View>
             ) : null}
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Artists") && artists.length > 0 ? (
+            {!error && (activeFilter === "All" || activeFilter === "Artists") && artists.length > 0 ? (
               <View style={styles.resultGroup}><Text style={styles.groupTitle}>Artists</Text>{artists.map((artist) => <ArtistRow key={artist.id} artist={artist} />)}</View>
             ) : null}
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Albums") && albums.length > 0 ? (
+            {!error && (activeFilter === "All" || activeFilter === "Albums") && albums.length > 0 ? (
               <View style={styles.resultGroup}>
                 <Text style={styles.groupTitle}>Albums & EPs</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.albumRail}>
@@ -210,7 +230,7 @@ export default function SearchScreen() {
                 </ScrollView>
               </View>
             ) : null}
-            {!loading && !error && (activeFilter === "All" || activeFilter === "Playlists") && playlists.length > 0 ? (
+            {!error && (activeFilter === "All" || activeFilter === "Playlists") && playlists.length > 0 ? (
               <View style={styles.resultGroup}><Text style={styles.groupTitle}>Playlists</Text>{playlists.map((playlist) => <PlaylistRow key={playlist.id} playlist={playlist} />)}</View>
             ) : null}
           </ScrollReveal>
@@ -250,6 +270,11 @@ function createStyles(colors: ThemePalette) { return StyleSheet.create({
   stateCard: { minHeight: 160, borderRadius: 18, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", padding: 22, gap: 9 },
   stateTitle: { color: colors.text, fontSize: 15, fontWeight: "800" },
   stateText: { color: colors.muted, fontSize: 11, textAlign: "center", lineHeight: 17 },
+  categoryError: { minHeight: 76, borderRadius: 14, backgroundColor: colors.surface, padding: 13, marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 12 },
+  categoryErrorTitle: { color: colors.text, fontSize: 12, fontWeight: "800" },
+  categoryErrorText: { color: colors.muted, fontSize: 10, marginTop: 4, flexShrink: 1 },
+  retryButton: { minHeight: 34, paddingHorizontal: 11, borderRadius: 18, backgroundColor: colors.surfaceSoft, flexDirection: "row", alignItems: "center", gap: 5 },
+  retryText: { color: colors.text, fontSize: 10, fontWeight: "800" },
   resultGroup: { marginBottom: 25 },
   groupTitle: { color: colors.text, fontSize: 16, fontWeight: "800", marginBottom: 10 },
   albumRail: { gap: 13, paddingRight: 12 },
