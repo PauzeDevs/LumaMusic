@@ -18,14 +18,18 @@ import java.util.concurrent.ConcurrentHashMap
 private class LumaNewPipeDownloader : Downloader() {
   private fun register(connection: HttpURLConnection, requestId: String?) {
     if (requestId.isNullOrBlank()) return
-    activeConnections.computeIfAbsent(requestId) { ConcurrentHashMap.newKeySet() }.add(connection)
+    activeConnections.compute(requestId) { _, current ->
+      val connections = current ?: ConcurrentHashMap.newKeySet<HttpURLConnection>()
+      connections.add(connection)
+      connections
+    }
   }
 
   private fun unregister(connection: HttpURLConnection, requestId: String?) {
     if (requestId.isNullOrBlank()) return
-    activeConnections[requestId]?.let { connections ->
+    activeConnections.computeIfPresent(requestId) { _, connections ->
       connections.remove(connection)
-      if (connections.isEmpty()) activeConnections.remove(requestId, connections)
+      if (connections.isEmpty()) null else connections
     }
   }
 
@@ -35,12 +39,13 @@ private class LumaNewPipeDownloader : Downloader() {
     }
   }
 
-  private fun readBoundedResponse(input: InputStream): String {
+  private fun readBoundedResponse(input: InputStream, requestId: String?): String {
     val output = ByteArrayOutputStream()
     val buffer = ByteArray(16 * 1024)
     var totalBytes = 0
     input.use { stream ->
       while (true) {
+        ensureNotCancelled(requestId)
         val count = stream.read(buffer)
         if (count < 0) break
         totalBytes += count
@@ -82,7 +87,7 @@ private class LumaNewPipeDownloader : Downloader() {
         throw IOException("YouTube extractor response exceeded the 8 MB safety limit.")
       }
       val stream: InputStream? = if (code >= 400) connection.errorStream else connection.inputStream
-      val responseBody = stream?.let(::readBoundedResponse) ?: ""
+      val responseBody = stream?.let { readBoundedResponse(it, requestId) } ?: ""
 
       val responseHeaders = connection.headerFields
         .filterKeys { it != null }
