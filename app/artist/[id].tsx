@@ -258,7 +258,7 @@ function ReleaseCard({ release, colors, onPress }: { release: MusicRelease; colo
         transform: [{ scale: pressScale }]
       }}>
         <AlbumArtwork uri={release.artwork} size={134} radius={15} />
-        <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "750", lineHeight: 16, marginTop: 10 }}>{release.title}</Text>
+        <Text numberOfLines={2} style={{ color: colors.text, fontSize: 12, fontWeight: "700", lineHeight: 16, marginTop: 10 }}>{release.title}</Text>
         <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 10, marginTop: 4 }}>{release.subtitle}</Text>
       </Animated.View>
     </Pressable>
