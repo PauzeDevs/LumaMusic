@@ -249,7 +249,7 @@ export default function NowPlayingScreen() {
 }
 
 function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
-  safe: { flex: 1, width: "100%", alignSelf: "stretch", backgroundColor: colors.background, paddingHorizontal: 22, overflow: "hidden" },
+  safe: { flex: 1, position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.background, paddingHorizontal: 22, overflow: "hidden" },
   ambientArtwork: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, width: "100%", height: "100%" },
   ambientBlur: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, opacity: 0.92 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
