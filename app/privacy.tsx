@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassSurface } from "../components/GlassSurface";
 import { useLibraryStore } from "../store/library";
+import { useListeningStatsStore } from "../store/listeningStats";
 import { useTheme } from "../theme/useTheme";
 
 export default function PrivacyScreen() {
@@ -16,10 +17,13 @@ export default function PrivacyScreen() {
 
   const confirmClearLibrary = () => Alert.alert(
     "Clear this device's library?",
-    "This permanently removes the following LumaMusic library data from this device:\n\n• Liked tracks\n• Listening history\n• Imported local-track entries\n• Playlists and their saved track lists\n\nThis does not delete audio files from your device or remove a Google Drive backup. This action cannot be undone.",
+    "This permanently removes LumaMusic data from this device:\n\n• Liked tracks and playlists\n• Recent listening history\n• Listening statistics and play counts\n• Imported local-track entries\n\nThis does not delete audio files from your device or remove a Google Drive backup. This action cannot be undone.",
     [
       { text: "Keep my library", style: "cancel" },
-      { text: "Clear library", style: "destructive", onPress: () => useLibraryStore.getState().clearLibrary() }
+      { text: "Clear library and stats", style: "destructive", onPress: () => {
+        useLibraryStore.getState().clearLibrary();
+        useListeningStatsStore.getState().clearStats();
+      } }
     ]
   );
 
@@ -65,8 +69,8 @@ export default function PrivacyScreen() {
         <Pressable onPress={confirmClearLibrary} style={styles.dangerRow}>
           <View style={styles.dangerIcon}><Ionicons name="trash-outline" size={19} color={colors.danger ?? "#E05A67"} /></View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.dangerTitle}>Clear local library</Text>
-            <Text style={styles.actionSub}>Remove liked tracks, history, imported entries and playlists from this device</Text>
+            <Text style={styles.dangerTitle}>Clear local data</Text>
+            <Text style={styles.actionSub}>Remove your library, listening history and listening statistics from this device</Text>
           </View>
           <Ionicons name="chevron-forward" size={17} color={colors.subtle} />
         </Pressable>
