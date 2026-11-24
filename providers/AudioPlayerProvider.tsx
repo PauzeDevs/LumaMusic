@@ -514,6 +514,9 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
               durationSeconds: stream.durationSeconds,
               sourceKind: "youtube_music"
             }, resumePosition ?? 0);
+            // DSP preferences must never be a prerequisite for starting audio.
+            // If the native effect bridge is unavailable on a device/build, keep
+            // the decoded stream playable and let the normal fallback handle errors.
             await setNativeAudioLab({
               enabled: equalizerEnabled,
               equalizerDb: [
@@ -527,8 +530,8 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
               limiterEnabled,
               reverbPreset,
               spatialBalance,
-            });
-            await setNativeAudioPlaybackRate(playbackRate);
+            }).catch(() => undefined);
+            await setNativeAudioPlaybackRate(playbackRate).catch(() => undefined);
             nativePlaybackActive.current = true;
             nativeEndedHandled.current = false;
             usePlayerStore.getState().setPlaybackStatus({
