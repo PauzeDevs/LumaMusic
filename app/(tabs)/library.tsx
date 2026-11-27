@@ -45,9 +45,15 @@ export default function LibraryScreen() {
       const musicDirectory = documentDirectory + "music/";
       await FileSystem.makeDirectoryAsync(musicDirectory, { intermediates: true });
       const tracks = await Promise.all(result.assets.map(async (asset) => {
-        const extension = asset.name.match(/\.[^.]+$/)?.[0] ?? "";
+        const extension = asset.name.match(/\.[^.]+$/)?.[0]?.toLowerCase() ?? "";
         const baseName = asset.name.replace(/\.[^.]+$/, "");
-        const stableName = encodeURIComponent(baseName) + "-" + (asset.size ?? 0) + "-" + (asset.lastModified ?? 0) + extension;
+        // Use content identity, not filename metadata, to avoid overwriting
+        // different audio files that happen to share a name, size and date.
+        const sourceInfo = await FileSystem.getInfoAsync(asset.uri, { md5: true });
+        if (!sourceInfo.exists || !("md5" in sourceInfo) || !sourceInfo.md5) {
+          throw new Error("LumaMusic could not verify this audio file before importing it.");
+        }
+        const stableName = sourceInfo.md5 + extension;
         const destinationUri = musicDirectory + stableName;
         const existing = await FileSystem.getInfoAsync(destinationUri);
         if (!existing.exists) await FileSystem.copyAsync({ from: asset.uri, to: destinationUri });
