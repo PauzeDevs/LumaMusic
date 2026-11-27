@@ -5,6 +5,7 @@ import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { GlassSurface } from "../../components/GlassSurface";
+import { GlassActionPill } from "../../components/GlassPills";
 import { PlaylistStack } from "../../components/PlaylistStack";
 import { usePlayerStore } from "../../store/player";
 import { useLibraryStore } from "../../store/library";
@@ -53,6 +54,12 @@ export default function ProfileScreen() {
         <View style={styles.topline}><View style={styles.liveDot} /><Text style={styles.eyebrow}>YOUR PERSONAL SPACE</Text></View>
         <Text style={styles.title}>Made for you.</Text>
         <Text style={styles.intro}>Your music world, tuned to your taste.</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 26 }}>
+          <GlassActionPill icon="stats-chart-outline" label="Your stats" onPress={() => router.push("/stats")} active />
+          <GlassActionPill icon="color-palette-outline" label="Appearance" onPress={() => router.push("/appearance")} />
+          <GlassActionPill icon="options-outline" label="Playback" onPress={() => router.push("/audio-settings")} />
+          <GlassActionPill icon="notifications-outline" label="Alerts" onPress={() => router.push("/notifications")} />
+        </ScrollView>
         <GlassSurface style={styles.profileCard} contentStyle={styles.profileCardContent}>
           <View style={styles.avatar}><Text style={styles.avatarText}>P</Text></View>
           <View style={{ flex: 1 }}>
