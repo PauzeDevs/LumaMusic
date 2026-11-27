@@ -66,16 +66,16 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
   </View>;
 }
 const styles = StyleSheet.create({
-  wrap: { marginHorizontal: 14, marginBottom: 6, gap: 7 },
-  shell: { borderRadius: 30, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", backgroundColor: "rgba(25,25,29,0.72)", padding: 4, shadowColor: "#000", shadowOpacity: 0.22, shadowRadius: 18, shadowOffset: { width: 0, height: 7 }, elevation: 10 },
-  mini: { height: 58, paddingHorizontal: 10, borderRadius: 19, borderWidth: 1, borderColor: "rgba(255,255,255,0.17)", backgroundColor: "rgba(25,25,29,0.74)", flexDirection: "row", alignItems: "center", gap: 9, overflow: "hidden" },
+  wrap: { marginHorizontal: 18, marginBottom: 8, gap: 7 },
+  shell: { borderRadius: 30, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.09)", backgroundColor: "rgba(25,25,29,0.88)", padding: 4, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 0 },
+  mini: { height: 58, paddingHorizontal: 10, borderRadius: 19, borderWidth: 1, borderColor: "rgba(255,255,255,0.09)", backgroundColor: "rgba(25,25,29,0.9)", flexDirection: "row", alignItems: "center", gap: 9, overflow: "hidden" },
   miniMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   miniCopy: { flex: 1, gap: 3 }, miniTitle: { fontSize: 13, fontWeight: "700" }, miniArtist: { fontSize: 11 },
   playButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.09)" },
   progressTrack: { position: "absolute", bottom: 0, left: 0, right: 0, height: 2 }, progressFill: { height: 2 },
   tabs: { flexDirection: "row", alignItems: "center", gap: 3 },
   tab: { flex: 1, minWidth: 0, height: 52, alignItems: "center", justifyContent: "center", borderRadius: 25, overflow: "hidden" },
-  tabActive: { backgroundColor: "#F4F3F4", shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  tabActive: { backgroundColor: "#F4F3F4", shadowColor: "#000", shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
   activeHighlight: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(255,255,255,0.18)" },
   label: { color: "rgba(255,255,255,0.68)", fontSize: 9, fontWeight: "600" },
   labelActive: { color: "#171619", fontWeight: "700" }
