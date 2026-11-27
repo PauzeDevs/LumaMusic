@@ -4,8 +4,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaLibrarySession
 import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.MediaLibraryService.LibraryResult
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -19,6 +21,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
     super.onCreate()
     val sharedPlayer = LumaSharedPlayer.getOrCreate(applicationContext)
     librarySession = MediaLibrarySession.Builder(this, sharedPlayer, LibraryCallback()).build()
+    activeSession = librarySession
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
@@ -27,8 +30,17 @@ class LumaMediaLibraryService : MediaLibraryService() {
   override fun onDestroy() {
     librarySession?.release()
     librarySession = null
+    activeSession = null
     LumaSharedPlayer.release()
     super.onDestroy()
+  }
+
+  companion object {
+    @Volatile private var activeSession: MediaLibrarySession? = null
+
+    fun updatePlayer(player: androidx.media3.common.Player) {
+      activeSession?.setPlayer(player)
+    }
   }
 
   private class LibraryCallback : MediaLibrarySession.Callback {

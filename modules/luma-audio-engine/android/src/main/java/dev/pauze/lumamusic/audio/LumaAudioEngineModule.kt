@@ -374,6 +374,8 @@ class LumaAudioEngineModule : Module() {
     incoming.volume = 1f
     player = incoming
     pcmProcessor = incomingPcmProcessor
+    LumaSharedPlayer.replace(incoming, incomingPcmProcessor!!)
+    LumaMediaLibraryService.updatePlayer(incoming)
     activeTrackId = promotedId
     catalogDurationSeconds = incomingDurationSeconds
     lastError = null

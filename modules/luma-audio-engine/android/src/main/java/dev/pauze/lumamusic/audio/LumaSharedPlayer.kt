@@ -39,6 +39,12 @@ internal object LumaSharedPlayer {
     sharedProcessor ?: throw IllegalStateException("Shared audio processor is not initialized.")
 
   @Synchronized
+  fun replace(player: ExoPlayer, processor: LumaPcmAudioProcessor) {
+    sharedPlayer = player
+    sharedProcessor = processor
+  }
+
+  @Synchronized
   fun release() {
     sharedPlayer?.release()
     sharedPlayer = null
