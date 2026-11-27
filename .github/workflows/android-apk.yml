@@ -116,24 +116,10 @@ jobs:
           RELEASE_DESCRIPTION: ${{ github.event.inputs.release_description }}
         run: |
           if [ -n "$RELEASE_DESCRIPTION" ]; then
-            printf '%s\\n' "$RELEASE_DESCRIPTION" > release-notes.md
+            printf '%s\n' "$RELEASE_DESCRIPTION" > release-notes.md
           else
             cat > release-notes.md <<'RELEASE_NOTES'
-  # 🌅 LumaMusic DayLight Update
-RELEASE_NOTES
-          fi
-
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: daylight-${{ github.run_number }}
-          name: ${{ github.event.inputs.release_name || format('LumaMusic DayLight Update #{0}', github.run_number) }}
-          prerelease: false
-          overwrite_files: true
-          files: |
-            dist/LumaMusic-arm64-v8a.apk
-            dist/LumaMusic-armeabi-v7a.apk
-          body_path: release-notes.md
+            # 🌅 LumaMusic DayLight Update
 
             Yo guys! 👋
 
@@ -167,3 +153,17 @@ RELEASE_NOTES
             **Built with ❤️ by PauzeX Developments.**
 
             Keep listening. Keep discovering. Keep it Luma.
+            RELEASE_NOTES
+          fi
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: daylight-${{ github.run_number }}
+          name: ${{ github.event.inputs.release_name || format('LumaMusic DayLight Update #{0}', github.run_number) }}
+          prerelease: false
+          overwrite_files: true
+          files: |
+            dist/LumaMusic-arm64-v8a.apk
+            dist/LumaMusic-armeabi-v7a.apk
+          body_path: release-notes.md
