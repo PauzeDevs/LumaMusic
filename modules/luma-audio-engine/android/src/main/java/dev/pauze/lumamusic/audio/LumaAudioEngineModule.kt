@@ -137,6 +137,9 @@ class LumaAudioEngineModule : Module() {
         lastError = null
         current.setMediaSource(createMediaSource(track))
         val startMs = ((startPositionSeconds ?: 0.0).coerceAtLeast(0.0) * 1000.0).toLong()
+        // A track selection is an explicit play intent. Arm playback before
+        // prepare() so the decoder starts as soon as the stream becomes ready.
+        current.playWhenReady = true
         current.prepare()
         if (startMs > 0L) current.seekTo(startMs)
         emitState(current)
@@ -422,7 +425,13 @@ class LumaAudioEngineModule : Module() {
     return mapOf(
       "trackId" to activeTrackId,
       "isPlaying" to current.isPlaying,
-      "isBuffering" to (current.playbackState == Player.STATE_BUFFERING),
+      // ExoPlayer can briefly report IDLE between setMediaSource() and
+      // entering BUFFERING. If playWhenReady is armed, keep the UI in its
+      // loading state instead of presenting a false paused state.
+      "isBuffering" to (
+        current.playbackState == Player.STATE_BUFFERING ||
+          (current.playWhenReady && current.playbackState == Player.STATE_IDLE)
+      ),
       "positionSeconds" to current.currentPosition.coerceAtLeast(0L) / 1000.0,
       "durationSeconds" to duration / 1000.0,
       "bufferedSeconds" to current.bufferedPosition.coerceAtLeast(0L) / 1000.0,

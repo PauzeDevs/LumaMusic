@@ -557,15 +557,54 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
             instance: ++localSourceSequence.current
           });
         }
-        // Do not leave the UI spinning forever if the resolved stream never starts.
+        // A native player can accept a stream without ever transitioning to
+        // isPlaying (for example, when a device decoder or HTTP source stalls).
+        // Give Media3 a bounded startup window, then fall back to the direct
+        // Audio element route so a selected song is not left silently paused.
         startupTimeoutRef.current = setTimeout(() => {
           startupTimeoutRef.current = null;
           const latest = usePlayerStore.getState();
-          if (requestId !== playbackRequestSequence.current || latest.currentTrack?.id !== track.id || !latest.isBuffering) return;
-          if (nativePlaybackActive.current) void pauseNativeAudio().catch(() => undefined);
-          else audioRef.current?.pause();
-          latest.setPlaybackError("Audio stream did not start within 20 seconds. The stream may be unavailable or blocked. Tap Play to retry.");
-        }, 20_000);
+          if (requestId !== playbackRequestSequence.current || latest.currentTrack?.id !== track.id || latest.isPlaying) return;
+
+          if (nativePlaybackActive.current) {
+            nativePlaybackActive.current = false;
+            nativeEndedHandled.current = false;
+            void pauseNativeAudio().catch(() => undefined);
+            const resumeAt = Math.max(resumePosition ?? 0, latest.playbackPosition);
+            pendingResumePositionRef.current = resumeAt;
+            ensureAudioContext();
+            latest.setPlaybackStatus({
+              isPlaying: false,
+              isBuffering: true,
+              playbackPosition: resumeAt,
+              playbackDuration: stream.durationSeconds,
+              playbackError: null
+            });
+            setLocalSource({
+              uri: stream.url,
+              headers: streamHeaders,
+              instance: ++localSourceSequence.current
+            });
+            startupTimeoutRef.current = setTimeout(() => {
+              startupTimeoutRef.current = null;
+              const fallbackState = usePlayerStore.getState();
+              if (
+                requestId !== playbackRequestSequence.current ||
+                fallbackState.currentTrack?.id !== track.id ||
+                fallbackState.isPlaying ||
+                !fallbackState.isBuffering
+              ) return;
+              audioRef.current?.pause();
+              fallbackState.setPlaybackError("Audio stream did not start. The stream may be unavailable or blocked. Tap Play to retry.");
+            }, 20_000);
+            return;
+          }
+
+          if (latest.isBuffering) {
+            audioRef.current?.pause();
+            latest.setPlaybackError("Audio stream did not start. The stream may be unavailable or blocked. Tap Play to retry.");
+          }
+        }, 12_000);
         // Warm the next playlist stream while this song is already playing.
         // Selecting it later can then reuse the in-memory URL cache.
         const nextTrack = queue.slice(Math.max(0, (queueIndex ?? queue.findIndex((item) => item.id === track.id)) + 1))
