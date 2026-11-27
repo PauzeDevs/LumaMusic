@@ -9,6 +9,7 @@ import { PlaylistRow } from "../../components/PlaylistRow";
 import { ScrollReveal } from "../../components/ScrollReveal";
 import { SiriRefreshOverlay, useSiriRefresh } from "../../components/SiriRefresh";
 import { TrackRow } from "../../components/TrackRow";
+import { GlassSegmentedPill } from "../../components/GlassPills";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
 import {
@@ -151,13 +152,9 @@ export default function SearchScreen() {
           </View>
 
           {debouncedQuery ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-              {filters.map((filter) => (
-                <Pressable key={filter} onPress={() => setActiveFilter(filter)} style={[styles.filter, activeFilter === filter && styles.filterActive]}>
-                  <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <View style={{ marginTop: 14 }}>
+              <GlassSegmentedPill values={filters} selected={activeFilter} onSelect={setActiveFilter} />
+            </View>
           ) : null}
         </ScrollReveal>
 
