@@ -7,7 +7,7 @@ type ActionProps = { icon: string; label: string; onPress: () => void; active?: 
 export function GlassActionPill({ icon, label, onPress, active = false }: ActionProps) {
   const { colors } = useTheme();
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.action, { opacity: pressed ? 0.78 : 1, transform: [{ scale: pressed ? 0.96 : 1 }] }]} accessibilityRole="button" accessibilityLabel={label}>
-    <View style={[styles.actionDisc, { borderColor: active ? "rgba(255,255,255,0.34)" : "rgba(255,255,255,0.13)" }]}>
+    <View style={[styles.actionDisc, { borderColor: active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)" }]}>
       <LiquidGlassView cornerRadius={28} style={StyleSheet.absoluteFill} />
       {active ? <View pointerEvents="none" style={styles.activeWash} /> : null}
       <Ionicons name={icon as never} size={20} color={active ? colors.accent : "#F5F3F4"} />
@@ -34,14 +34,14 @@ export function GlassSegmentedPill<T extends string>({ values, selected, onSelec
 
 const styles = StyleSheet.create({
   action: { width: 68, alignItems: "center", gap: 7 },
-  actionDisc: { width: 54, height: 54, borderRadius: 27, overflow: "hidden", borderWidth: 1, backgroundColor: "rgba(255,255,255,0.075)", alignItems: "center", justifyContent: "center" },
+  actionDisc: { width: 54, height: 54, borderRadius: 27, overflow: "hidden", borderWidth: 1, backgroundColor: "rgba(255,255,255,0.045)", alignItems: "center", justifyContent: "center" },
   activeWash: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(221,61,79,0.13)" },
   actionLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.1 },
-  segmentShell: { minHeight: 48, borderRadius: 28, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", backgroundColor: "rgba(255,255,255,0.055)", justifyContent: "center" },
+  segmentShell: { minHeight: 48, borderRadius: 28, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.09)", backgroundColor: "rgba(255,255,255,0.035)", justifyContent: "center" },
   segmentContent: { padding: 4, alignItems: "center", gap: 3 },
   segment: { minHeight: 38, paddingHorizontal: 15, borderRadius: 22, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  segmentActive: { backgroundColor: "#F4F3F4", shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  segmentHighlight: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(255,255,255,0.18)" },
+  segmentActive: { backgroundColor: "#F4F3F4", shadowColor: "#000", shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
+  segmentHighlight: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(255,255,255,0.08)" },
   segmentText: { color: "rgba(255,255,255,0.66)", fontSize: 12, fontWeight: "600" },
   segmentTextActive: { color: "#171619", fontWeight: "700" }
 });
