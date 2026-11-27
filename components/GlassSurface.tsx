@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { LiquidGlassView } from "../modules/liquid-glass/src";
 import { useTheme } from "../theme/useTheme";
 
@@ -22,13 +22,13 @@ export function GlassSurface({ children, style, contentStyle }: Props) {
         : (isDark ? "rgba(20,23,31,0.58)" : "rgba(244,248,255,0.58)");
 
   const borderColor = surfaceStyle === "liquid"
-    ? (isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.78)")
+    ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.42)")
     : surfaceStyle === "clear"
       ? (isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.82)")
       : colors.border;
 
   return (
-    <View style={[styles.shell, { borderColor, backgroundColor }, style]}>
+    <View style={[styles.shell, { borderColor, backgroundColor }, Platform.OS === "android" && styles.androidShell, style]}>
       {surfaceStyle === "liquid" ? (
         <LiquidGlassView cornerRadius={22} style={StyleSheet.absoluteFill} />
       ) : null}
@@ -50,11 +50,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 22,
     shadowColor: "#000000",
-    shadowOpacity: 0.32,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 7
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 0
   },
+  androidShell: { shadowOpacity: 0, elevation: 0 },
   content: { flex: 1, zIndex: 1 },
   frostedHighlight: { opacity: 1 },
   clearHighlight: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 21 }
