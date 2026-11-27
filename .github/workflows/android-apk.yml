@@ -93,7 +93,7 @@ jobs:
       - name: Upload architecture APK
         uses: actions/upload-artifact@v4
         with:
-          name: lumamusic-${{ github.event.inputs.release_channel || 'stable' }}-${{ matrix.abi }}
+          name: LumaMusic-${{ github.event.inputs.release_channel == 'test' && 'Test' || 'Stable' }}-${{ matrix.abi }}
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
           retention-days: 14
