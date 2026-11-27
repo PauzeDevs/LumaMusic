@@ -35,13 +35,13 @@ export function GlassSegmentedPill<T extends string>({ values, selected, onSelec
 const styles = StyleSheet.create({
   action: { width: 68, alignItems: "center", gap: 7 },
   actionDisc: { width: 54, height: 54, borderRadius: 27, overflow: "hidden", borderWidth: 1, backgroundColor: "rgba(255,255,255,0.075)", alignItems: "center", justifyContent: "center" },
-  activeWash: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(221,61,79,0.13)" },
+  activeWash: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(221,61,79,0.13)" },
   actionLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.1 },
   segmentShell: { minHeight: 48, borderRadius: 28, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.13)", backgroundColor: "rgba(255,255,255,0.055)", justifyContent: "center" },
   segmentContent: { padding: 4, alignItems: "center", gap: 3 },
   segment: { minHeight: 38, paddingHorizontal: 15, borderRadius: 22, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   segmentActive: { backgroundColor: "#F4F3F4", shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  segmentHighlight: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255,255,255,0.18)" },
+  segmentHighlight: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(255,255,255,0.18)" },
   segmentText: { color: "rgba(255,255,255,0.66)", fontSize: 12, fontWeight: "600" },
   segmentTextActive: { color: "#171619", fontWeight: "700" }
 });
