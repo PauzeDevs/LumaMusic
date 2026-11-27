@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PlaylistStack } from "../../components/PlaylistStack";
+import { GlassActionPill } from "../../components/GlassPills";
 import { GlassSurface } from "../../components/GlassSurface";
 import { SectionHeading } from "../../components/SectionHeading";
 import { TrackRow } from "../../components/TrackRow";
@@ -105,10 +106,12 @@ export default function LibraryScreen() {
           <ScrollReveal scrollY={scrollY}><View style={styles.top}><View><Text style={styles.eyebrow}>YOUR COLLECTION</Text><Text style={styles.title}>Your library.</Text></View>
             <View style={styles.topActions}><Pressable style={styles.importButton} onPress={() => router.push("/import-playlist")}><Ionicons name="swap-horizontal" size={15} color={colors.accent} /><Text style={styles.importText}>Import</Text></Pressable><Pressable style={styles.add} onPress={() => setCreateVisible(true)}><Ionicons name="add" size={24} color={colors.text} /></Pressable></View>
           </View></ScrollReveal>
-          <ScrollReveal scrollY={scrollY}><View style={styles.shortcuts}>
-            <Pressable style={styles.liked} onPress={() => router.push("/liked")} accessibilityRole="button" accessibilityLabel="Open liked songs"><View style={styles.heart}><Ionicons name="heart" size={19} color="#17111F" /></View><View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>Liked songs</Text><Text style={styles.shortcutSub}>Your personal favourites</Text></View><Ionicons name="chevron-forward" size={17} color="rgba(255,255,255,0.65)" /></Pressable>
-            <Pressable style={styles.downloads} onPress={() => void importLocalAudio()}><View style={styles.downloadIcon}><Ionicons name="download-outline" size={19} color={colors.mint} /></View><View style={{ flex: 1 }}><Text style={styles.shortcutTitle}>Local music</Text><Text style={styles.shortcutSub}>{localTracks.length ? localTracks.length + " imported · Add more" : "Import audio files from your device"}</Text></View><Ionicons name="chevron-forward" size={17} color={colors.muted} /></Pressable>
-          </View></ScrollReveal>
+          <ScrollReveal scrollY={scrollY}><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 28 }}>
+            <GlassActionPill icon="heart" label="Liked songs" onPress={() => router.push("/liked")} active />
+            <GlassActionPill icon="download-outline" label="Local music" onPress={() => void importLocalAudio()} />
+            <GlassActionPill icon="add" label="New playlist" onPress={() => setCreateVisible(true)} />
+            <GlassActionPill icon="swap-horizontal" label="Import playlist" onPress={() => router.push("/import-playlist")} />
+          </ScrollView></ScrollReveal>
         </>}
         renderItem={({ item }) => item.kind === "content" ? <>{item.content}</> : <TrackRow track={item.track} index={item.index} showIndex queue={item.queue} />}
         ListFooterComponent={<Text style={styles.note}>Favourites, listening history and local playlists are saved on this device. Import a playlist export to bring collections across services.</Text>}
