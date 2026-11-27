@@ -11,6 +11,7 @@ type NativeAudioEventMap = {
   onStateChange: AudioEngineState;
   onCrossfadeComplete: { trackId: string };
   onMediaItemRequested: { trackId: string };
+  onTransportControlRequested: { direction: "next" | "previous" };
 };
 
 type NativeAudioEngineModule = {
@@ -123,4 +124,9 @@ export function addNativeAudioCrossfadeCompleteListener(listener: (event: { trac
 export function addNativeAudioMediaItemRequestedListener(listener: (event: { trackId: string }) => void): EventSubscription | null {
   if (!nativeModule) return null;
   return nativeModule.addListener("onMediaItemRequested", listener);
+}
+
+export function addNativeAudioTransportControlListener(listener: (event: { direction: "next" | "previous" }) => void): EventSubscription | null {
+  if (!nativeModule) return null;
+  return nativeModule.addListener("onTransportControlRequested", listener);
 }
