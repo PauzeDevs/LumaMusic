@@ -104,8 +104,8 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: daylight-2026-11-17
-          name: LumaMusic DayLight Update
+          tag_name: daylight-${{ github.run_number }}
+          name: LumaMusic DayLight Update #${{ github.run_number }}
           prerelease: false
           overwrite_files: true
           files: |
