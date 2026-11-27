@@ -51,7 +51,8 @@ async function findBackup(): Promise<DriveFile | null> {
   const result = await driveRequest<DriveListResponse>(
     `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&pageSize=10&fields=files(id,name,modifiedTime)`
   );
-  return result.files?.[0] ?? null;
+  return (result.files ?? []).filter((file) => file.id && file.name === BACKUP_FILE_NAME)
+    .sort((a, b) => Date.parse(b.modifiedTime ?? "") - Date.parse(a.modifiedTime ?? ""))[0] ?? null;
 }
 
 export async function downloadLibraryBackup(): Promise<LumaLibraryBackup | null> {
@@ -113,25 +114,43 @@ export function makeLibraryBackup(
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isTrack(value: unknown): value is MusicTrack {
+  if (!isRecord(value)) return false;
+  return typeof value.id === "string" && value.id.length > 0 && typeof value.title === "string" &&
+    typeof value.artist === "string" && typeof value.artwork === "string" &&
+    typeof value.durationMs === "number" && Number.isFinite(value.durationMs) &&
+    ["mock", "audius", "youtube_music", "local"].includes(String(value.source));
+}
+
+function isPlaylist(value: unknown): value is LocalPlaylist {
+  return isRecord(value) && typeof value.id === "string" && value.id.length > 0 &&
+    typeof value.title === "string" && Array.isArray(value.tracks) && value.tracks.every(isTrack);
+}
+
+function isListeningDay(value: unknown): value is ListeningDay {
+  if (!isRecord(value) || typeof value.seconds !== "number" || !Number.isFinite(value.seconds) ||
+      typeof value.plays !== "number" || !Number.isFinite(value.plays) || !isRecord(value.tracks)) return false;
+  return Object.values(value.tracks).every((track) => isRecord(track) && typeof track.id === "string" &&
+    typeof track.title === "string" && typeof track.artist === "string" && typeof track.artwork === "string" &&
+    typeof track.genre === "string" && typeof track.album === "string" &&
+    typeof track.seconds === "number" && Number.isFinite(track.seconds) &&
+    typeof track.plays === "number" && Number.isFinite(track.plays));
+}
+
 export function isLibraryBackup(value: unknown): value is LumaLibraryBackup {
-  if (!value || typeof value !== "object") return false;
-  const backup = value as Partial<LumaLibraryBackup>;
-  const validLibrary =
-    (backup.schemaVersion === 1 || backup.schemaVersion === 2) &&
-    typeof backup.updatedAt === "number" &&
-    Array.isArray(backup.likedTracks) &&
-    Array.isArray(backup.recentTracks) &&
-    Array.isArray(backup.localTracks) &&
-    Array.isArray(backup.playlists);
-  if (!validLibrary) return false;
-  if (backup.schemaVersion === 1) return true;
-  return Boolean(
-    backup.preferences &&
-    typeof backup.preferences === "object" &&
-    backup.listeningStats &&
-    typeof backup.listeningStats === "object" &&
-    !Array.isArray(backup.listeningStats)
-  );
+  if (!isRecord(value) || ![1, 2].includes(Number(value.schemaVersion)) ||
+      typeof value.updatedAt !== "number" || !Number.isFinite(value.updatedAt) ||
+      !Array.isArray(value.likedTracks) || !value.likedTracks.every(isTrack) ||
+      !Array.isArray(value.recentTracks) || !value.recentTracks.every(isTrack) ||
+      !Array.isArray(value.localTracks) || !value.localTracks.every(isTrack) ||
+      !Array.isArray(value.playlists) || !value.playlists.every(isPlaylist)) return false;
+  if (value.schemaVersion === 1) return true;
+  if (!isRecord(value.preferences) || !isRecord(value.listeningStats)) return false;
+  return Object.values(value.listeningStats).every(isListeningDay);
 }
 
 export async function disconnectGoogleAccount(): Promise<void> {
