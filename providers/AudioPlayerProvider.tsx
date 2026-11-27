@@ -692,7 +692,7 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
       const library = useLibraryStore.getState();
       const playerState = usePlayerStore.getState();
       const playlist = library.playlists.find((item) => item.tracks.some((track) => track.id === trackId));
-      const queue = playlist?.tracks ?? playerState.queue;
+      const queue = playlist?.tracks.filter(isExternalTrack) ?? playerState.queue.filter(isExternalTrack);
       const candidates = [
         ...queue,
         ...library.likedTracks,
