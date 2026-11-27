@@ -10,6 +10,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { TrackRow } from "../../components/TrackRow";
 import { PlaylistRecommendations } from "../../components/PlaylistRecommendations";
 import { Artwork } from "../../components/Artwork";
+import { GlassSurface } from "../../components/GlassSurface";
+import { GlassActionPill } from "../../components/GlassPills";
 import { getYouTubeMusicPlaylistTracks } from "../../services/youtubeMusic";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
@@ -127,7 +129,7 @@ export default function PlaylistScreen() {
         contentContainerStyle={makeStyles(colors).content}
         ListHeaderComponent={
           <View>
-            <View style={makeStyles(colors).hero}>
+            <GlassSurface style={makeStyles(colors).hero} contentStyle={makeStyles(colors).heroContent}>
               {localPlaylist ? (localPlaylist.coverUri || localPlaylist.tracks[0]?.artwork ? <Artwork uri={localPlaylist.coverUri || localPlaylist.tracks[0]?.artwork} size={112} radius={22} /> : <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>)
                 : remoteArtwork ? <Artwork uri={remoteArtwork} size={112} radius={22} />
                 : <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>}
@@ -140,10 +142,11 @@ export default function PlaylistScreen() {
                   : failed ? "Couldn't load this playlist right now."
                   : tracks.length + " tracks · Available in LumaMusic"}
               </Text>
-              <Pressable disabled={tracks.length === 0} style={[makeStyles(colors).primaryButton, tracks.length === 0 && makeStyles(colors).disabled]} onPress={playAll}>
-                <Ionicons name="play" size={16} color="#17111F" /><Text style={makeStyles(colors).primaryText}>Play all</Text>
-              </Pressable>
-            </View>
+              <View style={makeStyles(colors).heroActions}>
+                <GlassActionPill icon="play" label="Play all" onPress={playAll} active />
+                {localPlaylist ? <GlassActionPill icon="pencil" label="Edit" onPress={openEdit} /> : null}
+              </View>
+            </GlassSurface>
             {localPlaylist ? <PlaylistRecommendations playlist={localPlaylist} /> : null}
             {!localPlaylist && loading ? null : !localPlaylist && failed ? null : tracks.length > 0 ? (
               <View style={makeStyles(colors).sectionHeader}><Text style={makeStyles(colors).sectionTitle}>Tracks</Text><Text style={makeStyles(colors).count}>{tracks.length}</Text></View>
@@ -214,7 +217,9 @@ const makeStyles = (colors: ReturnType<typeof useTheme>["colors"]) => StyleSheet
   modalSave: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 11, backgroundColor: colors.accent },
   modalSaveText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   content: { paddingHorizontal: 20, paddingBottom: 35 },
-  hero: { alignItems: "center", padding: 22, marginTop: 10, marginBottom: 24, backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1, borderColor: colors.border },
+  hero: { marginTop: 10, marginBottom: 24, borderRadius: 22 },
+  heroContent: { alignItems: "center", padding: 22 },
+  heroActions: { flexDirection: "row", alignItems: "flex-start", justifyContent: "center", gap: 18, marginTop: 5 },
   artwork: { width: 100, height: 100, borderRadius: 24, backgroundColor: colors.surfaceElevated, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   title: { color: colors.text, fontSize: 22, fontWeight: "800", textAlign: "center" },
   description: { color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 8, maxWidth: 300 },
