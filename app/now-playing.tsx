@@ -208,18 +208,14 @@ export default function NowPlayingScreen() {
             <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
         </View>
       </View>
-      <View style={styles.bottomGlass}><BlurView tint={blurTint} intensity={92} style={StyleSheet.absoluteFill} /><View pointerEvents="none" style={styles.bottomSheen} /><View style={styles.bottom}>
-        <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
-          <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
-        </Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? track.youtubeUrl ?? "LumaMusic") })}>
-          <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
-        </Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => router.push("/lyrics")}><Ionicons name="text" size={20} color={colors.muted} /><Text style={styles.bottomText}>Lyrics</Text></Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => router.push("/audio-settings")}>
-          <Ionicons name="options-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Audio</Text>
-        </Pressable>
-      </View></View>
+      <View style={styles.bottomGlass}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ justifyContent: "center", alignItems: "center", gap: 14, paddingHorizontal: 8 }}>
+          <GlassActionPill icon="list" label="Queue" onPress={() => router.push("/queue")} />
+          <GlassActionPill icon="share-social-outline" label="Share" onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? track.youtubeUrl ?? "LumaMusic") })} />
+          <GlassActionPill icon="text" label="Lyrics" onPress={() => router.push("/lyrics")} />
+          <GlassActionPill icon="options-outline" label="Audio" onPress={() => router.push("/audio-settings")} />
+        </ScrollView>
+      </View>
       <Modal visible={stylePickerVisible} transparent animationType="fade" onRequestClose={() => setStylePickerVisible(false)}>
         <Pressable style={styles.stylePickerBackdrop} onPress={() => setStylePickerVisible(false)}>
           <Pressable style={styles.stylePickerSheet} onPress={() => undefined}>
@@ -305,7 +301,7 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 10, marginTop: 14, flexShrink: 0 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottomGlass: { flexShrink: 0, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.18)" : "rgba(255,255,255,0.2)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.68)" : "rgba(255,255,255,0.68)") : (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+  bottomGlass: { flexShrink: 0, marginBottom: 6, paddingVertical: 4 },
   bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: surfaceStyle === "liquid" ? (isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)") : "transparent" },
   bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 8 },
   bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
