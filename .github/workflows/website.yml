@@ -12,7 +12,6 @@ on:
       - "assets/Screenshot_20261114-111431.png"
       - "assets/Screenshot_20261114-111449.png"
       - "assets/Screenshot_20261114-111553.png"
-      - ".github/workflows/website.yml"
   workflow_dispatch:
 
 permissions:

@@ -13,10 +13,11 @@ export type ResolvedNewPipeAudio = {
  * to use the existing InnerTube resolver without importing Android classes.
  */
 export async function resolveWithNewPipe(
-  videoId: string
+  videoId: string,
+  signal?: AbortSignal
 ): Promise<ResolvedNewPipeAudio | null> {
   try {
-    return await resolveNativeNewPipe(videoId);
+    return await resolveNativeNewPipe(videoId, signal);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`NewPipe extraction failed: ${message}`);

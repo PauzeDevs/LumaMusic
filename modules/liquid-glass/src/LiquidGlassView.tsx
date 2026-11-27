@@ -1,6 +1,6 @@
 import { requireNativeViewManager } from "expo-modules-core";
 import type { StyleProp, ViewProps, ViewStyle } from "react-native";
-import { Platform, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 export type LiquidGlassViewProps = {
   style?: StyleProp<ViewStyle>;
@@ -18,5 +18,14 @@ export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewPro
   if (NativeLiquidGlassView) {
     return <NativeLiquidGlassView style={style} cornerRadius={cornerRadius} pointerEvents="none" />;
   }
-  return <View style={style} pointerEvents="none" />;
+  return <View style={[style, styles.androidGlass]} pointerEvents="none" />;
 }
+
+const styles = StyleSheet.create({
+  androidGlass: {
+    backgroundColor: "rgba(255,255,255,0.025)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.055)",
+    overflow: "hidden"
+  }
+});

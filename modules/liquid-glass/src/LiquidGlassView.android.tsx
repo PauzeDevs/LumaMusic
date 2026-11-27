@@ -25,7 +25,7 @@ export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewPro
       <View
         style={[
           styles.upperGlow,
-          { borderTopLeftRadius: radius, borderTopRightRadius: radius, backgroundColor: isDark ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.46)" }
+          { borderTopLeftRadius: radius, borderTopRightRadius: radius, backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.20)" }
         ]}
       />
       <View
@@ -39,7 +39,7 @@ export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewPro
           styles.rim,
           {
             borderRadius: radius,
-            borderColor: isDark ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.72)"
+            borderColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.24)"
           }
         ]}
       />
@@ -48,7 +48,7 @@ export function LiquidGlassView({ style, cornerRadius = 24 }: LiquidGlassViewPro
           styles.innerRim,
           {
             borderRadius: Math.max(0, radius - 1),
-            borderColor: isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.34)"
+            borderColor: isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.10)"
           }
         ]}
       />

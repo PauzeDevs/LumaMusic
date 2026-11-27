@@ -1,12 +1,17 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
+import { PageEntrance } from "../../components/PageEntrance";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TrackRow } from "../../components/TrackRow";
 import { PlaylistRecommendations } from "../../components/PlaylistRecommendations";
 import { Artwork } from "../../components/Artwork";
+import { GlassSurface } from "../../components/GlassSurface";
+import { GlassActionPill } from "../../components/GlassPills";
 import { getYouTubeMusicPlaylistTracks } from "../../services/youtubeMusic";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
@@ -20,8 +25,11 @@ export default function PlaylistScreen() {
   const localPlaylist = useLibraryStore((state) => state.playlists.find((playlist) => playlist.id === id));
   const deletePlaylist = useLibraryStore((state) => state.deletePlaylist);
   const renamePlaylist = useLibraryStore((state) => state.renamePlaylist);
+  const updatePlaylistDetails = useLibraryStore((state) => state.updatePlaylistDetails);
   const [renameVisible, setRenameVisible] = useState(false);
   const [draftName, setDraftName] = useState("");
+  const [draftDescription, setDraftDescription] = useState("");
+  const [draftCoverUri, setDraftCoverUri] = useState("");
   const { playTrack } = useAudioEngine();
   const remoteTitle = String(params.title ?? "Playlist");
   const remoteArtwork = String(params.artwork ?? "");
@@ -40,6 +48,34 @@ export default function PlaylistScreen() {
     playTrack(tracks[0], tracks).catch((error: unknown) => {
       Alert.alert("Couldn't start playlist", error instanceof Error ? error.message : "Please try again.");
     });
+  };
+
+
+  const openEdit = () => {
+    if (!localPlaylist) return;
+    setDraftName(localPlaylist.name);
+    setDraftDescription(localPlaylist.description ?? "");
+    setDraftCoverUri(localPlaylist.coverUri ?? "");
+    setRenameVisible(true);
+  };
+
+  const chooseCover = async () => {
+    if (!localPlaylist) return;
+    const playlistId = localPlaylist.id;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ["image/*"], copyToCacheDirectory: true, multiple: false });
+      if (result.canceled || !result.assets[0]) return;
+      const directory = FileSystem.documentDirectory;
+      if (!directory) throw new Error("LumaMusic could not access its permanent storage directory.");
+      const folder = directory + "playlist-covers/";
+      await FileSystem.makeDirectoryAsync(folder, { intermediates: true });
+      const extension = result.assets[0].name.includes(".") ? "." + result.assets[0].name.split(".").pop()!.toLowerCase() : ".jpg";
+      const destination = folder + encodeURIComponent(playlistId) + extension;
+      await FileSystem.copyAsync({ from: result.assets[0].uri, to: destination });
+      setDraftCoverUri(destination);
+    } catch (error) {
+      Alert.alert("Couldn't add cover", error instanceof Error ? error.message : "Please try another image.");
+    }
   };
 
   const confirmDelete = () => {
@@ -78,11 +114,11 @@ export default function PlaylistScreen() {
   );
 
   return (
-    <SafeAreaView style={makeStyles(colors).safe} edges={["top", "bottom"]}>
+    <PageEntrance><SafeAreaView style={makeStyles(colors).safe} edges={["top", "bottom"]}>
       <View style={makeStyles(colors).header}>
         <Pressable onPress={() => router.back()} style={makeStyles(colors).back}><Ionicons name="chevron-back" size={22} color={colors.text} /><Text style={makeStyles(colors).backText}>Back</Text></Pressable>
         {localPlaylist ? <View style={makeStyles(colors).headerActions}>
-          <Pressable onPress={() => { setDraftName(localPlaylist.name); setRenameVisible(true); }} style={makeStyles(colors).headerAction}><Ionicons name="pencil-outline" size={18} color={colors.muted} /></Pressable>
+          <Pressable onPress={openEdit} style={makeStyles(colors).headerAction}><Ionicons name="pencil-outline" size={18} color={colors.muted} /></Pressable>
           <Pressable onPress={confirmDelete} style={makeStyles(colors).headerAction}><Ionicons name="trash-outline" size={18} color={colors.muted} /></Pressable>
         </View> : null}
       </View>
@@ -93,11 +129,12 @@ export default function PlaylistScreen() {
         contentContainerStyle={makeStyles(colors).content}
         ListHeaderComponent={
           <View>
-            <View style={makeStyles(colors).hero}>
-              {localPlaylist ? <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>
+            <GlassSurface style={makeStyles(colors).hero} contentStyle={makeStyles(colors).heroContent}>
+              {localPlaylist ? (localPlaylist.coverUri || localPlaylist.tracks[0]?.artwork ? <Artwork uri={localPlaylist.coverUri || localPlaylist.tracks[0]?.artwork} size={112} radius={22} /> : <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>)
                 : remoteArtwork ? <Artwork uri={remoteArtwork} size={112} radius={22} />
                 : <View style={makeStyles(colors).artwork}><Ionicons name="musical-notes" size={43} color={colors.accent} /></View>}
               <Text style={makeStyles(colors).title}>{localPlaylist?.name ?? remoteTitle}</Text>
+              {localPlaylist?.description ? <Text style={makeStyles(colors).description}>{localPlaylist.description}</Text> : null}
               <Text style={makeStyles(colors).copy}>
                 {localPlaylist
                   ? localPlaylist.tracks.length + " tracks · Stored on this device"
@@ -105,10 +142,11 @@ export default function PlaylistScreen() {
                   : failed ? "Couldn't load this playlist right now."
                   : tracks.length + " tracks · Available in LumaMusic"}
               </Text>
-              <Pressable disabled={tracks.length === 0} style={[makeStyles(colors).primaryButton, tracks.length === 0 && makeStyles(colors).disabled]} onPress={playAll}>
-                <Ionicons name="play" size={16} color="#17111F" /><Text style={makeStyles(colors).primaryText}>Play all</Text>
-              </Pressable>
-            </View>
+              <View style={makeStyles(colors).heroActions}>
+                <GlassActionPill icon="play" label="Play all" onPress={playAll} active />
+                {localPlaylist ? <GlassActionPill icon="pencil" label="Edit" onPress={openEdit} /> : null}
+              </View>
+            </GlassSurface>
             {localPlaylist ? <PlaylistRecommendations playlist={localPlaylist} /> : null}
             {!localPlaylist && loading ? null : !localPlaylist && failed ? null : tracks.length > 0 ? (
               <View style={makeStyles(colors).sectionHeader}><Text style={makeStyles(colors).sectionTitle}>Tracks</Text><Text style={makeStyles(colors).count}>{tracks.length}</Text></View>
@@ -126,21 +164,31 @@ export default function PlaylistScreen() {
       <Modal visible={renameVisible} transparent animationType="fade" onRequestClose={() => setRenameVisible(false)}>
         <View style={makeStyles(colors).modalBackdrop}>
           <View style={makeStyles(colors).modalCard}>
-            <Text style={makeStyles(colors).modalTitle}>Rename playlist</Text>
+            <Text style={makeStyles(colors).modalTitle}>Edit playlist</Text>
+            
+            <Pressable onPress={() => void chooseCover()} style={makeStyles(colors).coverPicker}>
+              {draftCoverUri ? <Artwork uri={draftCoverUri} size={58} radius={12} /> : <View style={makeStyles(colors).coverPlaceholder}><Ionicons name="image-outline" size={22} color={colors.accent} /></View>}
+              <View style={{ flex: 1 }}><Text style={makeStyles(colors).coverTitle}>{draftCoverUri ? "Change playlist cover" : "Add playlist cover"}</Text><Text style={makeStyles(colors).coverHint}>Choose an image from your device</Text></View>
+              <Ionicons name="chevron-forward" size={17} color={colors.muted} />
+            </Pressable>
+            {draftCoverUri ? <Pressable onPress={() => setDraftCoverUri("")} style={makeStyles(colors).removeCover}><Ionicons name="trash-outline" size={14} color={colors.danger} /><Text style={makeStyles(colors).removeCoverText}>Remove custom cover</Text></Pressable> : null}
             <TextInput value={draftName} onChangeText={setDraftName} placeholder="Playlist name" placeholderTextColor={colors.subtle} maxLength={50} autoFocus style={makeStyles(colors).modalInput} />
+            <TextInput value={draftDescription} onChangeText={(value) => setDraftDescription(value.slice(0, 100))} placeholder="Add a description (100 characters max)" placeholderTextColor={colors.subtle} maxLength={100} multiline style={[makeStyles(colors).modalInput, makeStyles(colors).descriptionInput]} />
+            <Text style={makeStyles(colors).characterCount}>{draftDescription.length}/100</Text>
             <View style={makeStyles(colors).modalActions}>
               <Pressable onPress={() => setRenameVisible(false)} style={makeStyles(colors).modalCancel}><Text style={makeStyles(colors).modalCancelText}>Cancel</Text></Pressable>
               <Pressable onPress={() => {
                 const nextName = draftName.trim();
                 if (!nextName || !localPlaylist) return;
                 renamePlaylist(localPlaylist.id, nextName);
+                updatePlaylistDetails(localPlaylist.id, { description: draftDescription.trim(), coverUri: draftCoverUri });
                 setRenameVisible(false);
               }} style={makeStyles(colors).modalSave}><Text style={makeStyles(colors).modalSaveText}>Save</Text></Pressable>
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView></PageEntrance>
   );
 }
 
@@ -155,15 +203,26 @@ const makeStyles = (colors: ReturnType<typeof useTheme>["colors"]) => StyleSheet
   modalCard: { backgroundColor: colors.surfaceElevated, borderRadius: 20, borderWidth: 1, borderColor: colors.border, padding: 18 },
   modalTitle: { color: colors.text, fontSize: 17, fontWeight: "800" },
   modalInput: { color: colors.text, backgroundColor: colors.background, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 13, paddingVertical: 11, fontSize: 12, marginTop: 15 },
+  descriptionInput: { minHeight: 76, textAlignVertical: "top" },
+  characterCount: { color: colors.subtle, fontSize: 9, textAlign: "right", marginTop: 5 },
+  coverPicker: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
+  coverPlaceholder: { width: 58, height: 58, borderRadius: 12, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  coverTitle: { color: colors.text, fontSize: 12, fontWeight: "800" },
+  coverHint: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  removeCover: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingTop: 9 },
+  removeCoverText: { color: colors.danger, fontSize: 10, fontWeight: "700" },
   modalActions: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 15 },
   modalCancel: { paddingHorizontal: 13, paddingVertical: 10 },
   modalCancelText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
   modalSave: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 11, backgroundColor: colors.accent },
   modalSaveText: { color: "#17111F", fontSize: 11, fontWeight: "800" },
   content: { paddingHorizontal: 20, paddingBottom: 35 },
-  hero: { alignItems: "center", padding: 22, marginTop: 10, marginBottom: 24, backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1, borderColor: colors.border },
+  hero: { marginTop: 10, marginBottom: 24, borderRadius: 22 },
+  heroContent: { alignItems: "center", padding: 22 },
+  heroActions: { flexDirection: "row", alignItems: "flex-start", justifyContent: "center", gap: 18, marginTop: 5 },
   artwork: { width: 100, height: 100, borderRadius: 24, backgroundColor: colors.surfaceElevated, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   title: { color: colors.text, fontSize: 22, fontWeight: "800", textAlign: "center" },
+  description: { color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 8, maxWidth: 300 },
   copy: { color: colors.muted, fontSize: 12, lineHeight: 19, textAlign: "center", marginTop: 8 },
   primaryButton: { minHeight: 43, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.accent, paddingHorizontal: 19, borderRadius: 13, marginTop: 17 },
   disabled: { opacity: 0.4 },

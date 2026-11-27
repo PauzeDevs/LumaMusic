@@ -1,18 +1,30 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Easing, Image, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Animated, Easing, Image, Modal, PanResponder, Pressable, Share, StyleSheet, Text, View, ScrollView, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
-import type { SurfaceStyle } from "../store/preferences";
+import type { PlayerStyle, SurfaceStyle } from "../store/preferences";
 import { useTheme } from "../theme/useTheme";
 import { usePlayerStore } from "../store/player";
 import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePreferencesStore } from "../store/preferences";
-import { useNowPlayingArtworkMotion } from "../hooks/useNowPlayingArtworkMotion";
 import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
+import { GlassActionPill } from "../components/GlassPills";
+
+function playerStyleForLayout(style: PlayerStyle, width: number, height: number) {
+  // Keep the artwork proportional to the available viewport so the transport
+  // controls and metadata remain reachable on short Android screens.
+  const availableWidth = Math.max(132, width - 44);
+  const compact = style === "compact";
+  const preferred = compact
+    ? Math.min(width * 0.58, height * 0.22, 228)
+    : Math.min(availableWidth, height * 0.30, 344);
+  const minimum = compact ? 132 : 144;
+  return Math.max(minimum, Math.min(availableWidth, preferred));
+}
 
 function formatTime(seconds: number) {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -22,7 +34,6 @@ function formatTime(seconds: number) {
 export default function NowPlayingScreen() {
   const { colors, blurTint, isDark } = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const artworkSize = Math.max(180, Math.min(windowWidth - 44, windowHeight * 0.34, 360));
   const track = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const isBuffering = usePlayerStore((s) => s.isBuffering);
@@ -37,11 +48,11 @@ export default function NowPlayingScreen() {
   const queue = usePlayerStore((s) => s.queue);
   const progressBarStyle = usePreferencesStore((s) => s.progressBarStyle);
   const playerStyle = usePreferencesStore((s) => s.playerStyle);
+  const artworkSize = playerStyleForLayout(playerStyle, windowWidth, windowHeight);
   const surfaceStyle = usePreferencesStore((s) => s.surfaceStyle);
+  const setPlayerStyle = usePreferencesStore((s) => s.setPlayerStyle);
   const styles = createStyles(colors, isDark, surfaceStyle, artworkSize);
   const motionStyle = usePreferencesStore((s) => s.motionStyle);
-  const animationIntensity = usePreferencesStore((s) => s.animationIntensity);
-  const { artworkScale, artworkFloat } = useNowPlayingArtworkMotion(isPlaying, motionStyle, animationIntensity);
   const accentColor = colors.accent;
   const likedTracks = useLibraryStore((s) => s.likedTracks);
   const toggleLike = useLibraryStore((s) => s.toggleLike);
@@ -49,19 +60,60 @@ export default function NowPlayingScreen() {
   const duration = playbackDuration || (track?.durationMs ?? 0) / 1000;
   const isLocalPlayback = track?.source === "local";
   const [artworkFailed, setArtworkFailed] = useState(false);
+  const [stylePickerVisible, setStylePickerVisible] = useState(false);
   const [previousArtwork, setPreviousArtwork] = useState<string | null>(null);
   const artworkCrossfade = useRef(new Animated.Value(1)).current;
+  const vinylRotation = useRef(new Animated.Value(0)).current;
+  const vinylRotate = vinylRotation.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  useEffect(() => {
+    vinylRotation.stopAnimation();
+    if (playerStyle !== "vinyl" || !isPlaying || motionStyle === "off") return;
+    const spin = Animated.loop(Animated.timing(vinylRotation, {
+      toValue: 1,
+      duration: motionStyle === "subtle" ? 40_000 : 24_000,
+      easing: Easing.linear,
+      useNativeDriver: true
+    }));
+    spin.start();
+    return () => spin.stop();
+  }, [playerStyle, isPlaying, motionStyle, vinylRotation]);
   useEffect(() => {
     setArtworkFailed(false);
     if (!track?.artwork) return;
+    if (motionStyle === "off") {
+      setPreviousArtwork(null);
+      artworkCrossfade.stopAnimation();
+      artworkCrossfade.setValue(1);
+      return;
+    }
     setPreviousArtwork((current) => current && current !== track.artwork ? current : null);
     artworkCrossfade.stopAnimation();
     artworkCrossfade.setValue(0);
-    Animated.timing(artworkCrossfade, { toValue: 1, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(({ finished }) => {
+    Animated.timing(artworkCrossfade, {
+      toValue: 1,
+      duration: motionStyle === "subtle" ? 260 : 520,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true
+    }).start(({ finished }) => {
       if (finished) setPreviousArtwork(null);
     });
-  }, [track?.id, track?.artwork, artworkCrossfade]);
+  }, [track?.id, track?.artwork, motionStyle, artworkCrossfade]);
   const { progressRef, progressPanResponder, onProgressLayout } = useNowPlayingSeeking(duration, seekTo);
+  // Mochy-inspired player gestures: swipe the artwork to change tracks and
+  // swipe down to dismiss. Keep taps and the transport controls untouched.
+  const artworkGesture = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      Math.abs(gesture.dx) > 22 || (gesture.dy > 24 && Math.abs(gesture.dy) > Math.abs(gesture.dx)),
+    onPanResponderRelease: (_event, gesture) => {
+      if (gesture.dx <= -58 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
+        void playNext();
+      } else if (gesture.dx >= 58 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
+        void playPrevious();
+      } else if (gesture.dy >= 82 && gesture.dy > Math.abs(gesture.dx)) {
+        router.back();
+      }
+    }
+  }), [playNext, playPrevious]);
 
   if (!track) {
     return <SafeAreaView style={styles.safe}><Text style={styles.empty}>Choose a track to start listening.</Text></SafeAreaView>;
@@ -88,7 +140,8 @@ export default function NowPlayingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 44 : surfaceStyle === "frosted" ? 72 : surfaceStyle === "clear" ? 88 : 0} style={styles.ambientBlur} />
+      {track.artwork ? <Animated.Image source={{ uri: track.artwork }} resizeMode="cover" blurRadius={28} style={[styles.ambientArtwork, { opacity: motionStyle === "off" ? 0.08 : 0.2 }]} /> : null}
+      <BlurView tint={blurTint} intensity={surfaceStyle === "liquid" ? 58 : surfaceStyle === "frosted" ? 76 : surfaceStyle === "clear" ? 88 : 52} style={styles.ambientBlur} />
       <View style={styles.header}>
         <View style={styles.headerLeading}>
           <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace("/(tabs)")} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Go back">
@@ -99,9 +152,12 @@ export default function NowPlayingScreen() {
         <Pressable onPress={chooseSleepTimer} style={styles.headerButton}><Ionicons name="moon-outline" size={22} color={sleepTimerMinutes !== null ? colors.accent : colors.text} /></Pressable>
       </View>
       <View style={styles.main}>
-        <Animated.View style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ translateY: artworkFloat }, { scale: artworkScale }] }]}>
+        <Animated.View {...artworkGesture.panHandlers} accessibilityRole="image" accessibilityLabel={`${track.title} artwork. Swipe left or right to change tracks, swipe down to close, or hold to change player style.`} style={[styles.artFrame, { borderRadius: playerStyle === "vinyl" ? 999 : playerStyle === "poster" ? 16 : 28, transform: [{ rotate: playerStyle === "vinyl" ? vinylRotate : "0deg" }] }]}>
+          <Pressable onLongPress={() => setStylePickerVisible(true)} delayLongPress={420} style={StyleSheet.absoluteFill}>
           {previousArtwork ? <Image source={{ uri: previousArtwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, StyleSheet.absoluteFill]} /> : null}
           {track.artwork && !artworkFailed ? <Animated.Image source={{ uri: track.artwork }} resizeMethod="resize" resizeMode="cover" style={[styles.artwork, { opacity: artworkCrossfade }]} onError={() => setArtworkFailed(true)} /> : <View style={styles.artworkFallback}><Ionicons name="musical-notes" size={56} color={colors.accent} /></View>}
+          {playerStyle === "vinyl" ? <View pointerEvents="none" style={styles.vinylGrooves}><View style={styles.vinylGrooveOuter} /><View style={styles.vinylGrooveInner} /><View style={styles.vinylSpindle} /></View> : null}
+          </Pressable>
         </Animated.View>
         <View style={styles.trackInfo}>
           <View style={{ flex: 1 }}>
@@ -153,26 +209,46 @@ export default function NowPlayingScreen() {
             <Pressable style={styles.extraButton} onPress={chooseSleepTimer}><Ionicons name="moon-outline" size={16} color={colors.accent} /><Text style={styles.extraText}>{sleepTimerMinutes === -1 ? "End of track" : sleepTimerMinutes !== null ? `${sleepTimerMinutes} min timer` : "Sleep timer"}</Text></Pressable>
         </View>
       </View>
-      <View style={styles.bottomGlass}><BlurView tint={blurTint} intensity={92} style={StyleSheet.absoluteFill} /><View pointerEvents="none" style={styles.bottomSheen} /><View style={styles.bottom}>
-        <Pressable style={styles.bottomAction} onPress={() => router.push("/queue")}>
-          <Ionicons name="list" size={20} color={colors.muted} /><Text style={styles.bottomText}>Queue</Text>
+      <View style={styles.bottomGlass}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ justifyContent: "center", alignItems: "center", gap: 14, paddingHorizontal: 8 }}>
+          <GlassActionPill icon="list" label="Queue" onPress={() => router.push("/queue")} />
+          <GlassActionPill icon="share-social-outline" label="Share" onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? track.youtubeUrl ?? "LumaMusic") })} />
+          <GlassActionPill icon="text" label="Lyrics" onPress={() => router.push("/lyrics")} />
+          <GlassActionPill icon="options-outline" label="Audio" onPress={() => router.push("/audio-settings")} />
+        </ScrollView>
+      </View>
+      <Modal visible={stylePickerVisible} transparent animationType="fade" onRequestClose={() => setStylePickerVisible(false)}>
+        <Pressable style={styles.stylePickerBackdrop} onPress={() => setStylePickerVisible(false)}>
+          <Pressable style={styles.stylePickerSheet} onPress={() => undefined}>
+            <View style={styles.stylePickerHandle} />
+            <Text style={styles.stylePickerEyebrow}>MAKE IT YOURS</Text>
+            <Text style={styles.stylePickerTitle}>Player appearance</Text>
+            <Text style={styles.stylePickerSubtitle}>Choose how your music looks. Hold the artwork any time to return here.</Text>
+            {([
+              { id: "standard", title: "Flagship", detail: "Clean artwork and focused controls", icon: "disc-outline" },
+              { id: "vinyl", title: "Turntable", detail: "A rotating record-inspired player", icon: "radio-outline" },
+              { id: "poster", title: "Poster", detail: "A bold, framed artwork presentation", icon: "image-outline" },
+              { id: "compact", title: "Compact", detail: "Smaller artwork with more room for controls", icon: "albums-outline" }
+            ] as { id: PlayerStyle; title: string; detail: string; icon: "disc-outline" | "radio-outline" | "image-outline" | "albums-outline" }[]).map((item) => {
+              const selected = playerStyle === item.id;
+              return <Pressable key={item.id} onPress={() => { setPlayerStyle(item.id); setStylePickerVisible(false); }} style={[styles.styleOption, selected && styles.styleOptionSelected]}>
+                <View style={[styles.styleOptionIcon, selected && styles.styleOptionIconSelected]}><Ionicons name={item.icon} size={21} color={selected ? colors.accent : colors.muted} /></View>
+                <View style={styles.styleOptionCopy}><Text style={styles.styleOptionTitle}>{item.title}</Text><Text style={styles.styleOptionDetail}>{item.detail}</Text></View>
+                {selected ? <Ionicons name="checkmark-circle" size={21} color={colors.accent} /> : <Ionicons name="chevron-forward" size={18} color={colors.subtle} />}
+              </Pressable>;
+            })}
+          </Pressable>
         </Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => Share.share({ message: track.title + " by " + track.artist + " · " + (track.permalink ?? track.youtubeUrl ?? "LumaMusic") })}>
-          <Ionicons name="share-social-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Share</Text>
-        </Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => router.push("/lyrics")}><Ionicons name="text" size={20} color={colors.muted} /><Text style={styles.bottomText}>Lyrics</Text></Pressable>
-        <Pressable style={styles.bottomAction} onPress={() => router.push("/audio-settings")}>
-          <Ionicons name="options-outline" size={20} color={colors.muted} /><Text style={styles.bottomText}>Audio</Text>
-        </Pressable>
-      </View></View>
+      </Modal>
       <Text style={styles.disclaimer}>{isLocalPlayback ? "LumaMusic · Local audio" : "LumaMusic"}</Text>
     </SafeAreaView>
   );
 }
 
 function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: SurfaceStyle, artworkSize: number) { return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 22 },
-  ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.16 },
+  safe: { flex: 1, width: "100%", alignSelf: "stretch", backgroundColor: colors.background, paddingHorizontal: 22, overflow: "hidden" },
+  ambientArtwork: { ...StyleSheet.absoluteFill, width: "100%", height: "100%" },
+  ambientBlur: { ...StyleSheet.absoluteFill, opacity: 0.92 },
   header: { height: 58, flexDirection: "row", alignItems: "center", justifyContent: "space-between", position: "relative" },
   headerLeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.52)", borderWidth: 1, borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.82)" },
@@ -185,6 +261,10 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   main: { flex: 1, minHeight: 0, justifyContent: "space-around", paddingTop: 8, paddingBottom: 12 },
   artFrame: { width: artworkSize, maxWidth: "100%", alignSelf: "center", flexShrink: 0, aspectRatio: 1, borderRadius: 8, overflow: "hidden", backgroundColor: colors.surfaceElevated, marginBottom: 14, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: isDark ? 0.28 : 0.10, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   artwork: { width: "100%", height: "100%" },
+  vinylGrooves: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
+  vinylGrooveOuter: { position: "absolute", width: "84%", height: "84%", borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
+  vinylGrooveInner: { position: "absolute", width: "68%", height: "68%", borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  vinylSpindle: { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.82)", borderWidth: 1, borderColor: "rgba(0,0,0,0.38)" },
   artworkFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
   trackInfo: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
   trackTitle: { color: colors.text, fontSize: 21, lineHeight: 27, fontWeight: "800", letterSpacing: -0.55 },
@@ -222,11 +302,24 @@ function createStyles(colors: ThemePalette, isDark: boolean, surfaceStyle: Surfa
   extraControls: { flexDirection: "row", justifyContent: "center", gap: 10, marginTop: 14, flexShrink: 0 },
   extraButton: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 15, backgroundColor: isDark ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.border },
   extraText: { color: colors.text, fontSize: 10, fontWeight: "700" },
-  bottomGlass: { flexShrink: 0, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: surfaceStyle === "matte" ? colors.border : isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.82)", backgroundColor: surfaceStyle === "matte" ? (isDark ? "#202024" : "#F0F0F2") : surfaceStyle === "clear" ? (isDark ? "rgba(24,24,28,0.18)" : "rgba(255,255,255,0.2)") : surfaceStyle === "frosted" ? (isDark ? "rgba(24,24,28,0.68)" : "rgba(255,255,255,0.68)") : (isDark ? "rgba(24,24,28,0.42)" : "rgba(255,255,255,0.42)"), marginBottom: 6, shadowColor: "#000", shadowOpacity: surfaceStyle === "matte" ? 0.12 : isDark ? 0.22 : 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+  bottomGlass: { flexShrink: 0, marginBottom: 6, paddingVertical: 4 },
   bottomSheen: { position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: surfaceStyle === "liquid" ? (isDark ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.95)") : "transparent" },
   bottom: { flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 8 },
   bottomAction: { flexGrow: 1, flexBasis: 0, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 5 },
   bottomText: { color: colors.muted, fontSize: 11, lineHeight: 16, textAlign: "center", includeFontPadding: false, flexShrink: 0, width: "100%" },
+  stylePickerBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.62)", padding: 12 },
+  stylePickerSheet: { borderRadius: 28, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 22, backgroundColor: isDark ? "#1B1B20" : "#F7F6F8", borderWidth: 1, borderColor: colors.border },
+  stylePickerHandle: { alignSelf: "center", width: 38, height: 4, borderRadius: 3, backgroundColor: colors.subtle, marginBottom: 20 },
+  stylePickerEyebrow: { color: colors.accent, fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+  stylePickerTitle: { color: colors.text, fontSize: 23, fontWeight: "900", letterSpacing: -0.7, marginTop: 5 },
+  stylePickerSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 6, marginBottom: 16 },
+  styleOption: { minHeight: 70, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 17, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceSoft, marginTop: 8 },
+  styleOptionSelected: { borderColor: colors.accent, backgroundColor: isDark ? "rgba(220,55,75,0.12)" : "rgba(190,35,55,0.07)" },
+  styleOptionIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceElevated },
+  styleOptionIconSelected: { backgroundColor: isDark ? "rgba(220,55,75,0.16)" : "rgba(190,35,55,0.12)" },
+  styleOptionCopy: { flex: 1, gap: 3 },
+  styleOptionTitle: { color: colors.text, fontSize: 14, fontWeight: "800" },
+  styleOptionDetail: { color: colors.muted, fontSize: 11 },
   disclaimer: { color: colors.subtle, textAlign: "center", fontSize: 9, paddingBottom: 10 },
   empty: { color: colors.text, textAlign: "center", marginTop: 80 }
 }); }

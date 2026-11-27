@@ -1,8 +1,8 @@
 name: Build and Release LumaMusic Android APKs
 
 on:
-  # A deliberate workflow-file update on main can publish a release.
-  # Ordinary application commits do not publish APKs.
+  # APK builds are never triggered by pushes to master.
+  # Publishing remains an explicit workflow_dispatch action.
   push:
     branches:
       - main
@@ -18,6 +18,16 @@ on:
         options:
           - test
           - stable
+      release_name:
+        description: "Optional GitHub release title (stable only)"
+        required: false
+        type: string
+        default: ""
+      release_description:
+        description: "Optional GitHub release notes/description (stable only)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -89,8 +99,8 @@ jobs:
           retention-days: 14
 
   release:
-    name: Publish LumaMusic DayLight stable release
-    if: github.event_name == 'push' || github.event.inputs.release_channel == 'stable'
+    name: Publish LumaMusic stable release
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_channel == 'stable'
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -101,17 +111,14 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: daylight-2026-11-17
-          name: LumaMusic DayLight Update
-          prerelease: false
-          overwrite_files: true
-          files: |
-            dist/LumaMusic-arm64-v8a.apk
-            dist/LumaMusic-armeabi-v7a.apk
-          body: |
+      - name: Prepare release description
+        env:
+          RELEASE_DESCRIPTION: ${{ github.event.inputs.release_description }}
+        run: |
+          if [ -n "$RELEASE_DESCRIPTION" ]; then
+            printf '%s\n' "$RELEASE_DESCRIPTION" > release-notes.md
+          else
+            cat > release-notes.md <<'RELEASE_NOTES'
             # 🌅 LumaMusic DayLight Update
 
             Yo guys! 👋
@@ -146,3 +153,17 @@ jobs:
             **Built with ❤️ by PauzeX Developments.**
 
             Keep listening. Keep discovering. Keep it Luma.
+            RELEASE_NOTES
+          fi
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: daylight-${{ github.run_number }}
+          name: ${{ github.event.inputs.release_name || format('LumaMusic DayLight Update #{0}', github.run_number) }}
+          prerelease: false
+          overwrite_files: true
+          files: |
+            dist/LumaMusic-arm64-v8a.apk
+            dist/LumaMusic-armeabi-v7a.apk
+          body_path: release-notes.md

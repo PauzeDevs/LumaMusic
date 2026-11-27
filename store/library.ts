@@ -2,12 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { MusicTrack } from "../types/music";
-export type LocalPlaylist = { id: string; name: string; tracks: MusicTrack[]; createdAt: number };
+export type LocalPlaylist = { id: string; name: string; tracks: MusicTrack[]; createdAt: number; description?: string; coverUri?: string };
 type LibraryState = {
   likedTracks: MusicTrack[]; recentTracks: MusicTrack[]; localTracks: MusicTrack[]; playlists: LocalPlaylist[];
   toggleLike: (track: MusicTrack) => void; addRecentTrack: (track: MusicTrack) => void;
-  addLocalTracks: (tracks: MusicTrack[]) => void; createPlaylist: (name: string) => void;
-  renamePlaylist: (playlistId: string, name: string) => void; deletePlaylist: (playlistId: string) => void;
+  addLocalTracks: (tracks: MusicTrack[]) => void; addTracksToPlaylist: (playlistId: string, tracks: MusicTrack[]) => void; createPlaylist: (name: string) => void;
+  renamePlaylist: (playlistId: string, name: string) => void; updatePlaylistDetails: (playlistId: string, details: { description?: string; coverUri?: string }) => void; deletePlaylist: (playlistId: string) => void;
   clearLibrary: () => void; addTrackToPlaylist: (playlistId: string, track: MusicTrack) => void;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void;
 };
@@ -32,6 +32,17 @@ export const useLibraryStore = create<LibraryState>()(
       const additions = validTracks.filter((track) => !knownIds.has(track.id) && Boolean(knownIds.add(track.id)));
       return { localTracks: [...additions, ...state.localTracks] };
     }),
+    addTracksToPlaylist: (playlistId, tracks) => set((state) => ({
+      playlists: state.playlists.map((playlist) => {
+        if (playlist.id !== playlistId || !Array.isArray(tracks) || tracks.length === 0) return playlist;
+        const knownIds = new Set(playlist.tracks.map((track) => track.id));
+        const additions = tracks.filter((track) =>
+          typeof track?.id === "string" && track.id.length > 0 &&
+          !knownIds.has(track.id) && Boolean(knownIds.add(track.id))
+        );
+        return additions.length > 0 ? { ...playlist, tracks: [...playlist.tracks, ...additions] } : playlist;
+      })
+    })),
     createPlaylist: (name) => set((state) => {
       const normalizedName = typeof name === "string" ? name.trim() : "";
       if (!normalizedName) return state;
@@ -44,6 +55,7 @@ export const useLibraryStore = create<LibraryState>()(
       if (!normalizedName) return state;
       return { playlists: state.playlists.map((playlist) => playlist.id === playlistId ? { ...playlist, name: normalizedName } : playlist) };
     }),
+    updatePlaylistDetails: (playlistId, details) => set((state) => ({ playlists: state.playlists.map((playlist) => playlist.id === playlistId ? { ...playlist, ...(details.description !== undefined ? { description: details.description.slice(0, 100) } : {}), ...(details.coverUri !== undefined ? { coverUri: details.coverUri } : {}) } : playlist) })),
     deletePlaylist: (playlistId) => set((state) => ({ playlists: state.playlists.filter((playlist) => playlist.id !== playlistId) })),
     clearLibrary: () => set({ likedTracks: [], recentTracks: [], localTracks: [], playlists: [] }),
     addTrackToPlaylist: (playlistId, track) => set((state) => ({

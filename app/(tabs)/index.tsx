@@ -6,21 +6,26 @@ import { useQuery } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { useTheme } from "../../theme/useTheme";
+import { ScrollReveal } from "../../components/ScrollReveal";
+import { GlassActionPill } from "../../components/GlassPills";
 import { useSiriRefresh, SiriRefreshOverlay } from "../../components/SiriRefresh";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
+import { usePreferencesStore } from "../../store/preferences";
 import { getFeaturedPlaylists, getDiscoveryTracks } from "../../services/youtubeMusic";
 import type { ThemePalette } from "../../theme/colors";
 import type { MusicTrack } from "../../types/music";
 
 export default function ListenScreen() {
   const { colors, blurTint, isDark } = useTheme();
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
   const styles = createStyles(colors, isDark);
   const { refreshing, onRefresh, assistantVisible } = useSiriRefresh();
   const { playTrack } = useAudioEngine();
   const recentTracks = useLibraryStore((state) => state.recentTracks);
   const [heroFailed, setHeroFailed] = useState(false);
   const heroFade = useRef(new Animated.Value(1)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
   const { data: tracks = [], isLoading, error, refetch } = useQuery({ queryKey: ["youtubeMusic", "trending", 20], queryFn: () => getDiscoveryTracks(20) });
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({ queryKey: ["youtubeMusic", "trending-playlists", 8], queryFn: () => getFeaturedPlaylists(8) });
   const heroTrack = recentTracks[0] ?? tracks[0];
@@ -28,16 +33,25 @@ export default function ListenScreen() {
 
   useEffect(() => {
     setHeroFailed(false);
+    heroFade.stopAnimation();
+    if (motionStyle === "off") {
+      heroFade.setValue(1);
+      return;
+    }
     heroFade.setValue(0);
-    Animated.timing(heroFade, { toValue: 1, duration: 650, useNativeDriver: true }).start();
-  }, [heroTrack?.id, heroTrack?.artwork, heroFade]);
+    Animated.timing(heroFade, {
+      toValue: 1,
+      duration: motionStyle === "subtle" ? 300 : 650,
+      useNativeDriver: true
+    }).start();
+  }, [heroTrack?.id, heroTrack?.artwork, motionStyle, heroFade]);
 
   const play = (track: MusicTrack, queue: MusicTrack[]) => {
     void playTrack(track, queue).catch(() => {});
   };
 
   return <SafeAreaView style={styles.safe} edges={["top"]}>
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}
+    <Animated.ScrollView onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })} scrollEventThrottle={8} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}>
       <View style={styles.header}>
         <View style={styles.brand}>
@@ -49,6 +63,7 @@ export default function ListenScreen() {
         </Pressable>
       </View>
 
+      <ScrollReveal scrollY={scrollY}>
       <View style={styles.hero}>
         {heroTrack?.artwork && !heroFailed
           ? <Animated.Image source={{ uri: heroTrack.artwork }} style={[styles.heroImage, { opacity: heroFade }]} onError={() => setHeroFailed(true)} />
@@ -68,8 +83,18 @@ export default function ListenScreen() {
           </Pressable>
         </View>
       </View>
+      </ScrollReveal>
 
-      <View style={styles.section}>
+      <ScrollReveal scrollY={scrollY}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActions}>
+          <GlassActionPill icon="play" label="Play mix" onPress={() => heroTrack ? play(heroTrack, recentTracks.length ? recentTracks : tracks) : router.push("/(tabs)/search")} active />
+          <GlassActionPill icon="compass-outline" label="Discover" onPress={() => router.push("/(tabs)/search")} />
+          <GlassActionPill icon="heart-outline" label="Liked" onPress={() => router.push("/liked")} />
+          <GlassActionPill icon="albums-outline" label="Library" onPress={() => router.push("/(tabs)/library")} />
+        </ScrollView>
+      </ScrollReveal>
+
+      <ScrollReveal scrollY={scrollY}><View style={styles.section}>
         <View style={styles.sectionHeading}>
           <Text style={styles.sectionTitle}>Recently Played</Text>
           <Pressable onPress={() => router.push("/(tabs)/library")} style={styles.seeAll}><Text style={styles.seeAllText}>See all</Text><Ionicons name="chevron-forward" size={16} color={colors.muted} /></Pressable>
@@ -81,9 +106,9 @@ export default function ListenScreen() {
             <Text numberOfLines={1} style={styles.albumArtist}>{track.artist}</Text>
           </Pressable>)}
         </ScrollView> : <Text style={styles.emptyText}>{isLoading ? "Finding music for you…" : "Your recently played tracks will appear here."}</Text>}
-      </View>
+      </View></ScrollReveal>
 
-      <View style={styles.section}>
+      <ScrollReveal scrollY={scrollY} delay={70}><View style={styles.section}>
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Made for you</Text><Pressable onPress={() => router.push("/(tabs)/search")}><Text style={styles.seeAllText}>Explore</Text></Pressable></View>
         {playlistsLoading ? <Text style={styles.emptyText}>Curating your mix…</Text> : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontal}>
           {playlists.slice(0, 10).map((playlist) => <Pressable key={playlist.id} onPress={() => playlist.sourcePlaylistId && router.push({ pathname: "/playlist/[id]", params: { id: playlist.sourcePlaylistId, title: playlist.title, artwork: playlist.artwork } })} style={styles.playlistCard}>
@@ -91,17 +116,17 @@ export default function ListenScreen() {
             <Text numberOfLines={1} style={styles.albumTitle}>{playlist.title}</Text><Text numberOfLines={1} style={styles.albumArtist}>{playlist.subtitle ?? "Playlist"}</Text>
           </Pressable>)}
         </ScrollView>}
-      </View>
+      </View></ScrollReveal>
 
-      <View style={styles.section}>
+      <ScrollReveal scrollY={scrollY} delay={110}><View style={styles.section}>
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Discover something new</Text><Pressable onPress={() => { void refetch(); }}><Ionicons name="refresh" size={18} color={colors.muted} /></Pressable></View>
         {error ? <Text style={styles.emptyText}>Could not load recommendations. Pull down to try again.</Text> : tracks.slice(0, 6).map((track) => <Pressable key={track.id} onPress={() => play(track, tracks)} style={styles.trackRow}>
           {track.artwork ? <Image source={{ uri: track.artwork }} style={styles.trackArt} /> : <View style={styles.trackArtFallback}><Ionicons name="musical-notes" color={colors.accent} size={18} /></View>}
           <View style={styles.trackCopy}><Text numberOfLines={1} style={styles.albumTitle}>{track.title}</Text><Text numberOfLines={1} style={styles.albumArtist}>{track.artist}</Text></View>
           <Ionicons name="ellipsis-horizontal" size={19} color={colors.muted} />
         </Pressable>)}
-      </View>
-    </ScrollView>
+      </View></ScrollReveal>
+    </Animated.ScrollView>
     <SiriRefreshOverlay visible={assistantVisible} refreshing={refreshing} onPress={onRefresh} />
   </SafeAreaView>;
 }
@@ -128,6 +153,7 @@ function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet
   heroArtist: { color: "rgba(255,255,255,0.78)", fontSize: 15, fontWeight: "600", marginTop: 7 },
   viewButton: { alignSelf: "flex-start", marginTop: 18, borderRadius: 24, paddingHorizontal: 19, paddingVertical: 12, backgroundColor: "rgba(255,255,255,0.96)", flexDirection: "row", alignItems: "center", gap: 12 },
   viewText: { color: "#101014", fontSize: 13, fontWeight: "800" },
+  quickActions: { paddingHorizontal: 20, paddingTop: 2, paddingBottom: 28, gap: 14 },
   section: { marginBottom: 34 },
   sectionHeading: { paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15 },
   sectionTitle: { color: colors.text, fontSize: 22, fontWeight: "900", letterSpacing: -0.6 },

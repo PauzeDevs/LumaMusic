@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ThemePalette } from "../theme/colors";
 import { useTheme } from "../theme/useTheme";
+import { usePreferencesStore } from "../store/preferences";
 
 export function useSiriRefresh() {
   const queryClient = useQueryClient();
@@ -56,10 +57,17 @@ type SiriRefreshOverlayProps = {
 export function SiriRefreshOverlay({ visible, refreshing, onPress }: SiriRefreshOverlayProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const motionStyle = usePreferencesStore((state) => state.motionStyle);
   const slide = useRef(new Animated.Value(-90)).current;
   const glow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (motionStyle === "off") {
+      slide.setValue(visible ? 0 : -90);
+      glow.setValue(0);
+      return;
+    }
+
     if (!visible) {
       Animated.timing(slide, { toValue: -90, duration: 220, useNativeDriver: true }).start();
       return;
@@ -68,23 +76,23 @@ export function SiriRefreshOverlay({ visible, refreshing, onPress }: SiriRefresh
     Animated.spring(slide, {
       toValue: 0,
       useNativeDriver: true,
-      damping: 17,
-      stiffness: 155,
+      damping: motionStyle === "subtle" ? 24 : 17,
+      stiffness: motionStyle === "subtle" ? 125 : 155,
       mass: 0.8
     }).start();
 
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 850, useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0, duration: 850, useNativeDriver: true })
+        Animated.timing(glow, { toValue: 1, duration: motionStyle === "subtle" ? 1400 : 850, useNativeDriver: true }),
+        Animated.timing(glow, { toValue: 0, duration: motionStyle === "subtle" ? 1400 : 850, useNativeDriver: true })
       ])
     );
     pulse.start();
     return () => pulse.stop();
-  }, [visible, slide, glow]);
+  }, [visible, motionStyle, slide, glow]);
 
-  const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1.16] });
-  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.85] });
+  const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: motionStyle === "subtle" ? [0.95, 1.05] : [0.88, 1.16] });
+  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: motionStyle === "subtle" ? [0.18, 0.42] : [0.3, 0.85] });
 
   return (
     <View pointerEvents="box-none" style={styles.overlay}>

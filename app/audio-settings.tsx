@@ -1,9 +1,10 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
-import { useMemo, useRef, useState } from "react";
-import { Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Image, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { addNativeAudioStateListener, isNativeAudioEngineAvailable } from "../modules/luma-audio-engine/src";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { usePlayerStore } from "../store/player";
+import { usePlayerStore, type StreamQuality } from "../store/player";
 import { usePreferencesStore, type ReverbPreset } from "../store/preferences";
 import type { ThemePalette } from "../theme/colors";
 import type { MusicTrack } from "../types/music";
@@ -29,9 +30,11 @@ const REVERB_OPTIONS: { value: ReverbPreset; label: string; detail: string }[] =
   { value: "hall", label: "Hall", detail: "Wide space" }
 ];
 
-function GainSlider({ label, value, onChange, accent, muted, styles }: { label: string; value: number; onChange: (value: number) => void; accent: string; muted: string; styles: ReturnType<typeof makeStyles> }) {
+function GainSlider({ label, detail, value, onChange, accent, muted, styles, minGain = -12, maxGain = 12 }: { label: string; detail?: string; value: number; onChange: (value: number) => void; accent: string; muted: string; styles: ReturnType<typeof makeStyles>; minGain?: number; maxGain?: number }) {
   const width = useRef(1);
-  const update = (x: number) => onChange(Math.round((Math.max(0, Math.min(width.current, x)) / width.current * 24 - 12) * 10) / 10);
+  const zeroPercent = (0 - minGain) / (maxGain - minGain) * 100;
+  const valuePercent = (value - minGain) / (maxGain - minGain) * 100;
+  const update = (x: number) => onChange(Math.round((Math.max(0, Math.min(width.current, x)) / width.current * (maxGain - minGain) + minGain) * 10) / 10);
   const responder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
@@ -42,29 +45,40 @@ function GainSlider({ label, value, onChange, accent, muted, styles }: { label: 
     <View style={styles.bandLabels}><Text style={styles.bandFrequency}>{label}</Text><Text style={styles.bandValue}>{value > 0 ? "+" : ""}{value.toFixed(1)} dB</Text></View>
     <View onLayout={(event) => { width.current = event.nativeEvent.layout.width; }} {...responder.panHandlers} style={styles.sliderTouch}>
       <View style={[styles.sliderTrack, { backgroundColor: muted }]} />
-      <View style={[styles.sliderZero, { left: "50%" }]} />
-      <View style={[styles.sliderFill, { width: `${Math.abs(value) / 12 * 50}%`, left: value < 0 ? `${50 - Math.abs(value) / 12 * 50}%` : "50%", backgroundColor: accent }]} />
-      <View style={[styles.sliderThumb, { left: `${(value + 12) / 24 * 100}%`, borderColor: accent }]} />
+      <View style={[styles.sliderZero, { left: `${zeroPercent}%` }]} />
+      <View style={[styles.sliderFill, { width: `${Math.abs(valuePercent - zeroPercent)}%`, left: `${Math.min(valuePercent, zeroPercent)}%`, backgroundColor: accent }]} />
+      <View style={[styles.sliderThumb, { left: `${valuePercent}%`, borderColor: accent }]} />
     </View>
-    <Text style={styles.bandHint}>{BANDS.find((band) => band.label === label)?.detail}</Text>
+    <Text style={styles.bandHint}>{detail ?? BANDS.find((band) => band.label === label)?.detail}</Text>
   </View>;
 }
 
-type SourceQualityInfo = { title: string; detail: string; format: string; status: string; note: string };
+type SourceQualityInfo = { title: string; detail: string; format: string; mimeType: string; bitrate: string; status: string; note: string };
 
-function getSourceQuality(track: MusicTrack | null): SourceQualityInfo {
-  if (!track) return { title: "No active source", detail: "Play a track to inspect its source.", format: "UNKNOWN", status: "WAITING", note: "Quality information appears when a source is active." };
-  if (track.source === "youtube_music") return { title: "Provider stream", detail: "Lossless delivery is not confirmed.", format: "YOUTUBE MUSIC", status: "NOT VERIFIED", note: "The current streaming resolver does not expose a verified codec, bitrate, bit depth, or sample rate. LumaMusic will not label this stream lossless." };
+function getSourceQuality(track: MusicTrack | null, streamQuality: StreamQuality | null): SourceQualityInfo {
+  if (!track) return { title: "No active source", detail: "Play a track to inspect its source.", format: "UNKNOWN", mimeType: "Unknown", bitrate: "Unknown", status: "WAITING", note: "Quality information appears when a source is active." };
+  if (track.source === "youtube_music") {
+    const bitrate = streamQuality?.bitrateKbps ? `${streamQuality.bitrateKbps} kbps` : "Unknown";
+    return {
+      title: "Provider stream",
+      detail: streamQuality?.bitrateKbps ? `Resolver-reported stream bitrate: ${bitrate}.` : "Lossless delivery is not confirmed.",
+      format: "YOUTUBE MUSIC",
+      mimeType: streamQuality?.codec?.toUpperCase() ?? "Not exposed",
+      bitrate,
+      status: streamQuality?.bitrateKbps ? streamQuality.label.toUpperCase() : "NOT VERIFIED",
+      note: "These are the stream details exposed by the resolver, not a decoded-output measurement. The current player does not verify bit depth or sample rate, and LumaMusic will not label this stream lossless."
+    };
+  }
   if (track.source === "local" && track.localUri) {
     const cleanUri = track.localUri.split(/[?#]/)[0];
     const extension = cleanUri.includes(".") ? cleanUri.split(".").pop()!.toLowerCase() : "";
     const losslessFormats = ["flac", "wav", "aiff", "aif", "ape", "wv", "tta", "dsf", "dff"];
     const lossyFormats = ["mp3", "aac", "ogg", "opus", "m4a", "wma"];
-    if (losslessFormats.includes(extension)) return { title: "Lossless-capable format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), status: "FORMAT DETECTED", note: "The file extension suggests a lossless format, but the actual codec, bit depth, sample rate, and integrity have not been read from the file yet. Hi-Res is not assumed." };
-    if (lossyFormats.includes(extension)) return { title: "Lossy format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), status: "FORMAT DETECTED", note: "This extension normally indicates a lossy format. The exact codec profile and bitrate are not exposed by the current player." };
-    return { title: "Local audio file", detail: "Audio format not identified.", format: extension ? extension.toUpperCase() : "UNKNOWN", status: "UNKNOWN", note: "The current player does not expose codec or stream metadata for this file." };
+    if (losslessFormats.includes(extension)) return { title: "Lossless-capable format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), mimeType: "Not read", bitrate: "Unknown", status: "FORMAT DETECTED", note: "The file extension suggests a lossless format, but the actual codec, bit depth, sample rate, and integrity have not been read from the file yet. Hi-Res is not assumed." };
+    if (lossyFormats.includes(extension)) return { title: "Lossy format", detail: `${extension.toUpperCase()} file detected by extension.`, format: extension.toUpperCase(), mimeType: "Not read", bitrate: "Unknown", status: "FORMAT DETECTED", note: "This extension normally indicates a lossy format. The exact codec profile and bitrate are not exposed by the current player." };
+    return { title: "Local audio file", detail: "Audio format not identified.", format: extension ? extension.toUpperCase() : "UNKNOWN", mimeType: "Not exposed", bitrate: "Unknown", status: "UNKNOWN", note: "The current player does not expose codec or stream metadata for this file." };
   }
-  return { title: "Source metadata unavailable", detail: "No verified audio format information.", format: track.source.toUpperCase(), status: "UNKNOWN", note: "The current source does not expose enough metadata to classify its audio quality." };
+  return { title: "Source metadata unavailable", detail: "No verified audio format information.", format: track.source.toUpperCase(), mimeType: "Not exposed", bitrate: "Unknown", status: "UNKNOWN", note: "The current source does not expose enough metadata to classify its audio quality." };
 }
 
 export default function AudioSettingsScreen() {
@@ -76,14 +90,39 @@ export default function AudioSettingsScreen() {
   const setEqualizerEnabled = usePreferencesStore((state) => state.setEqualizerEnabled);
   const setEqualizerBand = usePreferencesStore((state) => state.setEqualizerBand);
   const resetEqualizer = usePreferencesStore((state) => state.resetEqualizer);
+  const preampDb = usePreferencesStore((state) => state.preampDb);
+  const setPreampDb = usePreferencesStore((state) => state.setPreampDb);
+  const limiterEnabled = usePreferencesStore((state) => state.limiterEnabled);
+  const setLimiterEnabled = usePreferencesStore((state) => state.setLimiterEnabled);
+  const autoCrossfadeEnabled = usePreferencesStore((state) => state.autoCrossfadeEnabled);
+  const setAutoCrossfadeEnabled = usePreferencesStore((state) => state.setAutoCrossfadeEnabled);
+  const crossfadeDurationSeconds = usePreferencesStore((state) => state.crossfadeDurationSeconds);
+  const dataSaverEnabled = usePreferencesStore((state) => state.dataSaverEnabled);
+  const setDataSaverEnabled = usePreferencesStore((state) => state.setDataSaverEnabled);
+  const setCrossfadeDurationSeconds = usePreferencesStore((state) => state.setCrossfadeDurationSeconds);
   const spatialBalance = usePreferencesStore((state) => state.spatialBalance);
   const setSpatialBalance = usePreferencesStore((state) => state.setSpatialBalance);
   const reverbPreset = usePreferencesStore((state) => state.reverbPreset);
   const setReverbPreset = usePreferencesStore((state) => state.setReverbPreset);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const streamQuality = usePlayerStore((state) => state.streamQuality);
+  const decodedAudioFormat = usePlayerStore((state) => state.decodedAudioFormat);
+  const [tempoReadout, setTempoReadout] = useState<{ outgoing: number | null; incoming: number | null }>({ outgoing: null, incoming: null });
+  useEffect(() => {
+    if (Platform.OS !== "android" || !isNativeAudioEngineAvailable) return;
+    const subscription = addNativeAudioStateListener((state) => {
+      setTempoReadout({ outgoing: state.estimatedBpm ?? null, incoming: state.incomingEstimatedBpm ?? null });
+    });
+    return () => subscription?.remove();
+  }, []);
+  const sourceQuality = getSourceQuality(currentTrack, streamQuality);
   const localPlayback = currentTrack?.source === "local";
   const streamingPlayback = currentTrack?.source === "youtube_music";
-  const effectsUnavailableForStream = streamingPlayback;
+  // Android YouTube streams use the native Media3 + PCM DSP path. Other
+  // streaming routes still bypass the Web Audio graph to protect playback.
+  const nativeDspActive = streamingPlayback && Platform.OS === "android" && isNativeAudioEngineAvailable;
+  const effectsUnavailableForStream = streamingPlayback && !nativeDspActive;
+  const advancedDspUnavailable = Boolean(currentTrack) && !nativeDspActive;
   const [balanceRailWidth, setBalanceRailWidth] = useState(1);
   const setBalanceFromX = (x: number) => setSpatialBalance(Math.max(-1, Math.min(1, (x / balanceRailWidth) * 2 - 1)));
   const balanceResponder = useMemo(() => PanResponder.create({
@@ -124,11 +163,17 @@ export default function AudioSettingsScreen() {
         <View style={[stylesForScreen.bandGrid, (!equalizerEnabled || effectsUnavailableForStream) && { opacity: 0.42 }]} pointerEvents={equalizerEnabled && !effectsUnavailableForStream ? "auto" : "none"}>
           {BANDS.map((band, index) => <GainSlider key={band.label} label={band.label} value={equalizerBands[index] ?? 0} onChange={(value) => setEqualizerBand(index, value)} accent={colors.accent} muted="#38383E" styles={stylesForScreen} />)}
         </View>
+        <View style={{ marginTop: 18, opacity: advancedDspUnavailable ? 0.4 : 1 }} pointerEvents={advancedDspUnavailable ? "none" : "auto"}><GainSlider label="PREAMP" detail="INPUT GAIN · −12 TO +6 dB" minGain={-12} maxGain={6} value={preampDb} onChange={setPreampDb} accent={colors.accent} muted="#38383E" styles={stylesForScreen} /></View>
+        <View style={[stylesForScreen.cardHeader, { marginTop: 14 }]}>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.sectionLabel}>PEAK PROTECTION</Text><Text style={stylesForScreen.cardSub}>Prevent digital clipping after tone adjustments.</Text></View>
+          <Pressable disabled={advancedDspUnavailable} onPress={() => setLimiterEnabled(!limiterEnabled)} style={[stylesForScreen.toggle, limiterEnabled && stylesForScreen.toggleOn, advancedDspUnavailable && { opacity: 0.4 }]}><View style={[stylesForScreen.toggleDot, limiterEnabled && stylesForScreen.toggleDotOn]} /></Pressable>
+        </View>
+        {advancedDspUnavailable ? <Text style={stylesForScreen.sourceNote}>Preamp and peak protection are currently applied on the native Android streaming path. They are saved for your next supported stream.</Text> : null}
         <View style={stylesForScreen.cardFooter}>
           <Text style={stylesForScreen.smallNote}>{equalizerEnabled ? "EQUALIZER ON" : "EQUALIZER OFF"} · ±12 dB</Text>
           <Pressable onPress={resetEqualizer}><Text style={stylesForScreen.reset}>Reset</Text></Pressable>
         </View>
-        {streamingPlayback ? <Text style={stylesForScreen.sourceNote}>Equalizer is temporarily unavailable for YouTube Music streams. Streaming stays on the stable native playback path so enabling DSP cannot interrupt your song. Your saved EQ settings still apply to imported local tracks.</Text> : localPlayback ? <Text style={stylesForScreen.sourceNote}>Live processing is active for this imported local track.</Text> : <Text style={stylesForScreen.sourceNote}>Your EQ settings are saved and will apply to the next supported track.</Text>}
+        {streamingPlayback && effectsUnavailableForStream ? <Text style={stylesForScreen.sourceNote}>Live EQ is not available on this streaming route. Your saved settings remain available for supported playback.</Text> : streamingPlayback ? <Text style={stylesForScreen.sourceNote}>Live five-band EQ and limiting are processed by LumaMusic’s native Android audio engine.</Text> : localPlayback ? <Text style={stylesForScreen.sourceNote}>Live processing is active for this imported local track.</Text> : <Text style={stylesForScreen.sourceNote}>Your EQ settings are saved and will apply to the next supported track.</Text>}
       </View>
 
       <View style={stylesForScreen.featureCard}>
@@ -144,33 +189,69 @@ export default function AudioSettingsScreen() {
         <View style={[stylesForScreen.balanceTouch, effectsUnavailableForStream && { opacity: 0.4 }]} pointerEvents={effectsUnavailableForStream ? "none" : "auto"} onLayout={(event) => { setBalanceRailWidth(Math.max(1, event.nativeEvent.layout.width)); }} {...balanceResponder.panHandlers}>
           <View style={stylesForScreen.balanceRail}><View style={stylesForScreen.balanceCenter} /><View style={[stylesForScreen.balanceThumb, { left: `${((spatialBalance + 1) / 2) * 100}%` }]} /></View>
         </View>
-        <View style={stylesForScreen.balanceLabels}><Text>LEFT</Text><Text>CENTER</Text><Text>RIGHT</Text></View>
+        <View style={stylesForScreen.balanceLabels}><Text style={stylesForScreen.balanceLabel}>LEFT</Text><Text style={stylesForScreen.balanceLabel}>CENTER</Text><Text style={stylesForScreen.balanceLabel}>RIGHT</Text></View>
         <Pressable disabled={effectsUnavailableForStream} style={[stylesForScreen.resetBalance, effectsUnavailableForStream && { opacity: 0.35 }]} onPress={() => setSpatialBalance(0)}><Text style={stylesForScreen.reset}>Reset balance</Text></Pressable>
-        <Text style={stylesForScreen.sourceNote}>{streamingPlayback ? "Reverb and stereo balance are temporarily unavailable for YouTube Music streams. They remain available for imported local tracks." : localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply when a supported track is playing."}</Text>
+        <Text style={stylesForScreen.sourceNote}>{streamingPlayback && effectsUnavailableForStream ? "Reverb and stereo balance are not available on this streaming route." : streamingPlayback ? "Reverb and stereo balance are applied by the native Android DSP engine." : localPlayback ? "Reverb and stereo balance are applied live to this local track." : "These effects are saved and apply when a supported track is playing."}</Text>
       </View>
 
       <View style={stylesForScreen.featureCard}>
         <View style={stylesForScreen.cardHeader}>
-          <View style={stylesForScreen.cardIcon}><Ionicons name="swap-horizontal-outline" size={21} color="#85858D" /></View>
-          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>03 · TRACK TRANSITIONS</Text><Text style={stylesForScreen.cardTitle}>Crossfade</Text></View>
-          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>IN DEVELOPMENT</Text></View>
+          <View style={stylesForScreen.cardIcon}><Ionicons name="swap-horizontal-outline" size={21} color={colors.accent} /></View>
+          <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>03 · TRACK TRANSITIONS</Text><Text style={stylesForScreen.cardTitle}>Auto Crossfade</Text></View>
+          <Pressable onPress={() => setAutoCrossfadeEnabled(!autoCrossfadeEnabled)} style={[stylesForScreen.toggle, autoCrossfadeEnabled && stylesForScreen.toggleOn]}>
+            <View style={[stylesForScreen.toggleDot, autoCrossfadeEnabled && stylesForScreen.toggleDotOn]} />
+          </Pressable>
         </View>
-        <Text style={stylesForScreen.cardSub}>Seamless transitions between tracks need a dual-stream playback path. The current player uses a single active stream, so this control is not exposed as a fake switch.</Text>
+        <Text style={stylesForScreen.cardSub}>Blend the end of a track into the next queued track using two native playback decks. Available for Android YouTube Music streams; unsupported sources keep their normal transitions.</Text>
+        <View style={[stylesForScreen.qualityMetaRow, { marginTop: 14 }]}>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CURRENT BPM</Text><Text style={stylesForScreen.qualityMetaValue}>{tempoReadout.outgoing ? `${tempoReadout.outgoing} BPM` : "Analysing…"}</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>NEXT DECK BPM</Text><Text style={stylesForScreen.qualityMetaValue}>{tempoReadout.incoming ? `${tempoReadout.incoming} BPM` : "Not analysed"}</Text></View>
+        </View>
+        <Text style={stylesForScreen.sourceNote}>Tempo is estimated from decoded audio and may be unavailable for quiet, sparse, or irregular tracks. The next deck is analysed only while it is processing audio; BPM readouts do not imply tempo or pitch matching.</Text>
+        <View style={{ marginTop: 18 }}>
+          <Text style={stylesForScreen.sectionLabel}>OVERLAP LENGTH</Text>
+          <View style={stylesForScreen.presetRow}>
+            {[3, 5, 8, 10].map((seconds) => <Pressable key={seconds} disabled={!autoCrossfadeEnabled} onPress={() => setCrossfadeDurationSeconds(seconds)} style={[stylesForScreen.presetChip, crossfadeDurationSeconds === seconds && { borderColor: colors.accent, backgroundColor: colors.surface } , !autoCrossfadeEnabled && { opacity: 0.4 }]}><Text style={[stylesForScreen.presetText, crossfadeDurationSeconds === seconds && { color: colors.accent }]}>{seconds}s</Text></Pressable>)}
+          </View>
+        </View>
+        <View style={stylesForScreen.cardFooter}>
+          <Text style={stylesForScreen.smallNote}>{autoCrossfadeEnabled ? "AUTO CROSSFADE ON" : "AUTO CROSSFADE OFF"} · {crossfadeDurationSeconds}s</Text>
+          <Text style={stylesForScreen.smallNote}>ANDROID STREAMING</Text>
+        </View>
       </View>
 
       <View style={stylesForScreen.featureCard}>
         <View style={stylesForScreen.cardHeader}>
           <View style={stylesForScreen.cardIcon}><Ionicons name="disc-outline" size={21} color={colors.accent} /></View>
           <View style={{ flex: 1 }}><Text style={stylesForScreen.cardEyebrow}>04 · SOURCE QUALITY</Text><Text style={stylesForScreen.cardTitle}>Audio quality</Text></View>
-          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>{getSourceQuality(currentTrack).status}</Text></View>
+          <View style={stylesForScreen.soonPill}><Text style={stylesForScreen.soonText}>{sourceQuality.status}</Text></View>
         </View>
-        <Text style={stylesForScreen.cardSub}>{getSourceQuality(currentTrack).title} · {getSourceQuality(currentTrack).detail}</Text>
+        <Text style={stylesForScreen.cardSub}>{sourceQuality.title} · {sourceQuality.detail}</Text>
+        <View style={[stylesForScreen.cardHeader, { marginTop: 18 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={stylesForScreen.sectionLabel}>DATA SAVER</Text>
+            <Text style={stylesForScreen.cardSub}>Prefer audio formats at or below 128 kbps when the source exposes a suitable alternative.</Text>
+          </View>
+          <Pressable accessibilityRole="switch" accessibilityState={{ checked: dataSaverEnabled }} onPress={() => setDataSaverEnabled(!dataSaverEnabled)} style={[stylesForScreen.toggle, dataSaverEnabled && stylesForScreen.toggleOn]}>
+            <View style={[stylesForScreen.toggleDot, dataSaverEnabled && stylesForScreen.toggleDotOn]} />
+          </Pressable>
+        </View>
+        <Text style={stylesForScreen.sourceNote}>This is a preference, not a guaranteed cap. Some stream resolvers expose only one format, and local files are not transcoded.</Text>
         <View style={stylesForScreen.qualityMetaRow}>
-          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>FORMAT</Text><Text style={stylesForScreen.qualityMetaValue}>{getSourceQuality(currentTrack).format}</Text></View>
-          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CODEC</Text><Text style={stylesForScreen.qualityMetaValue}>Not exposed</Text></View>
-          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>BITRATE / RATE</Text><Text style={stylesForScreen.qualityMetaValue}>Unknown</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>FORMAT</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.format}</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>MIME TYPE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.mimeType}</Text></View>
+          <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>BITRATE</Text><Text style={stylesForScreen.qualityMetaValue}>{sourceQuality.bitrate}</Text></View>
         </View>
-        <Text style={stylesForScreen.sourceNote}>{getSourceQuality(currentTrack).note}</Text>
+        {nativeDspActive ? <>
+          <Text style={[stylesForScreen.sectionLabel, { marginTop: 18 }]}>DECODED PCM · LIVE</Text>
+          <View style={stylesForScreen.qualityMetaRow}>
+            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>SAMPLE RATE</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.sampleRateHz / 1000).toFixed(decodedAudioFormat.sampleRateHz % 1000 === 0 ? 0 : 1) + " kHz" : "Waiting…"}</Text></View>
+            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>CHANNELS</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.channelCount === 1 ? "Mono" : decodedAudioFormat.channelCount === 2 ? "Stereo" : decodedAudioFormat.channelCount + " ch") : "—"}</Text></View>
+            <View style={stylesForScreen.qualityMeta}><Text style={stylesForScreen.smallNote}>PCM PRECISION</Text><Text style={stylesForScreen.qualityMetaValue}>{decodedAudioFormat ? (decodedAudioFormat.pcmEncoding === "PCM_FLOAT" ? "Float32" : "16-bit PCM") : "—"}</Text></View>
+          </View>
+          <Text style={stylesForScreen.sourceNote}>Decoded PCM format reported by Media3's audio processor before Luma DSP. This is not a claim about the original master or DAC output.</Text>
+        </> : null}
+        <Text style={stylesForScreen.sourceNote}>{sourceQuality.note}</Text>
       </View>
 
       <View style={stylesForScreen.footer}><Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} /><Text style={stylesForScreen.footerText}>Your Audio Lab preferences are saved automatically.</Text></View>
@@ -241,7 +322,8 @@ function makeStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet.c
   balanceRail: { height: 4, borderRadius: 3, backgroundColor: colors.surfaceSoft, position: "relative" },
   balanceCenter: { position: "absolute", left: "50%", top: -5, width: 1, height: 14, backgroundColor: "#A0A0A8" },
   balanceThumb: { position: "absolute", top: -6, width: 16, height: 16, borderRadius: 9, marginLeft: -8, backgroundColor: "#FFFFFF", borderWidth: 2, borderColor: colors.accent },
-  balanceLabels: { flexDirection: "row", justifyContent: "space-between" },
+  balanceLabels: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  balanceLabel: { flex: 1, color: colors.text, fontSize: 12, fontWeight: "800", textAlign: "center", includeFontPadding: false },
   resetBalance: { alignSelf: "flex-end", paddingVertical: 8 },
   soonPill: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surfaceSoft },
   soonText: { color: "#96969E", fontSize: 7, fontWeight: "900", letterSpacing: 0.6 },

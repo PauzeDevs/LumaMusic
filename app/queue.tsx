@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Artwork } from "../components/Artwork";
+import { PageEntrance } from "../components/PageEntrance";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePlayerStore } from "../store/player";
 import { useTheme } from "../theme/useTheme";
@@ -16,31 +17,35 @@ export default function QueueScreen() {
   const clearQueue = usePlayerStore((s) => s.clearQueue);
   const { playTrack } = useAudioEngine();
   const currentIndex = usePlayerStore((s) => s.currentQueueIndex);
+  const visibleQueue = queue.slice(Math.max(0, currentIndex)).map((track, offset) => ({ track, queueIndex: Math.max(0, currentIndex) + offset }));
+  const remainingCount = visibleQueue.length;
 
   return (
+    <PageEntrance>
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></Pressable>
         <View style={{ flex: 1 }}><Text style={styles.eyebrow}>YOUR SESSION</Text><Text style={styles.title}>Up next</Text></View>
         <Pressable onPress={() => Alert.alert("Clear queue?", "This keeps the current track and removes everything after it.", [{ text: "Cancel", style: "cancel" }, { text: "Clear", style: "destructive", onPress: clearQueue }])} style={styles.clear}><Text style={styles.clearText}>Clear</Text></Pressable>
       </View>
-      <Text style={styles.caption}>{queue.length} {queue.length === 1 ? "track" : "tracks"} in this queue</Text>
-      <FlatList data={queue} keyExtractor={(track, index) => `${track.id}-${index}`} contentContainerStyle={styles.list} initialNumToRender={10} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews renderItem={({ item: track, index }) => { const isCurrent = index === currentIndex; return (
+      <Text style={styles.caption}>{remainingCount} {remainingCount === 1 ? "track" : "tracks"} remaining</Text>
+      <FlatList data={visibleQueue} keyExtractor={({ track, queueIndex }) => `${track.id}-${queueIndex}`} contentContainerStyle={styles.list} initialNumToRender={10} maxToRenderPerBatch={10} windowSize={7} removeClippedSubviews renderItem={({ item }) => { const { track, queueIndex } = item; const isCurrent = queueIndex === currentIndex; return (
         
-            <View key={`${track.id}-${index}`} style={[styles.row, isCurrent && styles.current]}>
+            <View style={[styles.row, isCurrent && styles.current]}>
               <Artwork uri={track.artwork} size={48} radius={11} />
-              <Pressable style={{ flex: 1 }} onPress={() => { void playTrack(track, queue, index).then(() => router.back()).catch((error: unknown) => Alert.alert("Playback failed", error instanceof Error ? error.message : "Try again.")); }}>
+              <Pressable style={{ flex: 1 }} onPress={() => { void playTrack(track, queue, queueIndex).then(() => router.back()).catch((error: unknown) => Alert.alert("Playback failed", error instanceof Error ? error.message : "Try again.")); }}>
                 <Text numberOfLines={1} style={styles.trackTitle}>{track.title}</Text>
                 <Text numberOfLines={1} style={styles.artist}>{isCurrent ? "CURRENT TRACK · " : ""}{track.artist}</Text>
               </Pressable>
               <View style={styles.actions}>
-                <Pressable disabled={index === 0} onPress={() => moveQueueTrack(index, index - 1)} style={styles.action}><Ionicons name="chevron-up" size={17} color={index === 0 ? colors.subtle : colors.muted} /></Pressable>
-                <Pressable disabled={index === queue.length - 1} onPress={() => moveQueueTrack(index, index + 1)} style={styles.action}><Ionicons name="chevron-down" size={17} color={index === queue.length - 1 ? colors.subtle : colors.muted} /></Pressable>
-                {!isCurrent ? <Pressable onPress={() => removeQueueItemAt(index)} style={styles.action}><Ionicons name="close" size={18} color={colors.muted} /></Pressable> : null}
+                <Pressable disabled={isCurrent || queueIndex <= currentIndex + 1} onPress={() => moveQueueTrack(queueIndex, queueIndex - 1)} style={styles.action}><Ionicons name="chevron-up" size={17} color={isCurrent || queueIndex <= currentIndex + 1 ? colors.subtle : colors.muted} /></Pressable>
+                <Pressable disabled={isCurrent || queueIndex === queue.length - 1} onPress={() => moveQueueTrack(queueIndex, queueIndex + 1)} style={styles.action}><Ionicons name="chevron-down" size={17} color={isCurrent || queueIndex === queue.length - 1 ? colors.subtle : colors.muted} /></Pressable>
+                {!isCurrent ? <Pressable onPress={() => removeQueueItemAt(queueIndex)} style={styles.action}><Ionicons name="close" size={18} color={colors.muted} /></Pressable> : null}
               </View>
             </View>
           ); }} ListEmptyComponent={<Text style={styles.empty}>Your queue is empty. Find a track and start a new session.</Text>} />
     </SafeAreaView>
+    </PageEntrance>
   );
 }
 

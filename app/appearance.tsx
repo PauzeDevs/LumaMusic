@@ -76,7 +76,7 @@ export default function AppearanceScreen() {
       <Text style={styles.heading}>Player design</Text>
       <Text style={styles.copy}>Choose the shape and personality of your Now Playing screen.</Text>
       <GlassSurface style={styles.panel} contentStyle={styles.motionPanel}>
-        {([{ id: "standard", label: "Classic", detail: "Balanced artwork and controls" }, { id: "vinyl", label: "Vinyl", detail: "Round record-inspired artwork" }, { id: "poster", label: "Poster", detail: "Bold edge-to-edge artwork" }] as { id: PlayerStyle; label: string; detail: string }[]).map((item, index, all) => <Pressable key={item.id} onPress={() => setPlayerStyle(item.id)} style={[styles.motionOption, index === all.length - 1 && styles.last]}>
+        {([{ id: "standard", label: "Classic", detail: "Balanced artwork and controls" }, { id: "vinyl", label: "Vinyl", detail: "Round record-inspired artwork" }, { id: "poster", label: "Poster", detail: "Bold edge-to-edge artwork" }, { id: "compact", label: "Compact", detail: "Smaller artwork with more room for controls" }] as { id: PlayerStyle; label: string; detail: string }[]).map((item, index, all) => <Pressable key={item.id} onPress={() => setPlayerStyle(item.id)} style={[styles.motionOption, index === all.length - 1 && styles.last]}>
           <View style={{ flex: 1 }}><Text style={styles.optionText}>{item.label}</Text><Text style={styles.optionDetail}>{item.detail}</Text></View>
           <Ionicons name={playerStyle === item.id ? "radio-button-on" : "radio-button-off"} size={19} color={playerStyle === item.id ? colors.accent : colors.subtle} />
         </Pressable>)}
@@ -110,10 +110,10 @@ export default function AppearanceScreen() {
 
 function makeStyles(c: ReturnType<typeof useTheme>["colors"], isDark: boolean) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: c.background }, header: { height: 66, flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20 },
+    safe: { flex: 1, backgroundColor: c.background }, header: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 13, paddingHorizontal: 20, paddingTop: 4 },
     back: { width: 40, height: 40, borderRadius: 20, backgroundColor: c.surfaceElevated, alignItems: "center", justifyContent: "center" },
     eyebrow: { color: c.accent, fontSize: 9, fontWeight: "800", letterSpacing: 1.6 }, title: { color: c.text, fontSize: 25, fontWeight: "800", letterSpacing: -0.7, marginTop: 2 },
-    content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 36 }, heading: { color: c.text, fontSize: 17, fontWeight: "700", marginTop: 22, marginBottom: 5 },
+    content: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 48 }, heading: { color: c.text, fontSize: 17, fontWeight: "700", marginTop: 22, marginBottom: 5 },
     copy: { color: c.muted, fontSize: 12, lineHeight: 18, marginBottom: 12 }, panel: { borderRadius: 19 },
     accentGrid: { padding: 10, gap: 7 }, accentOption: { minHeight: 48, borderRadius: 13, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 11, borderWidth: 1, borderColor: "transparent" },
     selected: { backgroundColor: isDark ? "rgba(255,255,255,0.055)" : "rgba(0,0,0,0.035)", borderColor: c.border },

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { MusicTrack } from "../types/music";
+import type { DecodedAudioFormat } from "../services/audioEngine/types";
 
 export type RepeatMode = "off" | "all" | "one";
 export type StreamQuality = { label: "Standard" | "HD" | "Unknown"; bitrateKbps: number | null; codec: string | null };
@@ -13,15 +14,19 @@ type PlayerState = {
   playbackDuration: number;
   playbackError: string | null;
   streamQuality: StreamQuality | null;
+  decodedAudioFormat: DecodedAudioFormat | null;
   playbackRate: number;
   sleepTimerMinutes: number | null;
   queue: MusicTrack[];
   isShuffled: boolean;
   repeatMode: RepeatMode;
   setTrack: (track: MusicTrack, queue?: MusicTrack[], queueIndex?: number) => void;
+  promoteCrossfadeTrack: (track: MusicTrack) => void;
+  addTracksToQueue: (tracks: MusicTrack[]) => number;
   setPlaybackStatus: (status: { isPlaying: boolean; isBuffering: boolean; playbackPosition: number; playbackDuration: number; playbackError: string | null }) => void;
   setPlaybackError: (error: string | null) => void;
   setStreamQuality: (quality: StreamQuality | null) => void;
+  setDecodedAudioFormat: (format: DecodedAudioFormat | null) => void;
   setPlaybackRate: (rate: number) => void;
   setSleepTimerMinutes: (minutes: number | null) => void;
   removeFromQueue: (trackId: string) => void;
@@ -41,6 +46,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   playbackDuration: 0,
   playbackError: null,
   streamQuality: null,
+  decodedAudioFormat: null,
   playbackRate: 1,
   sleepTimerMinutes: null,
   queue: [],
@@ -62,12 +68,50 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       playbackPosition: 0,
       playbackDuration: track.durationMs / 1000,
       playbackError: null,
-      streamQuality: null
+      streamQuality: null,
+      decodedAudioFormat: null
     });
   },
+  addTracksToQueue: (tracks) => {
+    let added = 0;
+    set((state) => {
+      const queue = [...state.queue];
+      const knownIds = new Set(queue.map((track) => track.id));
+      for (const track of tracks) {
+        if (!track || typeof track.id !== "string" || !track.id || knownIds.has(track.id)) continue;
+        queue.push(track);
+        knownIds.add(track.id);
+        added += 1;
+      }
+      return added > 0 ? { queue } : state;
+    });
+    return added;
+  },
+  promoteCrossfadeTrack: (track) => set((state) => {
+    let index = state.queue.findIndex((item) => item.id === track.id);
+    const queue = index >= 0 ? state.queue : [...state.queue, track];
+    if (index < 0) index = queue.length - 1;
+    return {
+      currentTrack: track,
+      currentQueueIndex: index,
+      queue,
+      playbackPosition: 0,
+      playbackDuration: Math.max(0, track.durationMs / 1000),
+      playbackError: null,
+      streamQuality: null,
+      decodedAudioFormat: null,
+      isPlaying: true,
+      isBuffering: false
+    };
+  }),
   setPlaybackStatus: (status) => set(status),
   setPlaybackError: (error) => set({ playbackError: error, isBuffering: false, isPlaying: false }),
   setStreamQuality: (streamQuality) => set({ streamQuality }),
+  setDecodedAudioFormat: (decodedAudioFormat) => set((state) => {
+    const previous = state.decodedAudioFormat;
+    if (previous?.sampleRateHz === decodedAudioFormat?.sampleRateHz && previous?.channelCount === decodedAudioFormat?.channelCount && previous?.pcmEncoding === decodedAudioFormat?.pcmEncoding && previous?.bitDepth === decodedAudioFormat?.bitDepth) return state;
+    return { decodedAudioFormat };
+  }),
   setPlaybackRate: (playbackRate) => {
     if (!Number.isFinite(playbackRate)) return;
     set({ playbackRate: Math.max(0.5, Math.min(2, playbackRate)) });
