@@ -49,7 +49,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
     private const val RECENT_ID = "category:recent"
     private const val PLAYLISTS_ID = "category:playlists"
     private val requestHandler = Handler(Looper.getMainLooper())
-    private val pendingTrackRequests = ConcurrentHashMap<String, SettableFuture<List<MediaItem>>>()
+    private val pendingTrackRequests = ConcurrentHashMap<String, SettableFuture<MutableList<MediaItem>>>()
 
     @Volatile private var activeSession: MediaLibrarySession? = null
     @Volatile private var catalog: Map<String, Any?> = emptyMap()
@@ -80,7 +80,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
     fun completeTrackRequest(trackId: String, mediaItem: MediaItem): Boolean {
       val pending = pendingTrackRequests.remove(trackId) ?: return false
       requestHandler.removeCallbacksAndMessages(trackId)
-      return pending.set(listOf(mediaItem))
+      return pending.set(mutableListOf(mediaItem))
     }
 
     private fun trackList(key: String): List<Map<String, Any?>> =
@@ -187,7 +187,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
       }
 
       pendingTrackRequests.remove(trackId)?.cancel(false)
-      val future = SettableFuture.create<List<MediaItem>>()
+      val future = SettableFuture.create<MutableList<MediaItem>>()
       pendingTrackRequests[trackId] = future
       trackRequestListener?.invoke(trackId)
       requestHandler.postAtTime({
@@ -196,7 +196,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
         }
       }, trackId, android.os.SystemClock.uptimeMillis() + TimeUnit.SECONDS.toMillis(45))
       @Suppress("UNCHECKED_CAST")
-      return future as ListenableFuture<MutableList<MediaItem>>
+      return future
     }
 
     companion object {
