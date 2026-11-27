@@ -88,19 +88,18 @@ class LumaAudioEngineModule : Module() {
 
     OnCreate {
       released.set(false)
-      appContext.reactContext?.applicationContext
+      val context = appContext.reactContext?.applicationContext
         ?: throw IllegalStateException("React context is not available.")
 
-      // ExoPlayer checks its application looper on every access, including setup
-      // immediately after build(). Keep construction and all configuration on main.
+      // The service and React Native module must share one player.
       handler.post {
         if (released.get()) return@post
-        pcmProcessor = LumaPcmAudioProcessor()
-        player = createPlayer(pcmProcessor!!, handleAudioFocus = true).apply {
-          addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) = emitState(this@apply)
-            override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(this@apply)
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(this@apply)
+        player = LumaSharedPlayer.getOrCreate(context).also { sharedPlayer ->
+          pcmProcessor = LumaSharedPlayer.processor()
+          sharedPlayer.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) = emitState(sharedPlayer)
+            override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(sharedPlayer)
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(sharedPlayer)
           })
         }
         handler.removeCallbacks(progressEmitter)
@@ -204,7 +203,7 @@ class LumaAudioEngineModule : Module() {
       runOnMain(promise) {
         requirePlayer().play()
         incomingPlayer?.takeIf { crossfadeProgressMs > 0L }?.play()
-        startForegroundPlaybackService()
+        startMediaLibraryService()
         emitState(requirePlayer())
         null
       }
@@ -214,7 +213,6 @@ class LumaAudioEngineModule : Module() {
       runOnMain(promise) {
         requirePlayer().pause()
         incomingPlayer?.pause()
-        stopForegroundPlaybackService()
         emitState(requirePlayer())
         null
       }
@@ -274,37 +272,29 @@ class LumaAudioEngineModule : Module() {
     }
 
     AsyncFunction("release") { promise: Promise ->
-      runOnMain(promise) { releasePlayer(); null }
+      runOnMain(promise) { cancelCrossfadeInternal(); requirePlayer().stop(); emitState(requirePlayer()); null }
     }
 
     OnDestroy {
       if (Looper.myLooper() == Looper.getMainLooper()) {
-        releasePlayer()
+        detachModule()
       } else {
-        handler.post { releasePlayer() }
+        handler.post { detachModule() }
       }
     }
   }
 
-  private fun startForegroundPlaybackService() {
+  private fun startMediaLibraryService() {
     if (foregroundPlaybackStarted) return
     val context = appContext.reactContext?.applicationContext ?: return
-    val intent = Intent(context, LumaPlaybackForegroundService::class.java)
-      .setAction(LumaPlaybackForegroundService.ACTION_START)
+    val intent = Intent(context, LumaMediaLibraryService::class.java)
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent)
       else context.startService(intent)
       foregroundPlaybackStarted = true
     } catch (error: Exception) {
-      lastError = "Could not start Android playback service: ${error.message ?: "unknown error"}"
+      lastError = "Could not start Android media session service: ${error.message ?: "unknown error"}"
     }
-  }
-
-  private fun stopForegroundPlaybackService() {
-    val context = appContext.reactContext?.applicationContext ?: return
-    if (!foregroundPlaybackStarted) return
-    context.stopService(Intent(context, LumaPlaybackForegroundService::class.java))
-    foregroundPlaybackStarted = false
   }
 
   private fun createMediaSource(track: Map<String, Any?>): MediaSource {
@@ -448,14 +438,15 @@ class LumaAudioEngineModule : Module() {
     if (!released.get()) sendEvent("onStateChange", stateMap(current))
   }
 
-  private fun releasePlayer() {
+  /**
+   * The MediaLibraryService owns the shared player's lifetime. Destroying the
+   * React Native runtime must not tear down playback while Android Auto is active.
+   */
+  private fun detachModule() {
     if (!released.compareAndSet(false, true)) return
     handler.removeCallbacks(progressEmitter)
     cancelCrossfadeInternal()
-    stopForegroundPlaybackService()
-    player?.release()
     player = null
     pcmProcessor = null
-    activeTrackId = null
   }
 }
