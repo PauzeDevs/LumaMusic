@@ -31,10 +31,18 @@ test("bounds stream duration and uses fallback for invalid values", () => {
 });
 
 test("bounds expiry to a safe future window", () => {
-  const now = Date.now();
-  assert.equal(boundedExpiry(now + 10_000), now + 30 * 60 * 1000);
-  assert.equal(boundedExpiry(now + 48 * 60 * 60 * 1000), now + 24 * 60 * 60 * 1000);
-  assert.equal(boundedExpiry(now + 5 * 60 * 1000), now + 5 * 60 * 1000);
+  // Freeze the clock so the test does not race Date.now() across calls.
+  // Without this, the expected timestamp can drift by 1 ms on CI runners.
+  const originalNow = Date.now;
+  const now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    assert.equal(boundedExpiry(now + 10_000), now + 30 * 60 * 1000);
+    assert.equal(boundedExpiry(now + 48 * 60 * 60 * 1000), now + 24 * 60 * 60 * 1000);
+    assert.equal(boundedExpiry(now + 5 * 60 * 1000), now + 5 * 60 * 1000);
+  } finally {
+    Date.now = originalNow;
+  }
 });
 
 test("accepts only finite, positive, bounded bitrates", () => {
