@@ -47,7 +47,7 @@ export function LumaTabBar({ state, navigation }: TabBarProps) {
       <LiquidGlassView cornerRadius={19} style={StyleSheet.absoluteFill} />
       <Pressable style={styles.miniMain} onPress={() => router.push("/now-playing")}><Artwork uri={track.artwork} size={42} radius={10} /><View style={styles.miniCopy}><Text numberOfLines={1} style={[styles.miniTitle, { color: colors.text }]}>{track.title}</Text><Text numberOfLines={1} style={[styles.miniArtist, { color: colors.muted }]}>{track.artist}</Text></View></Pressable>
       <Pressable onPress={togglePlayback} hitSlop={12} style={styles.playButton}><Ionicons name={isPlaying ? "pause" : "play"} size={21} color={colors.text} /></Pressable>
-      <View style={[styles.progressTrack, { backgroundColor: "rgba(255,255,255,0.16)" }]}><View style={[styles.progressFill, { width: progress + "%", backgroundColor: colors.accent }]} /></View>
+      <View style={[styles.progressTrack, { backgroundColor: "rgba(255,255,255,0.16)" }]}><View style={[styles.progressFill, { width: (progress + "%") as `${number}%`, backgroundColor: colors.accent }]} /></View>
     </Animated.View> : null}
     <View style={styles.shell}>
       <LiquidGlassView cornerRadius={30} style={StyleSheet.absoluteFill} />
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: "row", alignItems: "center", gap: 3 },
   tab: { flex: 1, minWidth: 0, height: 52, alignItems: "center", justifyContent: "center", borderRadius: 25, overflow: "hidden" },
   tabActive: { backgroundColor: "#F4F3F4", shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  activeHighlight: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255,255,255,0.18)" },
+  activeHighlight: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(255,255,255,0.18)" },
   label: { color: "rgba(255,255,255,0.68)", fontSize: 9, fontWeight: "600" },
   labelActive: { color: "#171619", fontWeight: "700" }
 });
