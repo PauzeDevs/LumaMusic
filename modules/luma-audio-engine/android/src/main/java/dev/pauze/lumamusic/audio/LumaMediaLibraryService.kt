@@ -54,6 +54,15 @@ class LumaMediaLibraryService : MediaLibraryService() {
     @Volatile private var activeSession: MediaLibrarySession? = null
     @Volatile private var catalog: Map<String, Any?> = emptyMap()
     @Volatile private var trackRequestListener: ((String) -> Unit)? = null
+    @Volatile private var transportControlListener: ((Boolean) -> Unit)? = null
+
+    fun setTransportControlListener(listener: ((Boolean) -> Unit)?) {
+      transportControlListener = listener
+    }
+
+    fun requestTransportControl(next: Boolean) {
+      transportControlListener?.invoke(next)
+    }
 
     fun updatePlayer(player: androidx.media3.common.Player) {
       activeSession?.setPlayer(player)
@@ -112,6 +121,26 @@ class LumaMediaLibraryService : MediaLibraryService() {
   }
 
   private class LibraryCallback : MediaLibrarySession.Callback {
+    override fun onPlayerCommandRequest(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+      playerCommand: Int
+    ): Int {
+      when (playerCommand) {
+        androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT,
+        androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
+          requestTransportControl(true)
+          return MediaSession.Callback.RESULT_SUCCESS
+        }
+        androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS,
+        androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
+          requestTransportControl(false)
+          return MediaSession.Callback.RESULT_SUCCESS
+        }
+      }
+      return MediaSession.Callback.RESULT_SUCCESS
+    }
+
     override fun onGetLibraryRoot(
       session: MediaLibrarySession,
       browser: MediaSession.ControllerInfo,
