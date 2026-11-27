@@ -7,6 +7,7 @@ import {
   addNativeAudioStateListener,
   addNativeAudioCrossfadeCompleteListener,
   addNativeAudioMediaItemRequestedListener,
+  addNativeAudioTransportControlListener,
   completeNativeAudioMediaItemRequest,
   setNativeAudioLibraryCatalog,
   cancelNativeAudioCrossfade,
@@ -858,6 +859,15 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     }
     await restartCurrentTrack();
   }, [playTrackSafely, player]);
+
+  useEffect(() => {
+    if (!useNativeExternalPlayback) return;
+    const subscription = addNativeAudioTransportControlListener(({ direction }) => {
+      if (direction === "next") void playNext();
+      else void playPrevious();
+    });
+    return () => subscription?.remove();
+  }, [playNext, playPrevious]);
 
   const setPlaybackRate = useCallback((rate: number) => {
     if (!Number.isFinite(rate)) return;
