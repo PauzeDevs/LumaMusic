@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { Alert } from "react-native";
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { PageEntrance } from "../../components/PageEntrance";
 import { AlbumArtwork } from "../../components/AlbumArtwork";
@@ -7,6 +8,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TrackRow } from "../../components/TrackRow";
+import { GlassSurface } from "../../components/GlassSurface";
+import { GlassActionPill } from "../../components/GlassPills";
+import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import type { ThemePalette } from "../../theme/colors";
 import { useTheme } from "../../theme/useTheme";
 import { getYouTubeMusicArtistTracks, getYouTubeMusicArtistReleases, type MusicRelease } from "../../services/youtubeMusic";
@@ -15,6 +19,7 @@ import { usePreferencesStore } from "../../store/preferences";
 export default function ArtistScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const { playTrack } = useAudioEngine();
   const { id, name, artwork } = useLocalSearchParams<{ id: string; name?: string; artwork?: string }>();
   const artistId = Array.isArray(id) ? id[0] : id;
   const artistName = Array.isArray(name) ? name[0] : name;
@@ -36,6 +41,11 @@ export default function ArtistScreen() {
   const albums = releases.filter((release) => release.kind === "album");
   const eps = releases.filter((release) => release.kind === "ep");
   const singles = releases.filter((release) => release.kind === "single");
+  const playArtist = (shuffle = false) => {
+    if (!tracks.length) return;
+    const queue = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+    playTrack(queue[0], queue).catch((error: unknown) => Alert.alert("Couldn't start artist mix", error instanceof Error ? error.message : "Please try again."));
+  };
 
   const openRelease = (release: MusicRelease) => router.push({
     pathname: "/release/[id]",
@@ -69,7 +79,7 @@ export default function ArtistScreen() {
                 <Text style={styles.backText}>Back to music</Text>
               </Pressable>
 
-              <View style={styles.hero}>
+              <GlassSurface style={styles.hero} contentStyle={styles.heroContent}>
                 <View style={styles.heroTopline}>
                   <View style={styles.artistTag}>
                     <View style={styles.artistDot} />
@@ -80,6 +90,10 @@ export default function ArtistScreen() {
                 <AlbumArtwork uri={artistArtwork ?? ""} size={148} radius={74} />
                 <Text style={styles.title}>{artistName || "Artist"}</Text>
                 <Text style={styles.copy}>Your space for the music, albums and releases from this artist.</Text>
+                <View style={styles.heroActions}>
+                  <GlassActionPill icon="play" label="Play all" onPress={() => playArtist(false)} active />
+                  <GlassActionPill icon="shuffle" label="Shuffle" onPress={() => playArtist(true)} />
+                </View>
                 <View style={styles.heroStats}>
                   <View style={styles.stat}>
                     <Text style={styles.statValue}>{tracksQuery.isLoading ? "—" : tracks.length}</Text>
@@ -91,7 +105,7 @@ export default function ArtistScreen() {
                     <Text style={styles.statLabel}>RELEASES</Text>
                   </View>
                 </View>
-              </View>
+              </GlassSurface>
 
               <View style={styles.catalogueHeading}>
                 <View>
@@ -175,7 +189,9 @@ function createStyles(colors: ThemePalette) {
     back: { flexDirection: "row", alignItems: "center", gap: 9, paddingVertical: 13, marginBottom: 5 },
     backIcon: { width: 31, height: 31, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.055)", borderWidth: 1, borderColor: colors.border },
     backText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
-    hero: { alignItems: "center", paddingHorizontal: 20, paddingTop: 17, paddingBottom: 18, gap: 11, marginBottom: 28, borderRadius: 27, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: colors.border },
+    hero: { marginBottom: 28, borderRadius: 27 },
+    heroContent: { alignItems: "center", paddingHorizontal: 20, paddingTop: 17, paddingBottom: 18, gap: 11 },
+    heroActions: { flexDirection: "row", justifyContent: "center", gap: 20, marginTop: 5 },
     heroTopline: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
     artistTag: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.055)" },
     artistDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
