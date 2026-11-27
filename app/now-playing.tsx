@@ -1,7 +1,7 @@
 import { Ionicons } from "@react-native-vector-icons/ionicons/static";
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Easing, Image, Modal, PanResponder, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Alert, Animated, Easing, Image, Modal, PanResponder, Pressable, Share, StyleSheet, Text, View, ScrollView, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { ThemePalette } from "../theme/colors";
@@ -12,6 +12,7 @@ import { useLibraryStore } from "../store/library";
 import { useAudioEngine } from "../providers/AudioPlayerProvider";
 import { usePreferencesStore } from "../store/preferences";
 import { useNowPlayingSeeking } from "../hooks/useNowPlayingSeeking";
+import { GlassActionPill } from "../components/GlassPills";
 
 function playerStyleForLayout(style: PlayerStyle, width: number, height: number) {
   // Keep the artwork proportional to the available viewport so the transport
