@@ -10,10 +10,13 @@ import type {
 type NativeAudioEventMap = {
   onStateChange: AudioEngineState;
   onCrossfadeComplete: { trackId: string };
+  onMediaItemRequested: { trackId: string };
 };
 
 type NativeAudioEngineModule = {
   getCapabilities(sourceKind: AudioSourceKind): Promise<AudioEngineCapabilities>;
+  setLibraryCatalog(catalog: { likedTracks: Record<string, unknown>[]; recentTracks: Record<string, unknown>[]; playlists: Record<string, unknown>[] }): Promise<void>;
+  completeMediaItemRequest(trackId: string): Promise<void>;
   getState(): Promise<AudioEngineState>;
   load(track: AudioEngineTrack, startPositionSeconds?: number): Promise<void>;
   prepareNext(track: AudioEngineTrack): Promise<void>;
@@ -35,6 +38,16 @@ const nativeModule = requireOptionalNativeModule<NativeAudioEngineModule>("LumaA
 
 
 export const isNativeAudioEngineAvailable = Boolean(nativeModule);
+
+export async function setNativeAudioLibraryCatalog(catalog: { likedTracks: Record<string, unknown>[]; recentTracks: Record<string, unknown>[]; playlists: Record<string, unknown>[] }): Promise<void> {
+  if (!nativeModule) return;
+  return nativeModule.setLibraryCatalog(catalog);
+}
+
+export async function completeNativeAudioMediaItemRequest(trackId: string): Promise<void> {
+  if (!nativeModule) throw new Error("Native audio engine is not installed in this build.");
+  return nativeModule.completeMediaItemRequest(trackId);
+}
 
 export async function getNativeAudioEngineCapabilities(sourceKind: AudioSourceKind): Promise<AudioEngineCapabilities> {
   if (!nativeModule) {
@@ -105,4 +118,9 @@ export function addNativeAudioStateListener(listener: (state: AudioEngineState) 
 export function addNativeAudioCrossfadeCompleteListener(listener: (event: { trackId: string }) => void): EventSubscription | null {
   if (!nativeModule) return null;
   return nativeModule.addListener("onCrossfadeComplete", listener);
+}
+
+export function addNativeAudioMediaItemRequestedListener(listener: (event: { trackId: string }) => void): EventSubscription | null {
+  if (!nativeModule) return null;
+  return nativeModule.addListener("onMediaItemRequested", listener);
 }
