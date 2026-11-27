@@ -6,6 +6,9 @@ import { resolveYouTubeMusicAudio } from "../services/youtubePlayback";
 import {
   addNativeAudioStateListener,
   addNativeAudioCrossfadeCompleteListener,
+  addNativeAudioMediaItemRequestedListener,
+  completeNativeAudioMediaItemRequest,
+  setNativeAudioLibraryCatalog,
   cancelNativeAudioCrossfade,
   isNativeAudioEngineAvailable,
   loadNativeAudioTrack,
@@ -658,6 +661,59 @@ export function AudioPlayerProvider({ children }: PropsWithChildren) {
     automaticRecovery.current.attempts += 1;
     void playTrackSafely(track, usePlayerStore.getState().queue, usePlayerStore.getState().currentQueueIndex, usePlayerStore.getState().playbackPosition);
   }, [status.error, status.isBuffering, storeIsBuffering, currentTrack?.id, playTrackSafely]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android" || !isNativeAudioEngineAvailable) return;
+
+    const toCatalogTrack = (track: MusicTrack) => ({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      artwork: track.artwork,
+      durationMs: track.durationMs
+    });
+    const syncCatalog = () => {
+      const library = useLibraryStore.getState();
+      void setNativeAudioLibraryCatalog({
+        likedTracks: library.likedTracks.filter(isExternalTrack).map(toCatalogTrack),
+        recentTracks: library.recentTracks.filter(isExternalTrack).map(toCatalogTrack),
+        playlists: library.playlists.map((playlist) => ({
+          id: playlist.id,
+          name: playlist.name,
+          coverUri: playlist.coverUri ?? "",
+          tracks: playlist.tracks.filter(isExternalTrack).map(toCatalogTrack)
+        }))
+      }).catch(() => undefined);
+    };
+
+    syncCatalog();
+    const unsubscribeLibrary = useLibraryStore.subscribe(syncCatalog);
+    const requestSubscription = addNativeAudioMediaItemRequestedListener(({ trackId }) => {
+      const library = useLibraryStore.getState();
+      const playerState = usePlayerStore.getState();
+      const playlist = library.playlists.find((item) => item.tracks.some((track) => track.id === trackId));
+      const queue = playlist?.tracks ?? playerState.queue;
+      const candidates = [
+        ...queue,
+        ...library.likedTracks,
+        ...library.recentTracks,
+        ...library.localTracks,
+        ...library.playlists.flatMap((item) => item.tracks)
+      ];
+      const track = candidates.find((item) => item.id === trackId && isExternalTrack(item));
+      if (!track) return;
+      const selectedQueue = queue.some((item) => item.id === trackId) ? queue : [track];
+      const queueIndex = Math.max(0, selectedQueue.findIndex((item) => item.id === trackId));
+      void playTrack(track, selectedQueue, queueIndex)
+        .then(() => completeNativeAudioMediaItemRequest(track.id))
+        .catch(() => undefined);
+    });
+
+    return () => {
+      unsubscribeLibrary();
+      requestSubscription?.remove();
+    };
+  }, [playTrack]);
 
   const togglePlayback = useCallback(() => {
     const state = usePlayerStore.getState();
