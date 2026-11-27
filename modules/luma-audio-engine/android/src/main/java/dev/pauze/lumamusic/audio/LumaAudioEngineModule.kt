@@ -84,7 +84,7 @@ class LumaAudioEngineModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("LumaAudioEngine")
-    Events("onStateChange", "onCrossfadeComplete", "onMediaItemRequested")
+    Events("onStateChange", "onCrossfadeComplete", "onMediaItemRequested", "onTransportControlRequested")
 
     OnCreate {
       released.set(false)
@@ -94,6 +94,9 @@ class LumaAudioEngineModule : Module() {
       // The service and React Native module must share one player.
       LumaMediaLibraryService.setTrackRequestListener { trackId ->
         if (!released.get()) sendEvent("onMediaItemRequested", mapOf("trackId" to trackId))
+      }
+      LumaMediaLibraryService.setTransportControlListener { next ->
+        if (!released.get()) sendEvent("onTransportControlRequested", mapOf("direction" to if (next) "next" else "previous"))
       }
       handler.post {
         if (released.get()) return@post
@@ -333,10 +336,19 @@ class LumaAudioEngineModule : Module() {
       .setAllowCrossProtocolRedirects(true)
       .setDefaultRequestProperties(headers)
     val sourceFactory = DefaultMediaSourceFactory(DefaultDataSource.Factory(context, httpFactory))
+    val metadata = MediaMetadata.Builder()
+      .setTitle(title)
+      .setArtist(artist)
+      .setAlbumTitle(track["album"] as? String ?: "LumaMusic")
+      .apply {
+        (track["artworkUri"] as? String)?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+          ?.let { setArtworkUri(Uri.parse(it)) }
+      }
+      .build()
     val mediaItem = MediaItem.Builder()
       .setMediaId(track["id"] as? String ?: "")
       .setUri(Uri.parse(uri))
-      .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
+      .setMediaMetadata(metadata)
       .apply {
         (track["mimeType"] as? String)?.substringBefore(";")?.takeIf { it.isNotBlank() }?.let { setMimeType(it) }
       }
@@ -471,6 +483,7 @@ class LumaAudioEngineModule : Module() {
     if (!released.compareAndSet(false, true)) return
     handler.removeCallbacks(progressEmitter)
     LumaMediaLibraryService.setTrackRequestListener(null)
+    LumaMediaLibraryService.setTransportControlListener(null)
     cancelCrossfadeInternal()
     player = null
     pcmProcessor = null
