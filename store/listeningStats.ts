@@ -16,10 +16,17 @@ let pendingSeconds = 0;
 let pendingTrack: MusicTrack | null = null;
 let pendingDateKey: string | null = null;
 let activeSessionTrackId: string | null = null;
+const RETENTION_DAYS = 365;
 const dateKey = (date = new Date()) => {
   const y = date.getFullYear(), m = String(date.getMonth() + 1).padStart(2, "0"), d = String(date.getDate()).padStart(2, "0");
   return y + "-" + m + "-" + d;
 };
+function pruneDays(days: Record<string, ListeningDay>): Record<string, ListeningDay> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (RETENTION_DAYS - 1));
+  const minimumKey = dateKey(cutoff);
+  return Object.fromEntries(Object.entries(days).filter(([key]) => key >= minimumKey));
+}
 function trackMeta(track: MusicTrack): ListeningTrackStat {
   const extended = track as MusicTrack & { album?: string; albumTitle?: string };
   return { id: track.id, title: track.title, artist: track.artist, artwork: track.artwork, genre: track.genre?.trim() || "", album: extended.albumTitle || extended.album || "", seconds: 0, plays: 0 };
@@ -31,7 +38,7 @@ function flushPending(set: (fn: (state: StatsState) => Partial<StatsState>) => v
   set((state) => {
     const day = state.days[key] ?? { seconds: 0, plays: 0, tracks: {} };
     const existing = day.tracks[track.id] ?? trackMeta(track);
-    return { days: { ...state.days, [key]: { ...day, seconds: day.seconds + seconds, tracks: { ...day.tracks, [track.id]: { ...existing, seconds: existing.seconds + seconds } } } } };
+    return { days: pruneDays({ ...state.days, [key]: { ...day, seconds: day.seconds + seconds, tracks: { ...day.tracks, [track.id]: { ...existing, seconds: existing.seconds + seconds } } } }) };
   });
 }
 export const useListeningStatsStore = create<StatsState>()(persist((set) => ({
@@ -47,7 +54,7 @@ export const useListeningStatsStore = create<StatsState>()(persist((set) => ({
       set((state) => {
         const day = state.days[key] ?? { seconds: 0, plays: 0, tracks: {} };
         const existing = day.tracks[track.id] ?? trackMeta(track);
-        return { days: { ...state.days, [key]: { ...day, plays: day.plays + 1, tracks: { ...day.tracks, [track.id]: { ...existing, plays: existing.plays + 1 } } } } };
+        return { days: pruneDays({ ...state.days, [key]: { ...day, plays: day.plays + 1, tracks: { ...day.tracks, [track.id]: { ...existing, plays: existing.plays + 1 } } } }) };
       });
     }
     if (lastSample?.id === track.id) {
