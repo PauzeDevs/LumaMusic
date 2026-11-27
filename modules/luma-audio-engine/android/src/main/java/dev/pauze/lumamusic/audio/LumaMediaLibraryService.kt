@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -26,7 +27,7 @@ class LumaMediaLibraryService : MediaLibraryService() {
   override fun onCreate() {
     super.onCreate()
     val sharedPlayer = LumaSharedPlayer.getOrCreate(applicationContext)
-    librarySession = MediaLibrarySession.Builder(this, sharedPlayer, LibraryCallback()).build()
+    librarySession = MediaLibrarySession.Builder(this, sessionPlayer(sharedPlayer), LibraryCallback()).build()
     activeSession = librarySession
   }
 
@@ -65,8 +66,35 @@ class LumaMediaLibraryService : MediaLibraryService() {
     }
 
     fun updatePlayer(player: androidx.media3.common.Player) {
-      activeSession?.setPlayer(player)
+      activeSession?.setPlayer(sessionPlayer(player))
     }
+
+    private fun sessionPlayer(delegate: androidx.media3.common.Player): androidx.media3.common.Player =
+      object : ForwardingPlayer(delegate) {
+        override fun isCommandAvailable(command: Int): Boolean = when (command) {
+          androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT,
+          androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+          androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS,
+          androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> true
+          else -> super.isCommandAvailable(command)
+        }
+
+        override fun getAvailableCommands(): androidx.media3.common.Player.Commands =
+          super.getAvailableCommands().buildUpon()
+            .add(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT)
+            .add(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            .add(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS)
+            .add(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            .build()
+
+        override fun hasNextMediaItem(): Boolean = true
+        override fun hasPreviousMediaItem(): Boolean = true
+
+        override fun seekToNext() = requestTransportControl(true)
+        override fun seekToNextMediaItem() = requestTransportControl(true)
+        override fun seekToPrevious() = requestTransportControl(false)
+        override fun seekToPreviousMediaItem() = requestTransportControl(false)
+      }
 
     fun updateCatalog(value: Map<String, Any?>) {
       catalog = value
@@ -121,26 +149,6 @@ class LumaMediaLibraryService : MediaLibraryService() {
   }
 
   private class LibraryCallback : MediaLibrarySession.Callback {
-    override fun onPlayerCommandRequest(
-      session: MediaSession,
-      controller: MediaSession.ControllerInfo,
-      playerCommand: Int
-    ): Int {
-      when (playerCommand) {
-        androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT,
-        androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
-          requestTransportControl(true)
-          return MediaSession.Callback.RESULT_SUCCESS
-        }
-        androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS,
-        androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
-          requestTransportControl(false)
-          return MediaSession.Callback.RESULT_SUCCESS
-        }
-      }
-      return MediaSession.Callback.RESULT_SUCCESS
-    }
-
     override fun onGetLibraryRoot(
       session: MediaLibrarySession,
       browser: MediaSession.ControllerInfo,
