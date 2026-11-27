@@ -46,6 +46,7 @@ class LumaAudioEngineModule : Module() {
   private var catalogDurationSeconds: Double = 0.0
   private var lastError: String? = null
   private var foregroundPlaybackStarted = false
+  private var sharedPlayerListener: Player.Listener? = null
 
   private val crossfadeEmitter = object : Runnable {
     override fun run() {
@@ -102,11 +103,13 @@ class LumaAudioEngineModule : Module() {
         if (released.get()) return@post
         player = LumaSharedPlayer.getOrCreate(context).also { sharedPlayer ->
           pcmProcessor = LumaSharedPlayer.processor()
-          sharedPlayer.addListener(object : Player.Listener {
+          sharedPlayerListener?.let(sharedPlayer::removeListener)
+          sharedPlayerListener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) = emitState(sharedPlayer)
             override fun onIsPlayingChanged(isPlaying: Boolean) = emitState(sharedPlayer)
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = emitState(sharedPlayer)
-          })
+          }
+          sharedPlayer.addListener(sharedPlayerListener!!)
         }
         handler.removeCallbacks(progressEmitter)
         handler.post(progressEmitter)
@@ -485,6 +488,8 @@ class LumaAudioEngineModule : Module() {
     LumaMediaLibraryService.setTrackRequestListener(null)
     LumaMediaLibraryService.setTransportControlListener(null)
     cancelCrossfadeInternal()
+    player?.let { current -> sharedPlayerListener?.let(current::removeListener) }
+    sharedPlayerListener = null
     player = null
     pcmProcessor = null
   }
