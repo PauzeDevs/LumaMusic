@@ -84,7 +84,7 @@ class LumaAudioEngineModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("LumaAudioEngine")
-    Events("onStateChange", "onCrossfadeComplete")
+    Events("onStateChange", "onCrossfadeComplete", "onMediaItemRequested")
 
     OnCreate {
       released.set(false)
@@ -92,6 +92,9 @@ class LumaAudioEngineModule : Module() {
         ?: throw IllegalStateException("React context is not available.")
 
       // The service and React Native module must share one player.
+      LumaMediaLibraryService.setTrackRequestListener { trackId ->
+        if (!released.get()) sendEvent("onMediaItemRequested", mapOf("trackId" to trackId))
+      }
       handler.post {
         if (released.get()) return@post
         player = LumaSharedPlayer.getOrCreate(context).also { sharedPlayer ->
@@ -104,6 +107,25 @@ class LumaAudioEngineModule : Module() {
         }
         handler.removeCallbacks(progressEmitter)
         handler.post(progressEmitter)
+      }
+    }
+
+    AsyncFunction("setLibraryCatalog") { catalog: Map<String, Any?>, promise: Promise ->
+      runOnMain(promise) {
+        LumaMediaLibraryService.updateCatalog(catalog)
+        null
+      }
+    }
+
+    AsyncFunction("completeMediaItemRequest") { trackId: String, promise: Promise ->
+      runOnMain(promise) {
+        val currentItem = requirePlayer().currentMediaItem
+          ?: throw IllegalStateException("The selected track has not loaded yet.")
+        require(currentItem.mediaId == trackId) { "The loaded media item does not match the Android Auto request." }
+        require(LumaMediaLibraryService.completeTrackRequest(trackId, currentItem)) {
+          "The Android Auto media request is no longer active."
+        }
+        null
       }
     }
 
@@ -312,6 +334,7 @@ class LumaAudioEngineModule : Module() {
       .setDefaultRequestProperties(headers)
     val sourceFactory = DefaultMediaSourceFactory(DefaultDataSource.Factory(context, httpFactory))
     val mediaItem = MediaItem.Builder()
+      .setMediaId(track["id"] as? String ?: "")
       .setUri(Uri.parse(uri))
       .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build())
       .apply {
@@ -447,6 +470,7 @@ class LumaAudioEngineModule : Module() {
   private fun detachModule() {
     if (!released.compareAndSet(false, true)) return
     handler.removeCallbacks(progressEmitter)
+    LumaMediaLibraryService.setTrackRequestListener(null)
     cancelCrossfadeInternal()
     player = null
     pcmProcessor = null
