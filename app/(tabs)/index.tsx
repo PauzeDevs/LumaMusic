@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { useTheme } from "../../theme/useTheme";
 import { ScrollReveal } from "../../components/ScrollReveal";
+import { GlassActionPill } from "../../components/GlassPills";
 import { useSiriRefresh, SiriRefreshOverlay } from "../../components/SiriRefresh";
 import { useAudioEngine } from "../../providers/AudioPlayerProvider";
 import { useLibraryStore } from "../../store/library";
@@ -84,6 +85,15 @@ export default function ListenScreen() {
       </View>
       </ScrollReveal>
 
+      <ScrollReveal scrollY={scrollY}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActions}>
+          <GlassActionPill icon="play" label="Play mix" onPress={() => heroTrack ? play(heroTrack, recentTracks.length ? recentTracks : tracks) : router.push("/(tabs)/search")} active />
+          <GlassActionPill icon="compass-outline" label="Discover" onPress={() => router.push("/(tabs)/search")} />
+          <GlassActionPill icon="heart-outline" label="Liked" onPress={() => router.push("/liked")} />
+          <GlassActionPill icon="albums-outline" label="Library" onPress={() => router.push("/(tabs)/library")} />
+        </ScrollView>
+      </ScrollReveal>
+
       <ScrollReveal scrollY={scrollY}><View style={styles.section}>
         <View style={styles.sectionHeading}>
           <Text style={styles.sectionTitle}>Recently Played</Text>
@@ -143,6 +153,7 @@ function createStyles(colors: ThemePalette, isDark: boolean) { return StyleSheet
   heroArtist: { color: "rgba(255,255,255,0.78)", fontSize: 15, fontWeight: "600", marginTop: 7 },
   viewButton: { alignSelf: "flex-start", marginTop: 18, borderRadius: 24, paddingHorizontal: 19, paddingVertical: 12, backgroundColor: "rgba(255,255,255,0.96)", flexDirection: "row", alignItems: "center", gap: 12 },
   viewText: { color: "#101014", fontSize: 13, fontWeight: "800" },
+  quickActions: { paddingHorizontal: 20, paddingTop: 2, paddingBottom: 28, gap: 14 },
   section: { marginBottom: 34 },
   sectionHeading: { paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15 },
   sectionTitle: { color: colors.text, fontSize: 22, fontWeight: "900", letterSpacing: -0.6 },
