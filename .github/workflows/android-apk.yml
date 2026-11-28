@@ -1,66 +1,42 @@
-name: LumaMusic Android APK
+name: LumaMusic Android Test APK
 
 on:
-  # A workflow-file commit on master starts a TEST build only.
   push:
     branches:
       - master
     paths:
       - .github/workflows/android-apk.yml
-  # Stable releases can only be published by an explicit manual dispatch.
   workflow_dispatch:
-    inputs:
-      release_channel:
-        description: "Choose test artifacts or publish a stable release"
-        required: true
-        type: choice
-        default: test
-        options:
-          - test
-          - stable
-      release_name:
-        description: "Optional stable release title"
-        required: false
-        type: string
-      release_description:
-        description: "Optional stable release notes"
-        required: false
-        type: string
 
 permissions:
-  contents: write
-
-concurrency:
-  group: lumamusic-android-${{ github.ref }}
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  build:
-    name: Build Android APKs
+  android-apk:
+    name: Build test APKs
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configure Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Setup Java
+      - name: Configure Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
+      - name: Configure Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install JavaScript dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
       - name: Validate Expo configuration
         run: npx expo config --type public
@@ -68,7 +44,7 @@ jobs:
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build 64-bit ARM APK
+      - name: Build ARM64 APK
         working-directory: android
         run: |
           sed -i '/^reactNativeArchitectures=/d' gradle.properties
@@ -77,7 +53,7 @@ jobs:
           mkdir -p ../dist
           cp app/build/outputs/apk/release/app-release.apk ../dist/LumaMusic-arm64-v8a.apk
 
-      - name: Build 32-bit ARM APK
+      - name: Build ARMv7 APK
         working-directory: android
         run: |
           sed -i '/^reactNativeArchitectures=/d' gradle.properties
@@ -85,60 +61,10 @@ jobs:
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
           cp app/build/outputs/apk/release/app-release.apk ../dist/LumaMusic-armeabi-v7a.apk
 
-      - name: Upload test or stable APK artifacts
+      - name: Upload test APKs
         uses: actions/upload-artifact@v4
         with:
-          name: LumaMusic-${{ github.event_name == 'workflow_dispatch' && inputs.release_channel == 'stable' && 'Stable' || 'Test' }}-APKs
+          name: LumaMusic-Test-APKs
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 14
-
-  release:
-    name: Publish stable GitHub release
-    if: github.event_name == 'workflow_dispatch' && inputs.release_channel == 'stable'
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download stable APK artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: LumaMusic-Stable-APKs
-          path: dist
-
-      - name: Create release notes
-        env:
-          RELEASE_NAME: ${{ inputs.release_name }}
-          RELEASE_DESCRIPTION: ${{ inputs.release_description }}
-          RUN_NUMBER: ${{ github.run_number }}
-        run: |
-          if [ -n "$RELEASE_DESCRIPTION" ]; then
-            printf '%s\n' "$RELEASE_DESCRIPTION" > release-notes.md
-          else
-            cat > release-notes.md <<'NOTES'
-          # LumaMusic
-
-          This release includes the latest LumaMusic Android build.
-
-          ## APK architectures
-          - **LumaMusic-arm64-v8a.apk** — 64-bit ARM devices.
-          - **LumaMusic-armeabi-v7a.apk** — 32-bit ARM devices.
-
-          Built by PauzeX Developments.
-          NOTES
-          fi
-          if [ -n "$RELEASE_NAME" ]; then
-            printf '%s' "$RELEASE_NAME" > release-title.txt
-          else
-            printf 'LumaMusic Build #%s' "$RUN_NUMBER" > release-title.txt
-          fi
-
-      - name: Publish stable release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: lumamusic-build-${{ github.run_number }}
-          name: ${{ inputs.release_name || format('LumaMusic Build #{0}', github.run_number) }}
-          body_path: release-notes.md
-          files: |
-            dist/LumaMusic-arm64-v8a.apk
-            dist/LumaMusic-armeabi-v7a.apk
